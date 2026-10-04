@@ -125,6 +125,21 @@ namespace AfterHours
             Check(tilt < 60f, $"night {n}: the camera starts upright (tilt {tilt:F0}°)");
             yield return Wait(0.5f);
             yield return Shot($"n{n}_start");
+            if (n == 1 && PadChecks)
+            {
+                Clipboard.Instance.Show();
+                yield return Wait(0.7f);
+                yield return Shot("clipboard");
+                Clipboard.Instance.Close();
+                yield return Wait(0.4f);
+                PauseMenu.Show();
+                yield return Wait(0.6f);
+                Check(PauseMenu.IsOpen, "the pause menu opens during a night");
+                yield return Shot("pause");
+                PauseMenu.Instance.Close();
+                yield return WaitUnblocked(3f);
+                Check(!root.Blocked, "closing the pause menu hands control back");
+            }
             float start = Time.realtimeSinceStartup;
             frameTimes.Clear();
             sampling = true;
@@ -415,11 +430,19 @@ namespace AfterHours
             yield return Wait(0.2f);
             Check(Settings.Current.MouseSensitivity > before + 1e-3f, "d-pad right nudges the selected slider");
             yield return Press(GamepadButton.DpadLeft);
-            yield return Wait(0.2f);
+            yield return Wait(0.3f);
+            yield return Shot("settings");
             yield return Press(GamepadButton.East);
             yield return Wait(0.4f);
             Check(!SettingsPanel.IsOpen, "pad B closes Settings");
             yield return Shot("pad_title");
+            NightSelect.Show();
+            yield return Wait(0.6f);
+            Check(NightSelect.IsOpen && Selected.StartsWith("Night"), $"Night Select opens with a pad selection ({Selected})");
+            yield return Shot("night_select");
+            yield return Press(GamepadButton.East);
+            yield return Wait(0.4f);
+            Check(!NightSelect.IsOpen, "pad B closes Night Select");
         }
 
         IEnumerator PadEvidenceKeep(string doc)

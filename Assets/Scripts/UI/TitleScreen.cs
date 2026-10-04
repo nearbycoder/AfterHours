@@ -32,7 +32,7 @@ namespace AfterHours
         {
             if (Instance) return;
             var gr = GameRoot.Instance;
-            var rt = Ui.Layer("Title", 60);
+            var rt = Ui.Layer("Title", 50);
             Instance = rt.gameObject.AddComponent<TitleScreen>();
             Instance.root = rt;
             Instance.Build();
@@ -297,12 +297,14 @@ namespace AfterHours
                 Ui.Place(photo.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -16), new Vector2(248, 200), new Vector2(0.5f, 1));
                 var num = Ui.Label(photo.rectTransform, unlocked ? n.ToString() : "?", UiFont.Type, 110, unlocked ? new Color(0.95f, 0.85f, 0.6f) : new Color(1, 1, 1, 0.2f), TextAlignmentOptions.Center);
                 Ui.Stretch(num.rectTransform);
-                var label = Ui.Label(rt, unlocked ? $"{NightDefs.Days[n]}\n<size=80%>{NightDefs.Titles[n]}</size>" : "Locked", UiFont.Hand, 34, unlocked ? Ui.Ink : Ui.TextDim, TextAlignmentOptions.Center);
-                Ui.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 62), new Vector2(260, 90), new Vector2(0.5f, 0));
+                var label = Ui.Label(rt, unlocked ? $"{NightDefs.Days[n]}\n<size=80%>{NightDefs.Titles[n]}</size>" : "Locked", UiFont.Hand, 30, unlocked ? Ui.Ink : Ui.TextDim, TextAlignmentOptions.Center);
+                // Day and title sit between the photo and the stats line.
+                Ui.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 46), new Vector2(260, 76), new Vector2(0.5f, 0));
+                label.lineSpacing = -12;
                 if (res != null)
                 {
-                    var stats = Ui.Label(rt, $"<b>{res.Grade}</b>   secrets {res.Secrets}/{res.SecretsTotal}", UiFont.SansMedium, 20, Palette.Hex("6A3FA0"), TextAlignmentOptions.Center);
-                    Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 16), new Vector2(260, 30), new Vector2(0.5f, 0));
+                    var stats = Ui.Label(rt, $"<b>{res.Grade}</b>   secrets {res.Secrets}/{res.SecretsTotal}", UiFont.SansMedium, 19, Palette.Hex("6A3FA0"), TextAlignmentOptions.Center);
+                    Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 12), new Vector2(260, 28), new Vector2(0.5f, 0));
                 }
                 if (unlocked)
                 {
@@ -318,7 +320,7 @@ namespace AfterHours
                         else GameRoot.Instance.StartNight(night);
                     });
                     var hv = card.gameObject.AddComponent<HoverFx>();
-                    hv.Init(card, label, false);
+                    hv.Init(card, label, true); // opaque warm highlight; the paper never turns see-through
                 }
             }
             var back = Widgets.Button(root, "Back", Close, 200, 60);

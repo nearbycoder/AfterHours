@@ -36,7 +36,7 @@ namespace AfterHours
             get
             {
                 if (instance) return instance;
-                var rt = Ui.Layer("Choice", 45);
+                var rt = Ui.Layer("Choice", 70);
                 instance = rt.gameObject.AddComponent<ChoiceMenu>();
                 instance.root = rt;
                 instance.Build();

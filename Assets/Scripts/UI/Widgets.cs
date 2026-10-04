@@ -125,9 +125,10 @@ namespace AfterHours
         TextMeshProUGUI label;
         bool primary, over, selected;
         Color baseCol;
+        Vector2 labelHome;
         float k;
 
-        public void Init(Image b, TextMeshProUGUI l, bool p) { bg = b; label = l; primary = p; baseCol = b.color; }
+        public void Init(Image b, TextMeshProUGUI l, bool p) { bg = b; label = l; primary = p; baseCol = b.color; labelHome = l.rectTransform.anchoredPosition; }
 
         public void OnPointerEnter(PointerEventData e)
         {
@@ -152,7 +153,7 @@ namespace AfterHours
             k = Mathf.MoveTowards(k, on ? 1f : 0f, Time.unscaledDeltaTime * 8f);
             float e = Ease.OutCubic(k);
             bg.color = primary ? Color.Lerp(baseCol, new Color(1f, 0.86f, 0.5f, 1f), e) : Color.Lerp(baseCol, new Color(1f, 0.78f, 0.34f, 0.18f), e);
-            label.rectTransform.anchoredPosition = new Vector2(e * 10f, 0);
+            label.rectTransform.anchoredPosition = labelHome + new Vector2(e * 10f, 0);
             transform.localScale = Vector3.one * (1f + e * 0.02f);
         }
     }
