@@ -44,6 +44,9 @@ namespace AfterHours
         protected override IEnumerator Run()
         {
             Debug.Log("[AutoPilot] started");
+            // Test windows usually sit behind others, and Wayland throttles hidden windows' vsync
+            // to a crawl (11-20 fps here). Run uncapped so timings measure the game, not the compositor.
+            if (Time.captureFramerate == 0) { QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1; }
             yield return Wait(3f);
             Check(TitleScreen.Instance != null, "title screen shows on boot");
             yield return Shot("title");

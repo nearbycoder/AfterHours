@@ -156,10 +156,25 @@ Tools/unity.sh                # open the project in the editor
   and nights, and grime pattern generation.
 - **Captures** (`Tools/build_and_capture.sh`, `Tools/capture_all.sh`): scripted screenshot tours
   of each night.
+- **Perf probe** (`Tools/play.sh -ahCapture DIR perf -ahNight 2 -ahFresh`): stands in the bullpen
+  and times frames with vsync off, then with grime, post-processing, shadows, MSAA and render
+  scale switched off one at a time.
+- **Showcase** (`Tools/play.sh -ahShowcase DIR [nightN]`): plays the AutoPilot route on camera,
+  walking up to things and holding documents open, and writes every frame (fixed 30 fps clock)
+  plus the game's own audio to DIR for a gameplay video.
 
-Latest results on the shipped build: AutoPilot **190 passed, 0 failed** across all seven nights
+Latest results on the shipped build: AutoPilot **191 passed, 0 failed** across all seven nights
 (every required task completed each night, grade S or A, The Audit ending reached), and EditMode
 tests **10 of 10** passing.
+
+Performance (1600x900, AMD Radeon 8060S iGPU, OpenGL Core, vsync off): the perf probe renders the
+bullpen in about **3 ms a frame** (around 340 fps). Turning off any single feature saves under
+0.5 ms. Across the AutoPilot's seven nights the median frame is 4-8 ms and the 95th percentile
+6-14 ms. The worst frames, 60-140 ms, come from night set-up (grime patterns are generated while
+the title card is up) and the AutoPilot's bulk brush maths. With vsync on, the game runs at the
+monitor's refresh rate. One trap to know about: Wayland throttles vsync for windows that aren't
+visible, so a test window left behind others runs at 11-20 fps. The AutoPilot therefore runs
+uncapped.
 
 The AutoPilot found and fixed these bugs in the game itself:
 
@@ -170,6 +185,9 @@ The AutoPilot found and fixed these bugs in the game itself:
   when a night ends.
 - The camera-kick spring went unstable on long frames (night loads, screenshots) and could leave
   the camera upside down. It now sub-steps at a fixed rate and resets on teleport.
+- `Interstitial` screens (report, chat, title card, ending) destroyed their UI but never their own
+  object. Leftovers piled up, and a static "a screen is open" flag raced between the chat closing
+  and the next title card opening.
 - The throw-arc preview was invisible (its shader faded everything past the first few
   centimetres). It now draws as a soft dashed line.
 - Bins only caught items below the rim, so fast flat throws clipped the edge and bounced out.
@@ -188,8 +206,9 @@ The AutoPilot found and fixed these bugs in the game itself:
 - **Audio was never heard.** Every sound and music track was checked numerically (level, crest
   factor, rhythm, loop seams), not by ear.
 - **Gamepad bindings are untested**; no controller was connected during development.
-- **No performance pass.** Frame times weren't profiled, and the game has only run on the
-  32-core development machine.
+- **Performance was measured on one machine only** (32-core Strix Halo with its integrated GPU;
+  numbers above). Lower-end hardware is untested, and there are no quality presets; the only
+  graphics option is render scale in Settings.
 - **The art is stylised and procedural.** Every model is built from code in Blender with chunky
   bevelled shapes and flat materials. It's cohesive, but it isn't hand-modelled or textured to a
   commercial standard.

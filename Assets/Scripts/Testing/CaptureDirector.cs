@@ -41,6 +41,7 @@ namespace AfterHours
                 case "proto": yield return Proto(); break;
                 case "night1": yield return Night1(); break;
                 case "tour": yield return NightTour(); break;
+                case "perf": yield return PerfProbe(); break;
                 default: yield return OfficeTour(); break;
             }
             Log("done");
@@ -118,6 +119,74 @@ namespace AfterHours
             yield return Shot("tile_wet");
             yield return Wait(3f);
             yield return Shot("tile_dry");
+        }
+
+        /// <summary>
+        /// Frame-time probe: stand in the bullpen and time frames with features switched off one at a
+        /// time, to tell CPU cost from GPU cost. Run with <c>-ahCapture dir perf -ahNight 2 -ahFresh</c>.
+        /// </summary>
+        IEnumerator PerfProbe()
+        {
+            yield return WaitUnblocked(30f);
+            root.Player.Teleport(new Vector3(8.2f, 0, 6.0f), 40f, 6f);
+            yield return Wait(2f);
+            var main = Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Internal, "Main Thread", 120);
+            var render = Unity.Profiling.ProfilerRecorder.StartNew(Unity.Profiling.ProfilerCategory.Internal, "Render Thread", 120);
+            var urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            var camData = UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(root.Player.Camera);
+            Log($"perf: {SystemInfo.graphicsDeviceType} {SystemInfo.graphicsDeviceName}, {Screen.width}x{Screen.height}, vsync {QualitySettings.vSyncCount}, target {Application.targetFrameRate}, lights {FindObjectsByType<Light>(FindObjectsSortMode.None).Length}, grime {GrimeSurface.All.Count}");
+
+            IEnumerator Measure(string label)
+            {
+                yield return Wait(0.5f);
+                var ms = new System.Collections.Generic.List<float>();
+                double mainSum = 0, renderSum = 0; int n = 0;
+                for (float t = 0; t < 3f; t += Time.unscaledDeltaTime)
+                {
+                    yield return null;
+                    ms.Add(Time.unscaledDeltaTime * 1000f);
+                    if (main.Valid && main.LastValue > 0) { mainSum += main.LastValue / 1e6; renderSum += render.Valid ? render.LastValue / 1e6 : 0; n++; }
+                }
+                ms.Sort();
+                Log($"perf [{label}] median {ms[ms.Count / 2]:F1} ms ({1000f / ms[ms.Count / 2]:F0} fps), p95 {ms[(int)(ms.Count * 0.95f)]:F1} ms" +
+                    (n > 0 ? $", main thread {mainSum / n:F1} ms, render thread {renderSum / n:F1} ms" : ", thread timings unavailable"));
+            }
+
+            yield return Measure("baseline");
+            // Everything below runs uncapped so the numbers are the real cost, not the compositor's pace.
+            int vs = QualitySettings.vSyncCount;
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+            yield return Measure("vsync off");
+            var grime = GrimeSurface.All.ToList();
+            foreach (var g in grime) g.enabled = false;
+            yield return Measure("grime scripts off");
+            foreach (var g in grime) g.enabled = true;
+            camData.renderPostProcessing = false;
+            yield return Measure("post off");
+            camData.renderPostProcessing = true;
+            var lights = FindObjectsByType<Light>(FindObjectsSortMode.None);
+            var shadows = lights.Select(l => l.shadows).ToArray();
+            foreach (var l in lights) l.shadows = LightShadows.None;
+            yield return Measure("shadows off");
+            for (int i = 0; i < lights.Length; i++) lights[i].shadows = shadows[i];
+            if (urp != null)
+            {
+                float rs = urp.renderScale;
+                urp.renderScale = 0.5f;
+                yield return Measure("render scale 0.5");
+                urp.renderScale = rs;
+                int msaa = urp.msaaSampleCount;
+                urp.msaaSampleCount = 1;
+                yield return Measure("msaa off");
+                urp.msaaSampleCount = msaa;
+            }
+            var cams = FindObjectsByType<Camera>(FindObjectsSortMode.None);
+            Log("perf cameras: " + string.Join(", ", cams.Select(c => $"{c.name}({(c.enabled ? "on" : "off")})")));
+            foreach (var r in FindObjectsByType<Renderer>(FindObjectsSortMode.None)) if (r.gameObject.layer == Layers.Grime) r.enabled = false;
+            yield return Measure("grime renderers off");
+            QualitySettings.vSyncCount = vs;
+            main.Dispose(); render.Dispose();
         }
 
         IEnumerator OfficeTour()
