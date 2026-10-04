@@ -22,7 +22,7 @@ namespace AfterHours.EditorTools
         // Layer indices are mirrored in AfterHours.Layers (runtime).
         static readonly (int index, string name)[] LayerNames =
         {
-            (8, "Grime"), (9, "Player"), (10, "Prop"), (11, "Viewmodel"), (12, "Trigger"), (13, "Glass"),
+            (8, "Grime"), (9, "Player"), (10, "Prop"), (11, "Viewmodel"), (12, "Trigger"), (13, "Glass"), (14, "Hands"),
         };
 
         [MenuItem("After Hours/Apply Project Setup")]

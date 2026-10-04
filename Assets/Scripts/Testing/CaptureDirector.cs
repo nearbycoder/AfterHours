@@ -396,7 +396,7 @@ namespace AfterHours
 
         // ---- helpers -------------------------------------------------------------------------
 
-        protected void Log(string msg) => Debug.Log("[Capture] " + msg);
+        protected void Log(string msg) => Debug.Log($"[Capture] {msg}  (t={Time.time:F1})");
 
         protected IEnumerator WaitUnblocked(float timeout = 20f)
         {

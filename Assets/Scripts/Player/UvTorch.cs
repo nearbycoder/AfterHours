@@ -42,7 +42,7 @@ namespace AfterHours
             {
                 var m = Instantiate(prefab, p.Camera.transform);
                 Materials.Apply(m);
-                m.layer = Layers.Viewmodel;
+                Layers.SetRecursive(m, Layers.Hands);
                 foreach (var c in m.GetComponentsInChildren<Collider>()) Destroy(c);
                 m.transform.localPosition = new Vector3(-0.22f, -0.2f, 0.36f);
                 m.transform.localRotation = Quaternion.Euler(4, 8, 0);

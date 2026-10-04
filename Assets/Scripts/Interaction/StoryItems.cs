@@ -117,6 +117,8 @@ namespace AfterHours
                     if (!mats[i].IsKeywordEnabled("_EMISSION")) continue;
                     if (mats[i].GetColor(EmissionColor).maxColorComponent > 0.5f) continue; // the little LED
                     screenMat = mats[i];
+                    var mf = r.GetComponent<MeshFilter>();
+                    if (mf && mf.sharedMesh) mf.sharedMesh = ScreenUvs(mf.sharedMesh, i, r.transform.InverseTransformDirection(Vector3.up));
                 }
             }
             var lg = new GameObject("ScreenGlow");
@@ -132,10 +134,60 @@ namespace AfterHours
             SetOn(on, true);
         }
 
+        static readonly Dictionary<Mesh, Mesh> fixedMeshes = new();
+
+        /// <summary>
+        /// The Blender screens carry box-projected UVs in metres. Remap the screen's front face to 0..1,
+        /// reading left-to-right for someone standing in front of it. The front is the side facing
+        /// away from the body (stands and backs sit behind the panel).
+        /// </summary>
+        static Mesh ScreenUvs(Mesh src, int sub, Vector3 localUp)
+        {
+            if (fixedMeshes.TryGetValue(src, out var done)) return done;
+            if (sub >= src.subMeshCount) return src;
+            var m = Instantiate(src);
+            m.name = src.name + "_screen";
+            var verts = m.vertices;
+            var normals = m.normals;
+            var uvs = m.uv;
+            var tris = m.GetTriangles(sub);
+            if (normals.Length != verts.Length || uvs.Length != verts.Length || tris.Length == 0) { fixedMeshes[src] = src; return src; }
+            var centre = Vector3.zero;
+            foreach (var t in tris) centre += verts[t];
+            centre /= tris.Length;
+            // The biggest triangle lies on the front or the back of the thin screen slab.
+            Vector3 n0 = Vector3.forward;
+            float best = 0f;
+            for (int k = 0; k < tris.Length; k += 3)
+            {
+                var c = Vector3.Cross(verts[tris[k + 1]] - verts[tris[k]], verts[tris[k + 2]] - verts[tris[k]]);
+                if (c.magnitude > best) { best = c.magnitude; n0 = c.normalized; }
+            }
+            var front = Vector3.Dot(centre - m.bounds.center, n0) >= 0f ? n0 : -n0;
+            var up = Vector3.ProjectOnPlane(localUp, front).normalized;
+            if (up.sqrMagnitude < 0.5f) up = Vector3.ProjectOnPlane(Vector3.up, front).normalized;
+            var right = Vector3.Cross(up, -front);
+            var idx = new HashSet<int>();
+            foreach (var t in tris) if (Vector3.Dot(normals[t], front) > 0.7f) idx.Add(t);
+            if (idx.Count == 0) { fixedMeshes[src] = src; return src; }
+            float u0 = float.MaxValue, u1 = float.MinValue, v0 = float.MaxValue, v1 = float.MinValue;
+            foreach (var i in idx)
+            {
+                float u = Vector3.Dot(verts[i], right), v = Vector3.Dot(verts[i], up);
+                u0 = Mathf.Min(u0, u); u1 = Mathf.Max(u1, u); v0 = Mathf.Min(v0, v); v1 = Mathf.Max(v1, v);
+            }
+            foreach (var i in idx)
+                uvs[i] = new Vector2(Mathf.InverseLerp(u0, u1, Vector3.Dot(verts[i], right)), Mathf.InverseLerp(v0, v1, Vector3.Dot(verts[i], up)));
+            m.uv = uvs;
+            fixedMeshes[src] = m;
+            return m;
+        }
+
         public void SetScreen(string texturePath)
         {
             if (screenMat == null) return;
             var tex = string.IsNullOrEmpty(texturePath) ? null : Res.Texture(texturePath);
+            if (tex) tex.wrapMode = TextureWrapMode.Clamp;
             screenMat.SetTexture(EmissionMap, tex);
             screenMat.SetTexture(BaseMap, tex);
             screenMat.SetColor("_BaseColor", tex ? new Color(0.05f, 0.05f, 0.05f) : Color.black);
@@ -155,7 +207,7 @@ namespace AfterHours
 
         void Apply()
         {
-            if (screenMat) screenMat.SetColor(EmissionColor, On ? Color.white * (flicker > 0 ? Random.Range(0.3f, 1.2f) : 1.15f) : Color.black);
+            if (screenMat) screenMat.SetColor(EmissionColor, On ? Color.white * (flicker > 0 ? Random.Range(0.2f, 0.75f) : 0.62f) : Color.black);
             if (Glow) Glow.enabled = On;
         }
 

@@ -347,7 +347,24 @@ def plaster(name, base, size=512, seed=8):
     save(Image.fromarray(_normal_from_height(n, 1.0), "RGB"), f"Mat/{name}_n.png")
 
 
+def stone(name, base, size=1024, seed=9):
+    """Engineered quartz: soft cloudy mottle with fine light and dark aggregate."""
+    rng = np.random.default_rng(seed)
+    cloud = _tile_noise(size, 6, rng, 5)
+    grain = _tile_noise(size, 96, rng, 2)
+    col = base[None, None, :] * (0.9 + 0.12 * cloud + 0.04 * (grain - 0.5))[..., None]
+    for frac, tone, r in ((0.012, np.array([78, 74, 70]), 0), (0.008, np.array([238, 234, 226]), 1), (0.004, np.array([140, 120, 96]), 0)):
+        dots = (rng.random((size, size)) > 1 - frac).astype(np.float32)
+        if r:
+            dots = np.maximum(dots, np.roll(dots, 1, 0))
+            dots = np.maximum(dots, np.roll(dots, 1, 1))
+        col = col * (1 - dots[..., None] * 0.8) + tone[None, None, :] * dots[..., None] * 0.8
+    _save_rgb(col, f"Mat/{name}.png")
+    save(Image.fromarray(_normal_from_height(cloud * 0.2 + grain * 0.1, 0.6), "RGB"), f"Mat/{name}_n.png")
+
+
 def materials():
+    stone("stone_quartz", _hex("A9A296"))
     carpet("carpet_slate", _hex("3E4D63"), _hex("8FA3BF"), seed=11)
     carpet("carpet_rust", _hex("5E3530"), _hex("C08060"), seed=12, tiles=1)
     carpet("carpet_teal", _hex("2E5257"), _hex("7FB3B0"), seed=13)
@@ -368,6 +385,7 @@ def materials():
 
 
 TASKS["materials"] = materials
+TASKS["stone"] = lambda: stone("stone_quartz", _hex("A9A296"))
 
 
 

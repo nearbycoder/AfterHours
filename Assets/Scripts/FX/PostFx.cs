@@ -58,9 +58,9 @@ namespace AfterHours
             tone.mode.Override(TonemappingMode.ACES);
 
             bloom = profile.Add<Bloom>(true);
-            bloom.threshold.Override(0.95f);
-            bloom.intensity.Override(0.75f);
-            bloom.scatter.Override(0.68f);
+            bloom.threshold.Override(1.1f);
+            bloom.intensity.Override(0.55f);
+            bloom.scatter.Override(0.62f);
             bloom.tint.Override(new Color(1f, 0.95f, 0.9f));
             bloom.highQualityFiltering.Override(true);
 

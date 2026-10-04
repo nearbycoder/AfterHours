@@ -63,14 +63,16 @@ namespace AfterHours
             hl.childControlWidth = false; hl.childControlHeight = false;
             hl.childForceExpandWidth = false;
 
-            toastRoot = Ui.Place(Ui.Rect(root, "Toasts"), new Vector2(0.5f, 1f), new Vector2(0, -40), new Vector2(600, 400), new Vector2(0.5f, 1f));
+            var toastLayer = Ui.Layer("Toasts", 48);
+            toastLayer.GetComponent<CanvasGroup>().blocksRaycasts = false;
+            toastRoot = Ui.Place(Ui.Rect(toastLayer, "Toasts"), new Vector2(0f, 1f), new Vector2(36, -30), new Vector2(600, 400), new Vector2(0f, 1f));
 
             var watch = Ui.Panel(root, "Watch", new Color(0.05f, 0.07f, 0.1f, 0.55f), 16);
             Ui.Place(watch.rectTransform, new Vector2(1, 1), new Vector2(-34, -30), new Vector2(178, 66), new Vector2(1, 1));
             clock = Ui.Label(watch.transform, "10:00", UiFont.Mono, 34, Palette.Hex("9FF5D8"), TextAlignmentOptions.Right, "Clock");
-            Ui.Place(clock.rectTransform, new Vector2(1, 0.5f), new Vector2(-18, 6), new Vector2(150, 40), new Vector2(1, 0.5f));
+            Ui.Place(clock.rectTransform, new Vector2(1, 0.5f), new Vector2(-18, 9), new Vector2(150, 36), new Vector2(1, 0.5f));
             clockSub = Ui.Label(watch.transform, "PM  MON", UiFont.SansMedium, 13, new Color(0.62f, 0.96f, 0.85f, 0.6f), TextAlignmentOptions.Right, "ClockSub");
-            Ui.Place(clockSub.rectTransform, new Vector2(1, 0), new Vector2(-18, 8), new Vector2(150, 18), new Vector2(1, 0));
+            Ui.Place(clockSub.rectTransform, new Vector2(1, 0), new Vector2(-18, 6), new Vector2(150, 16), new Vector2(1, 0));
             clockSub.characterSpacing = 6f;
         }
 
@@ -105,8 +107,8 @@ namespace AfterHours
         {
             var card = Ui.Panel(toastRoot, "Toast", new Color(0.06f, 0.08f, 0.12f, 0.86f), 14);
             var rt = card.rectTransform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 1f);
-            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 1f);
             var col = accent ?? Ui.Good;
             var bar = Ui.Image(rt, "Accent", col, Ui.Rounded(3));
             Ui.Place(bar.rectTransform, new Vector2(0, 0.5f), new Vector2(12, 0), new Vector2(5, 30), new Vector2(0, 0.5f));
@@ -119,14 +121,13 @@ namespace AfterHours
                 Ui.Place(s.rectTransform, new Vector2(0, 1), new Vector2(30, -42), new Vector2(520, 24), new Vector2(0, 1));
                 h = 78;
             }
-            float w = Mathf.Max(t.GetPreferredValues(title).x, 220) + 60;
+            float w = Mathf.Max(t.GetPreferredValues(title).x, string.IsNullOrEmpty(sub) ? 0 : t.GetPreferredValues(sub).x * 0.75f, 220) + 60;
             rt.sizeDelta = new Vector2(Mathf.Min(w, 600), h);
             toasts.Insert(0, rt);
             Relayout();
             var cg = rt.gameObject.AddComponent<CanvasGroup>();
             cg.alpha = 0;
-            rt.localScale = Vector3.one * 0.85f;
-            Tween.Run(0.35f, k => { cg.alpha = k; rt.localScale = Vector3.one * Mathf.LerpUnclamped(0.85f, 1f, k); }, Ease.OutBack);
+            Tween.Run(0.35f, k => { if (!rt) return; cg.alpha = k; rt.anchoredPosition = new Vector2(Mathf.LerpUnclamped(-40f, 0f, k), rt.anchoredPosition.y); }, Ease.OutCubic);
             Tween.Run(0.4f, k => cg.alpha = 1 - k, Ease.InCubic, () =>
             {
                 toasts.Remove(rt);
@@ -172,8 +173,12 @@ namespace AfterHours
         void Update()
         {
             float dt = Time.unscaledDeltaTime;
+            bool busy = GameRoot.Instance != null && GameRoot.Instance.Blocked;
+            // Scale rather than deactivate: TMP can't measure labels built while inactive.
+            promptRoot.localScale = busy ? Vector3.zero : Vector3.one;
+            reticleRoot.gameObject.SetActive(!busy);
             var cc = cleaning;
-            bool show = cc != null && cc.Target != null && !cc.Suspended;
+            bool show = !busy && cc != null && cc.Target != null && !cc.Suspended;
             float targetShow = show ? (cc.InReach ? 1f : 0.45f) : 0f;
             ringShow = Mathf.Lerp(ringShow, targetShow, 1f - Mathf.Exp(-dt * 14f));
             if (show) ringValue = Mathf.Lerp(ringValue, cc.Target.Completion, 1f - Mathf.Exp(-dt * 16f));

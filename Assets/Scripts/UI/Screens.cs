@@ -15,7 +15,9 @@ namespace AfterHours
         protected CanvasGroup group;
         protected Action done;
         protected float age;          // seconds visible, robust to long loading frames
-        public static bool AnyOpen;
+        static readonly HashSet<Interstitial> open = new();
+        /// <summary>True while any interstitial is showing or still fading out.</summary>
+        public static bool AnyOpen => open.Count > 0;
 
         protected virtual void LateUpdate() => age += Mathf.Min(Time.unscaledDeltaTime, 0.05f);
 
@@ -28,7 +30,7 @@ namespace AfterHours
             b.raycastTarget = true;
             group.alpha = 0;
             age = 0f;
-            AnyOpen = true;
+            open.Add(this);
             Tween.Run(0.5f, k => group.alpha = k, Ease.OutCubic);
         }
 
@@ -50,10 +52,17 @@ namespace AfterHours
             done = null;
             Tween.Run(0.45f, k => { if (group) group.alpha = 1 - k; }, Ease.InCubic, () =>
             {
-                AnyOpen = false;
+                open.Remove(this);
                 if (root) Destroy(root.gameObject);
+                if (this) Destroy(gameObject);
             });
             cb?.Invoke();
+        }
+
+        protected virtual void OnDestroy()
+        {
+            open.Remove(this);
+            if (root) Destroy(root.gameObject);
         }
     }
 
@@ -86,27 +95,22 @@ namespace AfterHours
             Ui.Place(stripe.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -36), new Vector2(940, 44), new Vector2(0.5f, 1));
             var hdr = Ui.Label(rt, "BRIGHTSTAR JANITORIAL  ·  TIME CARD  ·  MERIDIAN TOWER STE 1408", UiFont.Mono, 20, Palette.Hex("6B5A3A"), TextAlignmentOptions.Center);
             Ui.Place(hdr.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -46), new Vector2(940, 30), new Vector2(0.5f, 1));
-            var big = Ui.Label(rt, "NIGHT " + Words[def.Number], UiFont.Type, 96, Palette.Hex("1E2430"), TextAlignmentOptions.Center);
+            big = Ui.Label(rt, "", UiFont.Type, 96, Palette.Hex("1E2430"), TextAlignmentOptions.Center);
             Ui.Place(big.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, 40), new Vector2(940, 120));
-            big.maxVisibleCharacters = 0;
+            full = "NIGHT " + Words[def.Number];
+            Type(0);
             var sub = Ui.Label(rt, $"{def.Day.ToUpperInvariant()}  —  {def.Title}", UiFont.SansMedium, 34, Palette.Hex("3A3F4A"), TextAlignmentOptions.Center);
             Ui.Place(sub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -50), new Vector2(940, 50));
             sub.alpha = 0;
             var tag = Ui.Label(rt, def.Tagline, UiFont.Hand, 40, Palette.Hex("1E3A6E"), TextAlignmentOptions.Center);
             Ui.Place(tag.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 38), new Vector2(940, 60), new Vector2(0.5f, 0));
             tag.alpha = 0;
-            var stamp = Ui.Label(rt, "IN  10:02 PM", UiFont.Mono, 34, new Color(0.75f, 0.15f, 0.12f, 0.9f), TextAlignmentOptions.Center);
-            Ui.Place(stamp.rectTransform, new Vector2(1, 0), new Vector2(-120, 110), new Vector2(320, 60), new Vector2(0.5f, 0.5f));
+            var stamp = Ui.Label(rt, "IN  10:02 PM", UiFont.Mono, 30, new Color(0.75f, 0.15f, 0.12f, 0.9f), TextAlignmentOptions.Center);
+            Ui.Place(stamp.rectTransform, new Vector2(1, 0), new Vector2(-170, 96), new Vector2(260, 50), new Vector2(0.5f, 0.5f));
             stamp.alpha = 0;
             stamp.rectTransform.localRotation = Quaternion.Euler(0, 0, 8);
 
-            // Typewriter the title, then punch the stamp.
-            string full = "NIGHT " + Words[def.Number];
-            for (int i = 1; i <= full.Length; i++)
-            {
-                int c = i;
-                Tween.Delay(0.35f + i * 0.07f, () => { if (big) { big.maxVisibleCharacters = c; if (full[c - 1] != ' ') Sfx.Play("ui_hover", null, 0.35f, 0.7f, 0.1f, AudioBus.Ui); } });
-            }
+            // The title types itself out in Update, then the stamp punches.
             Tween.Run(0.6f, k => { if (sub) sub.alpha = k; }, Ease.OutCubic, null, 1.2f);
             Tween.Run(0.8f, k => { if (tag) tag.alpha = k; }, Ease.OutCubic, null, 1.7f);
             Tween.Delay(2.3f, () =>
@@ -119,8 +123,25 @@ namespace AfterHours
             });
         }
 
+        TextMeshProUGUI big;
+        string full;
+        int typed;
+
+        /// <summary>Show the first <paramref name="n"/> letters; the rest stay laid out but transparent.</summary>
+        void Type(int n)
+        {
+            typed = n;
+            big.text = full.Substring(0, n) + (n < full.Length ? "<alpha=#00>" + full.Substring(n) : "");
+        }
+
         void Update()
         {
+            int want = Mathf.Clamp(Mathf.FloorToInt((age - 0.35f) / 0.07f), 0, full.Length);
+            while (typed < want)
+            {
+                Type(typed + 1);
+                if (full[typed - 1] != ' ') Sfx.Play("ui_hover", null, 0.35f, 0.7f, 0.1f, AudioBus.Ui);
+            }
             if (done != null && (age > hold || (age > 0.6f && Advance()))) Finish();
         }
     }
@@ -315,11 +336,14 @@ namespace AfterHours
         TextMeshProUGUI typing, hint;
         bool finished;
 
-        public static void Show(string dayLabel, List<ChatLine> chat, Action onDone)
+        string doneHint = "Press  E  to clock in for the next night";
+
+        public static void Show(string dayLabel, List<ChatLine> chat, Action onDone, string doneHint = null)
         {
             var go = new GameObject("ChatInterlude");
             var c = go.AddComponent<ChatInterlude>();
             c.done = onDone;
+            if (doneHint != null) c.doneHint = doneHint;
             c.lines.AddRange(chat);
             c.Build(dayLabel);
         }
@@ -426,7 +450,7 @@ namespace AfterHours
             {
                 typing.text = "";
                 finished = true;
-                hint.text = "Press  E  to clock in for the next night";
+                hint.text = doneHint;
             }
         }
     }

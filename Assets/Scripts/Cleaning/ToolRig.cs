@@ -51,7 +51,7 @@ namespace AfterHours
             var yellow = Res.Lit(Palette.Hex("F4C430"), 0.5f);
 
             // Cloth + spray bottle (view space).
-            bottle = Model("spray_bottle", hands, new Vector3(-0.18f, -0.05f, 0.05f), Quaternion.Euler(0, 15, 0), () =>
+            bottle = Model("spray_bottle", hands, new Vector3(-0.02f, -0.07f, 0.06f), Quaternion.Euler(0, 15, 0), () =>
             {
                 var b = new GameObject("bottle").transform;
                 Prim(PrimitiveType.Cylinder, b, new Vector3(0, 0, 0), new Vector3(0.07f, 0.09f, 0.07f), white);
@@ -60,7 +60,7 @@ namespace AfterHours
                 Prim(PrimitiveType.Cube, b, new Vector3(0, 0.07f, 0.05f), new Vector3(0.012f, 0.05f, 0.012f), plastic);
                 return b;
             });
-            cloth = Model("cloth", hands, new Vector3(0.1f, -0.06f, 0.12f), Quaternion.Euler(10, -10, 0), () =>
+            cloth = Model("cloth", hands, new Vector3(0.14f, -0.07f, 0.12f), Quaternion.Euler(10, -10, 0), () =>
             {
                 var c = new GameObject("cloth").transform;
                 Prim(PrimitiveType.Cube, c, Vector3.zero, new Vector3(0.12f, 0.03f, 0.1f), clothMat);
@@ -131,6 +131,9 @@ namespace AfterHours
             mr.sharedMaterial = ringMat;
             mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
+            // Everything carried in the hands draws on the overlay camera; heads and shafts that
+            // touch the world stay depth-tested against it.
+            SetLayer(viewRoot, Layers.Hands);
             SetActive(ToolKind.None);
             Show(ToolKind.Cloth);
         }
@@ -238,7 +241,8 @@ namespace AfterHours
         public void Tick(CleaningController cc, float dt)
         {
             // Swap: lower, switch, raise.
-            var want = Hidden ? ToolKind.None : pending;
+            bool busy = GameRoot.Instance != null && GameRoot.Instance.Blocked;
+            var want = Hidden || busy ? ToolKind.None : pending;
             if (want != shown)
             {
                 swap = Mathf.MoveTowards(swap, 0f, dt * 7f);
@@ -263,9 +267,9 @@ namespace AfterHours
                         + Vector3.ClampMagnitude(new Vector3(scrubDirView.x, scrubDirView.y, 0), 1f) * 0.03f * s;
             sprayKick = Mathf.MoveTowards(sprayKick, 0f, dt * 6f);
 
-            viewRoot.localPosition = new Vector3(0.24f, -0.27f, 0.42f) + swayPos + breathe + Vector3.down * (1f - raise) * 0.45f;
+            viewRoot.localPosition = new Vector3(0.22f, -0.29f, 0.44f) + swayPos + breathe + Vector3.down * (1f - raise) * 0.45f;
             viewRoot.localRotation = swayRot;
-            cloth.localPosition = new Vector3(0.1f, -0.06f, 0.12f) + scrub + (cc.Cleaning && shown == ToolKind.Cloth ? Vector3.forward * 0.06f : Vector3.zero);
+            cloth.localPosition = new Vector3(0.14f, -0.07f, 0.12f) + scrub + (cc.Cleaning && shown == ToolKind.Cloth ? Vector3.forward * 0.06f : Vector3.zero);
             bottle.localRotation = Quaternion.Euler(-sprayKick * 12f, 15f, 0f);
 
             // Long-handled heads.

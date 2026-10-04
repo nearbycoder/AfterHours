@@ -16,7 +16,7 @@ namespace AfterHours
     {
         static InspectView instance;
         RectTransform root, card;
-        CanvasGroup group;
+        CanvasGroup group, cardGroup;
         Image paper, screenImg;
         TextMeshProUGUI header, body, hints;
         Action<InspectChoice> callback;
@@ -54,6 +54,10 @@ namespace AfterHours
 
             card = Ui.Rect(root, "Card");
             Ui.Place(card, new Vector2(0.5f, 0.5f), new Vector2(0, 10), new Vector2(760, 820));
+            // The paper turns solid almost at once; only the backdrop fades slowly.
+            cardGroup = card.gameObject.AddComponent<CanvasGroup>();
+            cardGroup.ignoreParentGroups = true;
+            cardGroup.alpha = 0;
             var shadow = Ui.Panel(card, "Shadow", new Color(0, 0, 0, 0.45f), 18);
             Ui.Stretch(shadow.rectTransform, -6);
             shadow.rectTransform.anchoredPosition = new Vector2(10, -14);
@@ -99,6 +103,7 @@ namespace AfterHours
             Tween.Run(0.45f, k =>
             {
                 group.alpha = Mathf.Clamp01(k * 2f);
+                cardGroup.alpha = Mathf.Clamp01(k * 6f);
                 card.anchoredPosition = new Vector2(0, Mathf.LerpUnclamped(-420, 10, k));
                 card.localRotation = Quaternion.Euler(0, 0, Mathf.LerpUnclamped(rot * 4f, rot, k));
             }, Ease.OutBack, owner: this);
@@ -183,6 +188,7 @@ namespace AfterHours
             Tween.Run(0.25f, k =>
             {
                 group.alpha = 1 - k;
+                cardGroup.alpha = 1 - k * k;
                 card.anchoredPosition = new Vector2(0, Mathf.Lerp(10, -300, k));
             }, Ease.InCubic, owner: this);
             GameRoot.Instance?.SetBlocked("inspect", false);

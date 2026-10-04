@@ -17,10 +17,28 @@ namespace AfterHours
         protected override string ArgName => "-ahAutopilot";
         int passes, fails;
 
+        // Frame times while a night is being played (real-time runs only; the showcase fixes the step).
+        readonly System.Collections.Generic.List<float> frameTimes = new();
+        bool sampling;
+
+        void Update()
+        {
+            if (sampling && Time.captureFramerate == 0) frameTimes.Add(Time.unscaledDeltaTime * 1000f);
+        }
+
+        void LogFrameStats(int n)
+        {
+            if (frameTimes.Count < 30) return;
+            var sorted = frameTimes.OrderBy(x => x).ToList();
+            float P(float q) => sorted[Mathf.Clamp(Mathf.RoundToInt(q * (sorted.Count - 1)), 0, sorted.Count - 1)];
+            Debug.Log($"[Perf] night {n}: {sorted.Count} frames, avg {1000f / sorted.Average():F0} fps, " +
+                      $"median {P(0.5f):F1} ms, p95 {P(0.95f):F1} ms, p99 {P(0.99f):F1} ms, worst {sorted[^1]:F0} ms");
+        }
+
         void Check(bool ok, string what)
         {
             if (ok) passes++; else fails++;
-            Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} {what}");
+            Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} {what}  (t={Time.time:F1})");
         }
 
         protected override IEnumerator Run()
@@ -83,6 +101,8 @@ namespace AfterHours
             yield return Wait(0.5f);
             yield return Shot($"n{n}_start");
             float start = Time.realtimeSinceStartup;
+            frameTimes.Clear();
+            sampling = true;
             foreach (var room in dir.Def.Rooms)
                 if (root.Office.Rooms.TryGetValue(room, out var r) && !r.LightsOn && root.Office.Switches.TryGetValue(room, out var sw)) sw.Toggle();
 
@@ -106,6 +126,9 @@ namespace AfterHours
             var remaining = dir.RequiredRemaining().ToList();
             Check(remaining.Count == 0, $"night {n}: every required task completed" + (remaining.Count > 0 ? " (left: " + string.Join(", ", remaining.Select(x => x.Id)) + ")" : ""));
             Log($"night {n}: secrets {dir.SecretsFoundCount}/{dir.Def.Secrets.Count}, {Time.realtimeSinceStartup - start:F0}s");
+
+            sampling = false;
+            LogFrameStats(n);
 
             // Clock out at the punch clock.
             yield return Beat("clockout", n);

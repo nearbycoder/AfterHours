@@ -26,8 +26,19 @@ namespace AfterHours
             return m;
         }
 
+        /// <summary>Real paint and plastic top out around 80% reflectance; brighter albedo blows out under the panel lights.</summary>
+        static Color CapAlbedo(Color c)
+        {
+            const float max = 0.8f;
+            float m = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
+            if (m <= max) return c;
+            float k = max / m;
+            return new Color(c.r * k, c.g * k, c.b * k, c.a);
+        }
+
         public static Material Lit(Color c, float smooth = 0.35f, float metallic = 0f, Texture2D tex = null, Vector2? tiling = null)
         {
+            c = CapAlbedo(c);
             string key = $"lit_{ColorUtility.ToHtmlStringRGBA(c)}_{smooth:F2}_{metallic:F2}_{(tex ? tex.name : "")}_{tiling}";
             if (variants.TryGetValue(key, out var m) && m != null) return m;
             m = new Material(Material("AH_LitOpaque")) { name = key };
@@ -49,6 +60,7 @@ namespace AfterHours
         /// <summary>Lit material with base map, optional normal map and uniform tiling (repeats per metre).</summary>
         public static Material LitTextured(Color tint, float smooth, float metallic, Texture2D tex, Texture2D normal, float tiling)
         {
+            tint = CapAlbedo(tint * 0.92f);
             string key = $"litT_{ColorUtility.ToHtmlStringRGB(tint)}_{smooth:F2}_{metallic:F2}_{(tex ? tex.name : "")}_{(normal ? 1 : 0)}_{tiling:F2}";
             if (variants.TryGetValue(key, out var m) && m != null) return m;
             m = new Material(Material(normal != null ? "AH_LitNormal" : "AH_LitOpaque")) { name = key };

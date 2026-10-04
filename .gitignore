@@ -34,3 +34,6 @@ __pycache__/
 /ArtSource/renders/tmp/
 *.blend1
 *.blend2
+
+# Written transiently by the test runner
+/Assets/Resources/PerformanceTestRun*.json*

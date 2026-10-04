@@ -43,10 +43,34 @@ namespace AfterHours
                 AudioSpeakerMode.Mode5point1 => 6, AudioSpeakerMode.Mode7point1 => 8, _ => 2,
             };
             audioOk = AudioRenderer.Start();
+            var layer = Ui.Layer("ShowcaseCut", 35);
+            layer.GetComponent<CanvasGroup>().blocksRaycasts = false;
+            cut = Ui.Image(layer, "Black", new Color(0.01f, 0.012f, 0.02f, 0f));
+            Ui.Stretch(cut.rectTransform);
+            FirstPersonController.Teleported += d => { if (rec && d > 0.3f) Dip(); };
             Debug.Log($"[Showcase] {Screen.width}x{Screen.height}, audio renderer {(audioOk ? "on" : "unavailable")}, {AudioSettings.outputSampleRate} Hz x{channels}");
             StartCoroutine(Recorder());
+            StartCoroutine(StopAfterEnding());
             rec = true;
             yield return base.Run();
+        }
+
+        UnityEngine.UI.Image cut;
+
+        /// <summary>Instant moves read as a cut: come up from black instead of jumping.</summary>
+        void Dip()
+        {
+            Ui.SetAlpha(cut, 1f);
+            Tween.Run(0.5f, k => Ui.SetAlpha(cut, 1f - k), Ease.InOutSine, null, 0.05f, cut);
+        }
+
+        IEnumerator StopAfterEnding()
+        {
+            while (FindAnyObjectByType<EndingScreen>() == null) yield return null;
+            while (FindAnyObjectByType<EndingScreen>() != null) yield return null;
+            yield return Wait(4f);
+            rec = false;
+            Debug.Log("[Showcase] stopped filming after the ending");
         }
 
         IEnumerator Recorder()
@@ -170,7 +194,9 @@ namespace AfterHours
                 else yield return Approach(s.UvToWorld(new Vector2(0.5f, 0.5f)), vertical ? 1.2f : 0.75f);
                 var r = new Rect(0.04f, 0.06f, 0.92f, 0.88f);
                 if (s.Tool == ToolKind.Squeegee) yield return Sweep(s, r, 4, 0.7f, true, false, true);
-                for (int i = 0; i < 2 && !s.Done; i++)
+                // One squeegee pass shows the idea; the rest finishes off camera.
+                int passes = s.Tool == ToolKind.Squeegee ? 1 : 2;
+                for (int i = 0; i < passes && !s.Done; i++)
                     yield return Sweep(s, r, vertical ? 6 : 4, vertical ? 0.9f : 0.7f, true, true, false);
                 yield return Aim(s.UvToWorld(new Vector2(0.5f, 0.5f)), 0.3f);
                 yield return Wait(1.6f);

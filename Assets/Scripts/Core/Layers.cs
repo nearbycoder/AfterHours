@@ -12,6 +12,8 @@ namespace AfterHours
         public const int Viewmodel = 11;
         public const int Trigger = 12;
         public const int Glass = 13;
+        /// <summary>Hand-held view models, drawn by an overlay camera so they never sink into walls.</summary>
+        public const int Hands = 14;
 
         public static readonly int GrimeMask = 1 << Grime;
         /// <summary>Things that block sight for interaction and cleaning rays.</summary>
@@ -19,12 +21,19 @@ namespace AfterHours
         public static readonly int InteractMask = (1 << Default) | (1 << Prop) | (1 << Glass) | (1 << Grime);
         public static readonly int WalkMask = (1 << Default) | (1 << Glass);
 
+        public static void SetRecursive(GameObject go, int layer)
+        {
+            go.layer = layer;
+            foreach (Transform c in go.transform) SetRecursive(c.gameObject, layer);
+        }
+
         public static void ApplyCollisionMatrix()
         {
             for (int i = 0; i < 32; i++)
             {
                 Physics.IgnoreLayerCollision(Grime, i, true);
                 Physics.IgnoreLayerCollision(Viewmodel, i, true);
+                Physics.IgnoreLayerCollision(Hands, i, true);
                 Physics.IgnoreLayerCollision(Trigger, i, i != Player && i != Prop);
             }
             Physics.IgnoreLayerCollision(Player, Prop, true);

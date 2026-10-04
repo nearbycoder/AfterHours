@@ -46,7 +46,7 @@ namespace AfterHours
             h.Held = true;
             h.InFlight = false;
             heldLayer = h.gameObject.layer;
-            SetLayer(h.gameObject, Layers.Viewmodel);
+            SetLayer(h.gameObject, Layers.Hands);
             h.Body.isKinematic = true;
             h.Body.interpolation = RigidbodyInterpolation.None;
             holdVel = Vector3.zero;
@@ -67,7 +67,7 @@ namespace AfterHours
         Vector3 HoldPoint(Holdable h)
         {
             var cam = Player.Camera.transform;
-            return cam.position + cam.forward * h.HoldDistance - cam.up * 0.16f + cam.right * 0.05f;
+            return cam.position + cam.forward * (h.HoldDistance + 0.05f) - cam.up * 0.2f + cam.right * 0.16f;
         }
 
         void Release(bool keepPhysics = true)

@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
 
 namespace AfterHours
 {
@@ -24,6 +25,7 @@ namespace AfterHours
         public float WalkSpeed = 3.4f, BriskSpeed = 5.2f, CrouchSpeed = 1.8f;
         public Transform Head { get; private set; }
         public Camera Camera { get; private set; }
+        public Camera HandsCamera { get; private set; }
         public CharacterController Body { get; private set; }
         public float Yaw { get; set; }
         public float Pitch { get; set; }
@@ -67,14 +69,35 @@ namespace AfterHours
             cam.fieldOfView = Settings.Current.Fov;
             camGo.AddComponent<AudioListener>();
             fpc.Camera = cam;
+
+            // Hand-held models render on an overlay camera after the world, with depth cleared,
+            // so the cloth or a carried mug never sinks into a counter or wall.
+            var handsGo = new GameObject("Hands Camera");
+            handsGo.transform.SetParent(camGo.transform, false);
+            var hc = handsGo.AddComponent<Camera>();
+            hc.nearClipPlane = 0.01f;
+            hc.farClipPlane = 6f;
+            hc.fieldOfView = cam.fieldOfView;
+            hc.cullingMask = 1 << Layers.Hands;
+            var hd = hc.GetUniversalAdditionalCameraData();
+            hd.renderType = CameraRenderType.Overlay;
+            hd.renderShadows = false;
+            hd.renderPostProcessing = true;
+            cam.cullingMask &= ~(1 << Layers.Hands);
+            cam.GetUniversalAdditionalCameraData().cameraStack.Add(hc);
+            fpc.HandsCamera = hc;
             return fpc;
         }
 
         /// <summary>Small camera kick (throws, impacts, discoveries).</summary>
         public void Kick(float degrees) => kickVel -= degrees * 18f;
 
+        /// <summary>Raised with the jump distance whenever the player is moved instantly.</summary>
+        public static event System.Action<float> Teleported;
+
         public void Teleport(Vector3 pos, float yaw, float pitch = 0f)
         {
+            Teleported?.Invoke((pos - transform.position).magnitude);
             Body.enabled = false;
             transform.position = pos;
             Body.enabled = true;
@@ -157,6 +180,7 @@ namespace AfterHours
             Head.localPosition = new Vector3(0, eye, 0) + bob;
             ApplyRotation();
             Camera.fieldOfView = Mathf.Lerp(Camera.fieldOfView, Settings.Current.Fov + FovPunch, 1f - Mathf.Exp(-dt * 10f));
+            if (HandsCamera) HandsCamera.fieldOfView = Camera.fieldOfView;
             FovPunch = Mathf.Lerp(FovPunch, 0f, 1f - Mathf.Exp(-dt * 3f));
         }
 

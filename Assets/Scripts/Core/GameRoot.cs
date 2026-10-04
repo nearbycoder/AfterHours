@@ -161,12 +161,14 @@ namespace AfterHours
             {
                 var chat = def.Chat.Where(c => c.When == null || SafeWhen(c, Story.State)).ToList();
                 string day = def.Number < NightDefs.Count ? $"{NightDefs.Days[def.Number + 1]} morning" : "Monday morning";
-                ChatInterlude.Show(day, chat, () =>
+                void next()
                 {
                     Block(false, false);
                     if (def.Number < NightDefs.Count) StartNight(def.Number + 1);
                     else EndingScreen.Show(Endings.Resolve(Story.State));
-                });
+                }
+                if (chat.Count == 0) next();
+                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : "Press  E  to continue");
             });
         }
 
