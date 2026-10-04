@@ -62,8 +62,10 @@ namespace AfterHours
             trig.transform.SetParent(go.transform, false);
             var tc = trig.AddComponent<BoxCollider>();
             tc.isTrigger = true;
-            tc.center = new Vector3(0, b.Height * 0.55f, 0);
-            tc.size = new Vector3(b.Radius * 1.7f, b.Height * 0.9f, b.Radius * 1.7f);
+            // Reaches a little above the rim so throws that would clip the edge still count.
+            const float lip = 0.12f;
+            tc.center = new Vector3(0, (b.Height * 0.1f + b.Height + lip) * 0.5f, 0);
+            tc.size = new Vector3(b.Radius * 2f, b.Height * 0.9f + lip, b.Radius * 2f);
             var rb = trig.AddComponent<Rigidbody>();
             rb.isKinematic = true;
             trig.AddComponent<BinMouth>().Bin = b;

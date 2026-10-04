@@ -79,6 +79,7 @@ namespace AfterHours
             transform.position = pos;
             Body.enabled = true;
             Yaw = yaw; Pitch = pitch; velocity = Vector3.zero; verticalVel = 0;
+            kickPitch = 0; kickVel = 0;
             ApplyRotation();
         }
 
@@ -142,9 +143,16 @@ namespace AfterHours
             float bobAmt = Settings.Current.HeadBob ? Mathf.Clamp01(planar / WalkSpeed) : 0f;
             var bob = new Vector3(Mathf.Cos(bobPhase) * 0.012f, Mathf.Abs(Mathf.Sin(bobPhase)) * 0.026f - 0.013f, 0) * bobAmt;
 
-            // Camera kick spring
-            kickVel += (-kickPitch * 140f - kickVel * 16f) * dt;
-            kickPitch += kickVel * dt;
+            // Camera kick spring. Explicit integration blows up past ~0.12 s steps (load hitches),
+            // so sub-step at a fixed rate and drop long stalls.
+            float kt = Mathf.Min(dt, 0.1f);
+            int steps = Mathf.CeilToInt(kt / 0.01f);
+            for (int i = 0; i < steps; i++)
+            {
+                float h = kt / steps;
+                kickVel += (-kickPitch * 140f - kickVel * 16f) * h;
+                kickPitch += kickVel * h;
+            }
 
             Head.localPosition = new Vector3(0, eye, 0) + bob;
             ApplyRotation();

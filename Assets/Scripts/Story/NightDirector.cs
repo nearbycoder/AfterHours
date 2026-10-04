@@ -19,12 +19,17 @@ namespace AfterHours
         public bool Running { get; private set; }
         public bool Paused { get; private set; }
 
+        /// <summary>Automation: jump the shift clock (minutes after 10 PM).</summary>
+        public void SetClock(float minutes) => ClockMinutes = minutes;
+
         /// <summary>Hold the clock and scripts (title backdrop, title card).</summary>
         public void Pause(bool p) => Paused = p;
         public float ClockMinutes { get; private set; }
         public float Elapsed { get; private set; }
 
         Transform nightRoot;
+        /// <summary>Parent for anything a night creates; destroyed when the night ends.</summary>
+        public Transform NightRoot => nightRoot;
         readonly List<(TrashItem item, string room)> trash = new();
         readonly HashSet<string> secrets = new();
         readonly HashSet<string> doneTasks = new();
@@ -148,6 +153,13 @@ namespace AfterHours
             Ctx?.Dispose();
             Ctx = null;
             Running = false;
+            // Night scripts hang story behaviour on permanent office furniture (Walt's locker, the
+            // FC-2 cabinet); strip it so the next night starts from a clean office. Immediate,
+            // because the next night's script runs in this same frame.
+            foreach (var c in FindObjectsByType<Readable>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (!nightRoot || !c.transform.IsChildOf(nightRoot)) DestroyImmediate(c);
+            foreach (var c in FindObjectsByType<ScriptedUse>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+                if (!nightRoot || !c.transform.IsChildOf(nightRoot)) DestroyImmediate(c);
             if (nightRoot) Destroy(nightRoot.gameObject);
             trash.Clear();
             if (Hands.Instance && Hands.Instance.Holding) Destroy(Hands.Instance.Holding.gameObject);

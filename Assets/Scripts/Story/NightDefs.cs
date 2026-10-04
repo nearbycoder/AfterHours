@@ -126,9 +126,9 @@ namespace AfterHours
             {
                 // Walt's locker.
                 var locker = GameObject.Find("FURN_locker_walt");
-                if (locker && !locker.GetComponent<Readable>())
+                if (locker)
                 {
-                    var r = locker.AddComponent<Readable>();
+                    var r = locker.GetComponent<Readable>() ?? locker.AddComponent<Readable>();
                     r.Doc = "walt_note_1";
                     r.Label = "Open W. Bremner's locker";
                     r.OnRead = () => Sfx.Play("drawer_open", locker.transform.position, 0.6f);

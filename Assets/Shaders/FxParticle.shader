@@ -4,7 +4,7 @@ Shader "AfterHours/FxParticle"
 {
     Properties
     {
-        _Shape ("Shape (0 dot,1 star,2 square,3 ring,4 bubble)", Float) = 0
+        _Shape ("Shape (0 dot,1 star,2 square,3 ring,4 bubble,5 dashed line)", Float) = 0
         _Intensity ("Intensity", Float) = 1
         [Enum(UnityEngine.Rendering.BlendMode)] _SrcBlend ("Src", Float) = 5
         [Enum(UnityEngine.Rendering.BlendMode)] _DstBlend ("Dst", Float) = 10
@@ -58,7 +58,13 @@ Shader "AfterHours/FxParticle"
                 }
                 else if (_Shape < 2.5) a = step(max(abs(p.x), abs(p.y)), 0.8);
                 else if (_Shape < 3.5) a = saturate(1 - abs(r - 0.78) * 9);
-                else a = saturate(1 - abs(r - 0.82) * 7) * 0.9 + saturate(1 - length(p - float2(-0.3, 0.35)) * 5) * 0.8;
+                else if (_Shape < 4.5) a = saturate(1 - abs(r - 0.82) * 7) * 0.9 + saturate(1 - length(p - float2(-0.3, 0.35)) * 5) * 0.8;
+                else
+                {
+                    // Tiled line: u runs in world metres along the line, v across it.
+                    float dash = frac(i.uv.x * 12);
+                    a = saturate(1 - abs(p.y)) * smoothstep(0.0, 0.12, dash) * (1 - smoothstep(0.5, 0.62, dash));
+                }
                 half4 c = i.color;
                 c.rgb *= _Intensity;
                 c.a *= a;

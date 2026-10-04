@@ -12,16 +12,18 @@ namespace AfterHours
     /// </summary>
     public class CaptureDirector : MonoBehaviour
     {
-        string dir;
-        string scenario;
+        protected string dir;
+        protected string scenario;
         int shot;
         protected ScriptedInput input;
         protected GameRoot root;
 
+        protected virtual string ArgName => "-ahCapture";
+
         void Start()
         {
-            dir = GameRoot.Arg("-ahCapture") ?? "/tmp/ah-capture";
-            scenario = GameRoot.Arg("-ahCapture", 2) ?? "proto";
+            dir = GameRoot.Arg(ArgName) ?? "/tmp/ah-capture";
+            scenario = GameRoot.Arg(ArgName, 2) ?? "proto";
             if (scenario.StartsWith("-")) scenario = "proto";
             Directory.CreateDirectory(dir);
             input = new ScriptedInput();
@@ -30,7 +32,7 @@ namespace AfterHours
             StartCoroutine(Run());
         }
 
-        IEnumerator Run()
+        protected virtual IEnumerator Run()
         {
             Log($"scenario {scenario}, screen {Screen.width}x{Screen.height}");
             yield return Wait(1.5f);

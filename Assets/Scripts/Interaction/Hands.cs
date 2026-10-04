@@ -29,7 +29,7 @@ namespace AfterHours
             arc.positionCount = 0;
             arc.widthMultiplier = 0.02f;
             arc.material = new Material(Res.Material("AH_Fx"));
-            arc.material.SetFloat("_Shape", 0);
+            arc.material.SetFloat("_Shape", 5);
             arc.material.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
             arc.material.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.One);
             arc.textureMode = LineTextureMode.Tile;

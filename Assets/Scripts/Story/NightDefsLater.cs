@@ -77,7 +77,7 @@ namespace AfterHours
 
         static void UvArrow(NightContext ctx, string tex, Vector3 pos, float yaw, float size = 0.45f, string secret = null, string caption = null)
         {
-            UvMark.Create(ctx.Director.transform, tex, pos, Quaternion.Euler(0, yaw, 0), Vector2.one * size, secret, caption);
+            UvMark.Create(ctx.Director.NightRoot, tex, pos, Quaternion.Euler(0, yaw, 0), Vector2.one * size, secret, caption);
         }
 
         static void LeftLocker(NightContext ctx, string doc, string label, System.Action onRead = null)
@@ -408,7 +408,7 @@ namespace AfterHours
                 // Legal pad: rub a pencil over the indentations.
                 var padPos = desk.TransformPoint(new Vector3(0.1f, 0.0f, 0.25f));
                 var pad = ctx.Spawn(new SpawnDef { Prop = "notepad", Pos = padPos, Yaw = desk.eulerAngles.y + 8, Kind = SpawnKind.Decor, Id = "notepad" });
-                var rub = Geo.Grime(ctx.Director.transform, "notepad_rub", padPos + Vector3.up * 0.0125f, Vector3.up, pad.transform.forward, new Vector2(0.2f, 0.27f), ToolKind.Cloth,
+                var rub = Geo.Grime(ctx.Director.NightRoot, "notepad_rub", padPos + Vector3.up * 0.0125f, Vector3.up, pad.transform.forward, new Vector2(0.2f, 0.27f), ToolKind.Cloth,
                     new GrimeSpec { GhostTexture = "Textures/Grime/notepad_rubbing", GhostMode = 0 }.WithSeed(4), 160f);
                 rub.RevealOnly = true;
                 rub.Verb = "Shade with a pencil";
@@ -590,6 +590,7 @@ namespace AfterHours
                     UvArrow(ctx, "in_here", new Vector3(16.2f, 2.875f, 3.0f), 0, 0.5f);
                     var tile = ctx.Office.Anchor("ANCHOR_ceiling_tile_closet");
                     var go = new GameObject("CeilingTile");
+                    go.transform.SetParent(ctx.Director.NightRoot, false);
                     go.transform.position = tile.position + Vector3.down * 0.05f;
                     var bc = go.AddComponent<BoxCollider>();
                     bc.size = new Vector3(0.6f, 0.08f, 0.6f);

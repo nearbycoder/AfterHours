@@ -105,10 +105,12 @@ namespace AfterHours
             return cam.position + cam.forward * 1.2f;
         }
 
-        public void SnapHome()
+        public void SnapHome(bool preferOwnPosition = false)
         {
             var cam = Hands.Instance.Player.Camera.transform;
-            if (!BestHome(AimPoint(cam), out var pos, out var rot, out int slot) && !BestHome(transform.position, out pos, out rot, out slot))
+            var first = preferOwnPosition ? transform.position : AimPoint(cam);
+            var second = preferOwnPosition ? AimPoint(cam) : transform.position;
+            if (!BestHome(first, out var pos, out var rot, out int slot) && !BestHome(second, out pos, out rot, out slot))
             {
                 pos = HomePos; rot = HomeRot;
             }
@@ -138,6 +140,19 @@ namespace AfterHours
                 AtHome = true;
                 if (!was) Events.Raise(GameEvent.ItemReset, Id);
             });
+        }
+
+        /// <summary>Automation: snap into the first free slot (or home) without aiming.</summary>
+        public void SnapFirstFree()
+        {
+            if (!string.IsNullOrEmpty(Group) && slots.TryGetValue(Group, out var list))
+            {
+                var occ = occupied[Group];
+                for (int i = 0; i < list.Count; i++)
+                    if (occ[i] == null) { transform.position = list[i].pos + Vector3.up * 0.05f; break; }
+            }
+            else transform.position = HomePos + Vector3.up * 0.05f;
+            SnapHome(true);
         }
 
         /// <summary>Place instantly at home (night setup).</summary>
