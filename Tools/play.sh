@@ -5,6 +5,7 @@
 set -euo pipefail
 GAME="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/Builds/Linux/AfterHours.x86_64"
 [ -x "$GAME" ] || { echo "No build yet. Run Tools/unity.sh build-linux first." >&2; exit 1; }
-args=(-screen-fullscreen 0 -screen-width 1600 -screen-height 900)
+# AH_W / AH_H override the window size (e.g. to check UI layout at other aspect ratios).
+args=(-screen-fullscreen 0 -screen-width "${AH_W:-1600}" -screen-height "${AH_H:-900}")
 [ -n "${WAYLAND_DISPLAY:-}" ] && args+=(-force-wayland)
 exec "$GAME" "${args[@]}" "$@"

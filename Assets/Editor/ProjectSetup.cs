@@ -203,7 +203,7 @@ namespace AfterHours.EditorTools
             SetInt("m_ShadowCascadeCount", 2);
             SetBool("m_SoftShadowsSupported", true);
             SetBool("m_AdditionalLightShadowsSupported", true);
-            SetInt("m_AdditionalLightsShadowmapResolution", 2048);
+            SetInt("m_AdditionalLightsShadowmapResolution", 4096); // 8 shadowed room lights at full resolution
             SetBool("m_SupportsCameraDepthTexture", true);
             SetBool("m_SupportsCameraOpaqueTexture", true);
             so.ApplyModifiedPropertiesWithoutUndo();

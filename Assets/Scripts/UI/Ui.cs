@@ -41,7 +41,7 @@ namespace AfterHours
                 var scaler = go.AddComponent<CanvasScaler>();
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
                 scaler.referenceResolution = new Vector2(1920, 1080);
-                scaler.matchWidthOrHeight = 0.5f;
+                scaler.matchWidthOrHeight = 1f; // landscape only: always 1080 units tall, width varies with aspect
                 go.AddComponent<GraphicRaycaster>();
                 if (Object.FindAnyObjectByType<EventSystem>() == null)
                 {

@@ -171,6 +171,12 @@ namespace AfterHours
             bool photos = RoomPhotos.Instance != null && RoomPhotos.Instance.After.Count > 0;
             Ui.Place(brt, new Vector2(0.5f, 0.5f), new Vector2(photos ? -330 : 0, -10), new Vector2(860, 940));
             if (photos) PolaroidWipe.Create(root, def);
+            // Clipboard and polaroid need ~1700 units across; narrower screens (4:3 is 1440) shrink both.
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            float fit = Mathf.Min(1f, (canvasW - 60f) / 1700f);
+            if (fit < 1f)
+                foreach (var part in new[] { brt, photos ? root.Find("Polaroid") as RectTransform : null })
+                    if (part) { part.localScale *= fit; part.anchoredPosition *= fit; }
             brt.localRotation = Quaternion.Euler(0, 0, 1.2f);
             var clip = Ui.Panel(brt, "Clip", Palette.Hex("B9C0C7"), 10);
             Ui.Place(clip.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 26), new Vector2(260, 70), new Vector2(0.5f, 1));
