@@ -263,7 +263,13 @@ namespace AfterHours
             }
             if (Story.State.Phrases.Count > 0)
                 options.Add(new ChoiceMenu.Option("Write a sticky note…", "Anonymous. In your handwriting.", ComposeNote));
-            ChoiceMenu.Show($"{People.Name[Person]}'s tray", "Whatever you leave here, they find in the morning.", options);
+            // "Erin Sato (Brightwater)" reads badly with a possessive; the firm goes in the subtitle.
+            string owner = People.Name[Person];
+            int paren = owner.IndexOf(" (");
+            string sub = paren > 0
+                ? $"{owner.Substring(paren + 2).TrimEnd(')')}'s auditor. Whatever you leave here, she reads at nine."
+                : "Whatever you leave here, they find in the morning.";
+            ChoiceMenu.Show($"{(paren > 0 ? owner.Substring(0, paren) : owner)}'s tray", sub, options);
         }
 
         void Deliver(DocDef d)

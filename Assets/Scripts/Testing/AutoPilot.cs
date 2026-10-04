@@ -703,6 +703,8 @@ namespace AfterHours
             yield return Inspect(() => m.Interact(null), InspectChoice.SwitchOff);
         }
 
+        bool auditorTrayShot;
+
         IEnumerator Deliver(string doc, string person)
         {
             var trays = root.Director.Furniture.Trays;
@@ -716,6 +718,7 @@ namespace AfterHours
             float t = 0;
             while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
             yield return Wait(MenuTime);
+            if (person == "auditor" && !auditorTrayShot) { auditorTrayShot = true; yield return Wait(0.3f); yield return Shot("auditor_tray"); }
             ChoiceMenu.AutoPick = index;
             yield return Wait(0.5f);
             Check(Story.State.IsDelivered(doc, person), $"{doc} delivered to {person}");
