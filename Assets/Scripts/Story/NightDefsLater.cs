@@ -213,11 +213,8 @@ namespace AfterHours
              .Say("8:07 AM", "priya", "or it's true", s => s.Has("window_left"))
              .Say("8:20 AM", "marian", "Facilities has been called. This is unprofessional.", s => s.Has("window_left"))
              .Say("8:41 AM", "russ", "found my own betting slip in my tray?? thanks mystery cleaner. i'm cutting back I SWEAR", s => Delivered(s, "russ_slip", "russ"))
-             .Say("9:10 AM", "marian", "Russ, a word please. Bring your expense reports.", s => Delivered(s, "russ_slip", "marian"))
-             .Say("9:11 AM", "russ", "???????", s => Delivered(s, "russ_slip", "marian"))
              .Say("9:15 AM", "dana", "Russ honey, are you okay? Found something in my tray. Let's get coffee.", s => Delivered(s, "russ_slip", "dana"))
              .Say("9:30 AM", "priya", "Russ, I'm not your accountant. But I found your debts in my tray, so: maybe stop.", s => Delivered(s, "russ_slip", "priya"))
-             .Say("8:02 AM", "theo", "working from home today", s => Delivered(s, "theo_note", "marian"))
              .Say("10:12 AM", "russ", "the new cleaner put my mug in a RACK. nobody puts my mug in a rack")
              .Say("10:13 AM", "priya", "the break room smells like actual lemons now. I'm not complaining")
              .Say("11:47 AM", "dana", "Elevator 2 is acting up again, it went to 14 at 3am with nobody in it lol", s => true);
@@ -336,7 +333,6 @@ namespace AfterHours
              .Say("8:41 AM", "marian", "Thank you, Dana.", s => s.Has("ghost_scrubbed"))
              .Say("8:30 AM", "theo", "found a page from my planner on my desk. thank you whoever. please. stop.", s => Delivered(s, "theo_planner", "theo"))
              .Say("8:47 AM", "priya", "someone keeps sending me Theo's planner pages. ok. ok ok ok.", s => Delivered(s, "theo_planner", "priya"))
-             .Say("9:15 AM", "marian", "Theo, bring your planner to my office.", s => Delivered(s, "theo_planner", "marian"))
              .Say("9:20 AM", "dana", "Theo you left a page from your planner at reception, hon", s => Delivered(s, "theo_planner", "dana"))
              .Say("9:44 AM", "russ", "the pizza boxes are GONE. respect to the night shift")
              .Say("1:10 PM", "dana", "Reminder: conference room is booked ALL of next week for the auditors.");

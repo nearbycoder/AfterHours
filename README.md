@@ -154,9 +154,11 @@ Tools/unity.sh                # open the project in the editor
   brush maths, drops rubbish into bins with physics, uses real mouse-and-key input for a wipe, a
   pick-up, a charged throw and the vacuum, reads and keeps evidence, delivers it to trays, solves
   the shred puzzle, switches the lights off, clocks out, and checks that the chosen route reaches
-  its ending and returns to the title. The four routes are `audit` (default; everything goes to
-  the auditor), `loose` (keep the red folder), `cleanbooks` (bin it) and `spotless` (read
-  everything, keep nothing). Every route also plugs in a virtual gamepad and drives the title
+  its ending and returns to the title. The routes are `audit` (default; everything goes to the
+  auditor), `loose` (keep the red folder), `cleanbooks` (bin it), `spotless` (read everything,
+  keep nothing) and `marian` (hoard the evidence, hand it to Marian once her office opens, take
+  her money, shred Priya's log, leave the auditor an anonymous sticky note, give Marian the red
+  folder: Clean Books by a different road). Every route also plugs in a virtual gamepad and drives the title
   menu, Settings, the document reader and a tray choice with real pad button events. It saves
   screenshots and prints PASS/FAIL lines.
 - **EditMode tests** (`Tools/unity.sh test`): an exhaustive search of the choice space proves all
@@ -172,7 +174,7 @@ Tools/unity.sh                # open the project in the editor
   plus the game's own audio to DIR for a gameplay video.
 
 Latest results on the shipped build, all seven nights each: **audit 196, loose 192, cleanbooks
-192, spotless 167 checks passed, 0 failed**, each reaching its own ending; EditMode tests **13 of
+192, spotless 167, marian 187 checks passed, 0 failed**, each reaching its expected ending; EditMode tests **13 of
 13** passing.
 
 Performance (1600x900, AMD Radeon 8060S iGPU, OpenGL Core, vsync off): the perf probe renders the
@@ -196,6 +198,9 @@ The AutoPilot found and fixed these bugs in the game itself:
 - Following Marian's instruction to send her shredder bag down the chute counted as tampering
   with evidence, which made the Spotless ending unreachable for a player who just did as they
   were told. Doing what you're asked no longer counts.
+- Marian's reactions to things left in her tray (Theo's note, Russ's betting slip, Theo's
+  planner) were attached to Nights 1-3, when her office is locked, so they could never appear.
+  They now follow whichever night you actually reach her tray.
 - Menus, choices and screens only read the keyboard, so a gamepad player got stuck at the first
   tray or document. All of them now take pad input.
 - The story calendar contradicted itself: the epilogue had the auditor reading the tray on
@@ -212,9 +217,14 @@ The AutoPilot found and fixed these bugs in the game itself:
 
 ## Known limitations
 
-- **Four routes, not every branch.** The AutoPilot plays one route to each ending. Mixed
-  choices (for example, delivering to Marian, writing sticky notes, taking the money) are only
-  covered by the EditMode sweep of the ending logic.
+- **Five routes, not every branch.** The AutoPilot plays one route to each ending plus a
+  Marian-sided one. Other mixes (for example notes to Theo, or giving Dana things) are only covered
+  by the EditMode sweep of the ending logic.
+- **A monitor change can crash the game on Wayland.** During testing, a KDE display re-detection
+  (a monitor powering down or reconnecting) crashed two running copies at the same instant inside
+  Unity's Wayland window code (`wl_display_dispatch_queue_pending`). It's an engine/platform issue
+  rather than game code, and `Tools/play.sh` uses the Wayland backend because XWayland hung at
+  startup on this machine.
 - **The AutoPilot takes shortcuts.** It teleports between rooms, triggers most interactions
   directly, and cleans most surfaces by calling the brush maths rather than moving the mouse.
   Real mouse-and-key input is exercised for one wipe, the pick-up, a charged throw and the

@@ -17,7 +17,13 @@ namespace AfterHours
                 1 => Night1(), 2 => Night2(), 3 => Night3(), 4 => Night4(), 5 => Night5(), 6 => Night6(), 7 => Night7(),
                 _ => null,
             };
-            if (d != null) cache[n] = d;
+            if (d == null) return null;
+            if (n >= 4) MarianReactions(d);
+            // Lines are added per beat; the morning chat reads in timestamp order.
+            var ordered = System.Linq.Enumerable.ToList(System.Linq.Enumerable.OrderBy(d.Chat, c => Minutes(c.Time)));
+            d.Chat.Clear();
+            d.Chat.AddRange(ordered);
+            cache[n] = d;
             return d;
         }
 
@@ -48,6 +54,35 @@ namespace AfterHours
         static Vector2 OF(float x, float z) => new((x - 18.05f) / 6.9f, (z - 9.05f) / 6.9f);
 
         static bool Delivered(StoryState s, string doc, string to) => s.IsDelivered(doc, to);
+
+        /// <summary>Delivered to <paramref name="to"/> during night <paramref name="night"/> (that morning's chat reacts).</summary>
+        static bool DeliveredOn(StoryState s, string doc, string to, int night) =>
+            s.IsDelivered(doc, to) && System.Linq.Enumerable.Any(s.Evidence, e => e.Id == doc && e.Night == night);
+
+        /// <summary>"7:58 AM" → minutes after midnight, for ordering chat lines.</summary>
+        static int Minutes(string t)
+        {
+            var parts = t.Split(' ');
+            var hm = parts[0].Split(':');
+            int h = int.Parse(hm[0]) % 12 + (parts.Length > 1 && parts[1] == "PM" ? 12 : 0);
+            return h * 60 + int.Parse(hm[1]);
+        }
+
+        /// <summary>
+        /// Marian's office (and her tray) only opens from Night 4, so her reactions to things left in
+        /// it run on the chat after whichever night they were delivered.
+        /// </summary>
+        static void MarianReactions(NightDef n)
+        {
+            int k = n.Number;
+            n.Say("8:02 AM", "theo", "working from home today", s => DeliveredOn(s, "theo_note", "marian", k - 1))
+             .Say("9:02 AM", "marian", "Theo, my office please.", s => DeliveredOn(s, "theo_note", "marian", k))
+             .Say("9:02 AM", "russ", "ooooooh", s => DeliveredOn(s, "theo_note", "marian", k))
+             .Say("9:03 AM", "dana", "Russ.", s => DeliveredOn(s, "theo_note", "marian", k))
+             .Say("9:10 AM", "marian", "Russ, a word please. Bring your expense reports.", s => DeliveredOn(s, "russ_slip", "marian", k))
+             .Say("9:11 AM", "russ", "???????", s => DeliveredOn(s, "russ_slip", "marian", k))
+             .Say("9:15 AM", "marian", "Theo, bring your planner to my office.", s => DeliveredOn(s, "theo_planner", "marian", k));
+        }
 
         static void Monitors(NightDef n, params (string desk, string screen)[] screens)
         {
@@ -149,9 +184,6 @@ namespace AfterHours
              .Say("8:32 AM", "priya", "left what?", s => Delivered(s, "theo_note", "theo"))
              .Say("8:33 AM", "theo", "nothing. never mind. sorry", s => Delivered(s, "theo_note", "theo"))
              .Say("8:47 AM", "priya", "Someone left me something interesting. Not saying who. Thanks, whoever.", s => Delivered(s, "theo_note", "priya"))
-             .Say("9:02 AM", "marian", "Theo, my office please.", s => Delivered(s, "theo_note", "marian"))
-             .Say("9:02 AM", "russ", "ooooooh", s => Delivered(s, "theo_note", "marian"))
-             .Say("9:03 AM", "dana", "Russ.", s => Delivered(s, "theo_note", "marian"))
              .Say("8:15 AM", "dana", "Found a crumpled note on my keyboard?? Theo, can you come by reception when you're in", s => Delivered(s, "theo_note", "dana"))
              .Say("8:20 AM", "russ", "someone put THEO'S LOVE LETTER on my desk lmao", s => Delivered(s, "theo_note", "russ"))
              .Say("8:21 AM", "theo", "it's not a love letter. please give it back", s => Delivered(s, "theo_note", "russ"))

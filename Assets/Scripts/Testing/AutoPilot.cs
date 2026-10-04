@@ -26,6 +26,9 @@ namespace AfterHours
         /// </summary>
         protected string route = "audit";
         bool Keeps => route != "spotless";
+        /// <summary>"marian": hold everything until her office opens, then side with her.</summary>
+        bool Hoards => route == "marian";
+        bool HandsOut => Keeps && !Hoards;
         InspectChoice Take => Keeps ? InspectChoice.Keep : InspectChoice.Close;
 
         // Frame times while a night is being played (real-time runs only; the showcase fixes the step).
@@ -83,7 +86,13 @@ namespace AfterHours
             Check(FindAnyObjectByType<EndingScreen>() != null, "ending screen appears after night 7");
             yield return Wait(8f);
             yield return Shot("ending");
-            Check(Story.State.Ending == route, $"{route} route reaches the {route} ending (got {Story.State.Ending}, score {Endings.AuditScore(Story.State)})");
+            string expected = route == "marian" ? "cleanbooks" : route;
+            if (route == "marian")
+            {
+                var ending = Endings.Resolve(Story.State.Clone());
+                Check(ending.Lines.Any(l => l.Contains("fifty dollars")), "taking Marian's money shows up in the epilogue");
+            }
+            Check(Story.State.Ending == expected, $"{route} route reaches the {expected} ending (got {Story.State.Ending}, score {Endings.AuditScore(Story.State)})");
             for (int i = 0; i < 8; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.4f); }
             yield return Wait(2f);
             Check(TitleScreen.Instance != null, "ending returns to the title");
@@ -184,8 +193,8 @@ namespace AfterHours
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
-                    if (vpad != null && Keeps) yield return PadDeliver("theo_note", "priya");
-                    else if (Keeps) yield return Deliver("theo_note", "priya");
+                    if (vpad != null && HandsOut) yield return PadDeliver("theo_note", "priya");
+                    else if (HandsOut) yield return Deliver("theo_note", "priya");
                     UnplugPad();
                     break;
                 case 2:
@@ -206,7 +215,7 @@ namespace AfterHours
                         yield return Shot("n2_window_writing");
                     }
                     yield return Evidence("russ_slip", Take);
-                    if (Keeps) yield return Deliver("russ_slip", "priya");
+                    if (HandsOut) yield return Deliver("russ_slip", "priya");
                     // UV arrows
                     root.Player.Teleport(new Vector3(9.0f, 0, 8.4f), -90f, 0f);
                     if (!UvTorch.Instance.On) input.TorchOnce = true;
@@ -228,7 +237,7 @@ namespace AfterHours
                     }
                     yield return ReadReadable("audit_agenda");
                     yield return Evidence("theo_planner", Take);
-                    if (Keeps) yield return Deliver("theo_planner", "priya");
+                    if (HandsOut) yield return Deliver("theo_planner", "priya");
                     break;
                 case 4:
                     {
@@ -253,9 +262,10 @@ namespace AfterHours
                         InspectView.AutoChoice = InspectChoice.Close;
                         yield return Wait(0.8f);
                         yield return Wait(MenuTime);
-                        if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = 1;
+                        if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = Hoards ? 0 : 1;
                         yield return Wait(0.6f);
-                        Check(Story.State.Has("left_money"), "the money can be left on the desk");
+                        if (Hoards) Check(Story.State.Has("took_money"), "the money can be taken");
+                        else Check(Story.State.Has("left_money"), "the money can be left on the desk");
                         var bag = ctx.Furniture.Named.TryGetValue("shredder_office", out var sgo) ? sgo.GetComponent<ScriptedUse>() : null;
                         Check(bag != null, "the office shredder offers its bag");
                         if (bag != null) yield return Approach(bag.transform.position + Vector3.up * 0.6f);
@@ -267,6 +277,13 @@ namespace AfterHours
                         if (Keeps) Check(Story.State.Has("kept_shreds"), "the shredder bag can be kept");
                         else Check(Story.State.Has("shred_bag_done") && !Story.State.Has("kept_shreds"), "the shredder bag can go down the chute as asked");
                         yield return ReadMonitor("marian", "screen_marian_lock", "Marian's lock screen shows the 1 AM sign-in");
+                        if (Hoards)
+                        {
+                            foreach (var d in new[] { "theo_note", "russ_slip", "theo_planner" }) yield return Deliver(d, "marian");
+                            var chat = NightDefs.Get(4).Chat.Where(c => c.When == null || c.When(Story.State)).Select(c => c.Text).ToList();
+                            Check(chat.Contains("Theo, my office please.") && chat.Any(t => t.StartsWith("Russ, a word please")),
+                                "Marian reacts in the morning chat to what was left in her tray");
+                        }
                     }
                     break;
                 case 5:
@@ -289,6 +306,7 @@ namespace AfterHours
                             Check(Story.State.FateOf("reconstructed_invoice") == Fate.Kept, "the shred puzzle rebuilds the invoice");
                         }
                         yield return Evidence("vpn_log", Take);
+                        if (Hoards) yield return ShredAt("vpn_log", "bullpen");
                         yield return Evidence("theo_resignation", InspectChoice.Close);
                         var tile = FindObjectsByType<ScriptedUse>(FindObjectsSortMode.None).FirstOrDefault(s => s.name == "CeilingTile");
                         Check(tile != null, "Walt's ceiling tile is there with the UV torch");
@@ -303,7 +321,7 @@ namespace AfterHours
                         yield return Wait(1.2f);
                         yield return ReadReadable("printout");
                         // Priya only reaches out if you've helped her; otherwise the copier prints a test page.
-                        if (Keeps) Check(dir.HasSecret("priya_ally"), "Priya's 3:33 AM printout");
+                        if (HandsOut) Check(dir.HasSecret("priya_ally"), "Priya's 3:33 AM printout");
                         else Check(!dir.HasSecret("priya_ally"), "without your help, the 3:33 AM copier prints only a test page");
                     }
                     break;
@@ -319,8 +337,10 @@ namespace AfterHours
                         var phone = ctx.Furniture.Named["phone_reception"].GetComponent<ScriptedUse>();
                         yield return Inspect(() => phone.Interact(null), InspectChoice.Close);
                         yield return ReadReadable("dana_doubt");
-                        foreach (var id in Story.State.Inventory.ToList())
-                            if (Docs.Get(id)?.Key == true) yield return Deliver(id, "auditor");
+                        if (Hoards) yield return StickyNote("auditor");
+                        else
+                            foreach (var id in Story.State.Inventory.ToList())
+                                if (Docs.Get(id)?.Key == true) yield return Deliver(id, "auditor");
                         Log("auditor score now " + Endings.AuditScore(Story.State));
                     }
                     break;
@@ -347,6 +367,7 @@ namespace AfterHours
                             default: Check(folder == Fate.Kept, "the red folder can be pulled from the jam"); break;
                         }
                         yield return Evidence("flight_note", InspectChoice.Close);
+                        if (Hoards) yield return Deliver("red_folder", "marian");
                         if (route == "audit")
                         {
                             yield return Deliver("red_folder", "auditor");
@@ -704,6 +725,43 @@ namespace AfterHours
         }
 
         bool auditorTrayShot;
+
+        IEnumerator ShredAt(string doc, string shredder)
+        {
+            var sh = root.Director.Furniture.Shredders[shredder];
+            int index = Story.State.Inventory.IndexOf(doc);
+            Check(index >= 0, $"{doc} is in your pocket to shred");
+            if (index < 0) yield break;
+            yield return Approach(sh.transform.position + Vector3.up * 0.6f);
+            sh.Interact(null);
+            float t = 0;
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            yield return Wait(MenuTime);
+            ChoiceMenu.AutoPick = index;
+            yield return Wait(1.6f);
+            Check(Story.State.FateOf(doc) == Fate.Shredded, $"the {shredder} shredder destroys {doc}");
+        }
+
+        /// <summary>Tray → "Write a sticky note…" → first phrase: the nested menu must open and work.</summary>
+        IEnumerator StickyNote(string person)
+        {
+            var tray = root.Director.Furniture.Trays[person];
+            int notes = Story.State.Notes.Count;
+            Check(Story.State.Phrases.Count > 0, "you have leads to write on a sticky note");
+            yield return Approach(tray.transform.position);
+            tray.Interact(null);
+            float t = 0;
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            yield return Wait(MenuTime);
+            ChoiceMenu.AutoPick = Story.State.Inventory.Count; // the row after the inventory
+            yield return Wait(0.5f);
+            Check(ChoiceMenu.IsOpen, "the sticky-note menu opens from the tray menu");
+            yield return Shot("sticky_note_menu");
+            ChoiceMenu.AutoPick = 0;
+            yield return Wait(0.5f);
+            Check(Story.State.Notes.Count == notes + 1 && Story.State.Notes[^1].To == person, $"a sticky note is left for {person}");
+            Check(!ChoiceMenu.IsOpen && !root.Blocked, "after the note, the player can move again");
+        }
 
         IEnumerator Deliver(string doc, string person)
         {
