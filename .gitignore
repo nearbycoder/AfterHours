@@ -31,9 +31,30 @@ crashlytics-build.properties
 # Tools
 __pycache__/
 /Tools/.venv/
+.venv/
+venv/
+*.pyc
 /ArtSource/renders/tmp/
 *.blend1
 *.blend2
 
 # Written transiently by the test runner
 /Assets/Resources/PerformanceTestRun*.json*
+
+# Raw captures and trailer working files (the finished media lives in docs/media/)
+/Captures/
+/Tools/trailer/work/
+*.mov
+*.mkv
+*.avi
+
+# Packaged release archives
+*.zip
+*.tar.gz
+
+# OS and editor junk
+.DS_Store
+Thumbs.db
+desktop.ini
+*~
+*.swp
