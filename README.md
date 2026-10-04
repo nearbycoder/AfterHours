@@ -88,7 +88,7 @@ and the cleaning closet) that changes over seven nights:
 5. **Friday, "Pieces"**: the big post-party mess and a shred-strip reconstruction puzzle.
 6. **Sunday, "Prep"**: the auditor's tray appears, plus boxes marked for destruction and a
    voicemail.
-7. **Monday, "Audit Day"**: a storm, flickering power, and the shredder in Marian's office jammed
+7. **Monday, "Audit Eve"**: a storm, flickering power, and the shredder in Marian's office jammed
    on a red folder.
 
 There are four endings: **The Audit**, **Clean Books**, **Loose Threads** and the secret

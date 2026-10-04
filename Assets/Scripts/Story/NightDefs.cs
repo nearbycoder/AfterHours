@@ -24,7 +24,7 @@ namespace AfterHours
         public const int Count = 7;
 
         public static readonly string[] Days = { "", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sunday", "Monday" };
-        public static readonly string[] Titles = { "", "First Shift", "Glass", "The Whiteboard", "The Corner Office", "Pieces", "Prep", "Audit Day" };
+        public static readonly string[] Titles = { "", "First Shift", "Glass", "The Whiteboard", "The Corner Office", "Pieces", "Prep", "Audit Eve" };
 
         // ---- shared helpers ----------------------------------------------------------------------
 
@@ -151,7 +151,7 @@ namespace AfterHours
              .Say("8:20 AM", "russ", "someone put THEO'S LOVE LETTER on my desk lmao", s => Delivered(s, "theo_note", "russ"))
              .Say("8:21 AM", "theo", "it's not a love letter. please give it back", s => Delivered(s, "theo_note", "russ"))
              .Say("8:50 AM", "theo", "did the cleaner skip my desk? there was paper under my chair. never mind", s => s.FateOf("theo_note") is Fate.Untouched or Fate.Seen)
-             .Say("9:30 AM", "marian", "Reminder: Brightwater auditors arrive Monday the 14th. Desks tidy, files in order. — M.C.")
+             .Say("9:30 AM", "marian", "Reminder: Brightwater auditors arrive Tuesday the 15th. Desks tidy, files in order. — M.C.")
              .Say("9:31 AM", "russ", "✓✓✓")
              .Say("2:14 PM", "priya", "weird question. anyone else's machine wake up overnight? my VPN logs are noisy", s => s.Knows("logins"));
             return n;

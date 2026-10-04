@@ -476,16 +476,21 @@ def _screen_base(top, bottom):
 
 
 def _lock(name, user, top, bottom, accent, sub=None):
+    # No clock or date: the same screen is seen on several nights at any hour.
     img = _screen_base(top, bottom)
     d = ImageDraw.Draw(img)
-    big = font("FiraSans-Light.ttf", 150)
-    d.text((70, 90), "10:04", font=big, fill=(240, 244, 250))
-    d.text((80, 260), "Monday, March 11", font=font("FiraSans-Regular.ttf", 40), fill=(220, 226, 236))
-    d.ellipse((SW - 300, SH - 250, SW - 200, SH - 150), fill=accent)
+    cx, cy = SW // 2, SH // 2 - 40
+    d.ellipse((cx - 70, cy - 70, cx + 70, cy + 70), fill=accent)
     initials = "".join(p[0] for p in user.split()[:2])
-    d.text((SW - 250, SH - 200), initials, font=font("FiraSans-Bold.ttf", 44), fill=(255, 255, 255), anchor="mm")
-    d.text((SW - 250, SH - 115), user, font=font("FiraSans-Medium.ttf", 30), fill=(240, 244, 250), anchor="mm")
-    d.text((SW - 250, SH - 75), sub or "Press Ctrl+Alt+Del to unlock", font=font("FiraSans-Regular.ttf", 20), fill=(200, 208, 220), anchor="mm")
+    d.text((cx, cy), initials, font=font("FiraSans-Bold.ttf", 60), fill=(255, 255, 255), anchor="mm")
+    d.text((cx, cy + 115), user, font=font("FiraSans-Medium.ttf", 44), fill=(240, 244, 250), anchor="mm")
+    # Padlock glyph drawn as shapes so no icon font is needed.
+    lf = font("FiraSans-Regular.ttf", 28)
+    lx, ly = cx - int(34 + d.textlength("Locked", font=lf)) // 2, cy + 175
+    d.rounded_rectangle((lx, ly + 10, lx + 22, ly + 30), 3, fill=(220, 226, 236))
+    d.arc((lx + 3, ly - 2, lx + 19, ly + 18), 180, 360, fill=(220, 226, 236), width=3)
+    d.text((lx + 34, ly + 20), "Locked", font=lf, fill=(220, 226, 236), anchor="lm")
+    d.text((cx, cy + 250), sub or "Press Ctrl+Alt+Del to unlock", font=font("FiraSans-Regular.ttf", 24), fill=(200, 208, 220), anchor="mm")
     save(img, f"Screens/{name}.png")
 
 

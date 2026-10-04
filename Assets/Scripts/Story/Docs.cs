@@ -148,7 +148,7 @@ namespace AfterHours
             Add(new DocDef
             {
                 Id = "audit_agenda", Style = DocStyle.Printout, Title = "Audit prep agenda", Header = "Printout · conference table",
-                Body = "<b>BRIGHTWATER & CO. — ANNUAL AUDIT</b>\nOn site: Monday the 14th\n\n• Lead: Marian Cole\n• AP documentation: Theo Marsh\n• System access logs: Priya Anand\n• Conference room booked all week: Dana\n\n<size=85%>Please have all vendor files (incl. NORTHGATE SUPPLY) ready for review.</size>",
+                Body = "<b>BRIGHTWATER & CO. — ANNUAL AUDIT</b>\nOn site: Tuesday the 15th\n\n• Lead: Marian Cole\n• AP documentation: Theo Marsh\n• System access logs: Priya Anand\n• Conference room booked all week: Dana\n\n<size=85%>Please have all vendor files (incl. NORTHGATE SUPPLY) ready for review.</size>",
             });
             Add(new DocDef
             {
@@ -197,7 +197,7 @@ namespace AfterHours
             Add(new DocDef
             {
                 Id = "vpn_log", Style = DocStyle.Log, Title = "Priya's VPN log", Header = "Printout · left in the copier tray",
-                Body = "VPN ACCESS — user <b>mcole</b>\n  03-02  01:12  HALVORSEN-FIN01\n  03-04  01:47  HALVORSEN-FIN01\n  03-09  02:03  HALVORSEN-FIN01\n  03-11  01:12  HALVORSEN-FIN01\n\n<size=85%>(every date = a Northgate approval. — P)</size>",
+                Body = "VPN ACCESS — user <b>mcole</b>\n  03-02  01:12  HALVORSEN-FIN01\n  03-04  01:47  HALVORSEN-FIN01\n  03-08  01:12  HALVORSEN-FIN01\n  03-09  02:03  HALVORSEN-FIN01\n  03-11  01:12  HALVORSEN-FIN01\n\n<size=85%>(every date = a Northgate approval. — P)</size>",
                 Evidence = true, Key = true, Owner = "priya", Prop = "paper_sheet", Phrase = "logins",
             });
             Add(new DocDef
@@ -214,7 +214,7 @@ namespace AfterHours
             Add(new DocDef
             {
                 Id = "priya_ally", Style = DocStyle.Printout, Title = "Copier printout", Header = "Printed by itself · 3:33 AM",
-                Body = "<size=140%><b>I KNOW SOMEONE IS HELPING.</b></size>\n\nauditor arrives monday. conference room.\nthey'll have a tray.\n\n— P",
+                Body = "<size=140%><b>I KNOW SOMEONE IS HELPING.</b></size>\n\nauditor arrives tuesday. conference room.\nthey'll have a tray.\n\n— P",
             });
 
             // ------------------------------------------------------------------ night 6
@@ -259,7 +259,7 @@ namespace AfterHours
             Add(new DocDef
             {
                 Id = "flight_note", Style = DocStyle.Note, Title = "Flight confirmation", Header = "Torn printout · Marian's bin",
-                Body = "<b>BOOKING CONFIRMED</b>\nPassenger: COLE / MARIAN A.\nDeparting Monday 4:15 PM\n<b>One way.</b>",
+                Body = "<b>BOOKING CONFIRMED</b>\nPassenger: COLE / MARIAN A.\nDeparting Tuesday 4:15 PM\n<b>One way.</b>",
             });
             Add(new DocDef
             {

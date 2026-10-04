@@ -285,7 +285,7 @@ namespace AfterHours
              .Optional("rec_desk", "Wipe the reception desk", TaskKind.Clean, "reception", "desk_reception");
 
             n.Secret("whiteboard_ghost", "What was under the marker")
-             .Secret("audit_agenda", "The audit is on Monday")
+             .Secret("audit_agenda", "The audit is on Tuesday")
              .Secret("theo_planner", "Theo's planner page")
              .Secret("uv_w", "Walt was here too")
              .Secret("marian_shredder", "Someone in the locked office");
@@ -628,7 +628,7 @@ namespace AfterHours
              .Say("10:40 AM", "priya", "for the record I printed nothing at 3:33 AM. my printer did. I'm choosing not to think about it", s => s.Has("priya_contact"))
              .Say("11:05 AM", "theo", "I'm still here. for now.", s => s.FateOf("theo_resignation") is Fate.Delivered or Fate.Kept)
              .Say("11:06 AM", "dana", "Theo ♥", s => s.FateOf("theo_resignation") is Fate.Delivered or Fate.Kept)
-             .Say("2:30 PM", "marian", "Auditors on Monday. I'll be in over the weekend to prepare. Please don't come in. — M.C.")
+             .Say("2:30 PM", "marian", "Auditors on Tuesday. I'll be in over the weekend to prepare. Please don't come in. — M.C.")
              .Say("2:31 PM", "russ", "who comes in on weekends lol");
             return n;
         }
@@ -752,12 +752,12 @@ namespace AfterHours
         }
 
         // =========================================================================================
-        // NIGHT 7 — Monday — Audit Day
+        // NIGHT 7 — Monday — Audit Eve
         // =========================================================================================
 
         static NightDef Night7()
         {
-            var n = new NightDef { Number = 7, Day = "Monday", Title = "Audit Day", Tagline = "Decide what survives.", Rooms = new[] { "reception", "bullpen", "breakroom", "conference", "office" }, Storm = true, MusicIntensity = 1 };
+            var n = new NightDef { Number = 7, Day = "Monday", Title = "Audit Eve", Tagline = "Decide what survives.", Rooms = new[] { "reception", "bullpen", "breakroom", "conference", "office" }, Storm = true, MusicIntensity = 1 };
 
             n.Grime("floor_office", Spec(81).Add(Dust(0.2f, 0.3f, 1.2f)).Add(Steps(OF(18.3f, 10.45f).x, OF(18.3f, 10.45f).y, OF(23.4f, 9.7f).x, OF(23.4f, 9.7f).y, 0.95f)).Add(Spill(OF(22.6f, 11.4f).x, OF(22.6f, 11.4f).y, 0.2f, CoffeeCol)).Add(Confetti(300, new Rect(OF(22.8f, 9.4f), new Vector2(0.18f, 0.12f)))));
             n.Grime("desk_marian", DeskDirt(82, 3));

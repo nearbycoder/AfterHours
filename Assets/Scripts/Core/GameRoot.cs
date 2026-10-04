@@ -160,7 +160,7 @@ namespace AfterHours
             ShiftReport.Show(def, result, Director, () =>
             {
                 var chat = def.Chat.Where(c => c.When == null || SafeWhen(c, Story.State)).ToList();
-                string day = def.Number < NightDefs.Count ? $"{NightDefs.Days[def.Number + 1]} morning" : "Monday morning";
+                string day = def.Number < NightDefs.Count ? $"{NightDefs.Days[def.Number + 1]} morning" : "Tuesday morning";
                 void next()
                 {
                     Block(false, false);

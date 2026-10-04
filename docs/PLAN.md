@@ -183,6 +183,9 @@ One floor (Suite 1408, Meridian Tower). Five rooms plus a closet hub and a hallw
 Each night lists its rooms, new mechanic, required tasks, secrets, choices and the beat it ends
 on. *Conditional* lines depend on earlier flags.
 
+> **Calendar (revised during the build):** Night 1 is Monday 7 March; nights run Monday to Friday,
+> then Sunday and Monday. The audit is Tuesday the 15th, the morning after Night 7.
+
 ### Night 1, Monday: "First Shift" (tutorial, about 5 minutes)
 - **Rooms:** Reception, Bullpen. **Introduces:** look and move, cloth, picking up and throwing,
   bins, vacuum, chairs, monitors, light switches, clock out.
@@ -217,7 +220,7 @@ on. *Conditional* lines depend on earlier flags.
   the glass wall; vacuum; the usual bullpen pass.
 - **Secrets (4):** erasing the Q3 "synergy" brainstorm shows a **ghost diagram** underneath:
   *NORTHGATE SUPPLY → ??? → "who approves these??" → M.C.* (with Priya's arrow). The audit-prep
-  agenda: *"Brightwater audit — Monday the 14th."* Theo's planner page listing "sign-off w/ M.C."
+  agenda: *"Brightwater audit — Tuesday the 15th."* Theo's planner page listing "sign-off w/ M.C."
   dates (E2). A UV "W" on the whiteboard frame.
 - **Choice:** scrub the ghost away (needs a second, harder spray-and-scrub pass) or leave it for
   the 9 AM meeting.
@@ -266,14 +269,14 @@ on. *Conditional* lines depend on earlier flags.
 - **End beat:** a voicemail light blinks on the reception phone. Play it: Marian, quiet, *"…it all
   goes out with the morning pickup. All of it."*
 
-### Night 7, Monday: "Audit Day"
+### Night 7, Monday: "Audit Eve"
 - **Rooms:** everything, with a storm outside and flickering power. **Introduces:** the final
   choice.
 - **Tasks:** the full clean before the auditors arrive at 9 AM.
 - **The red folder:** Marian came in tonight. Her office light is on and the shredder is
   **jammed** on the red folder (E9), half fed. Clearing the jam (scrub, pull) frees it. Final
   choice: auditor tray, shredder, back to her desk, or your locker.
-- **End:** clock out, then *"Monday, 9:04 AM"*. Chat plus epilogue cards.
+- **End:** clock out, then *"Tuesday, 9:04 AM"*. Chat plus epilogue cards.
 
 ### Endings (computed by `EndingResolver`, all four are proven reachable by tests)
 1. **"The Audit"** (justice): the red folder is in the auditor's tray **and** at least 2 other key

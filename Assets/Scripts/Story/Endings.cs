@@ -66,7 +66,7 @@ namespace AfterHours
                 case "audit":
                     e.Title = "The Audit";
                     e.Headline = "FREIGHT FIRM FINANCE CHIEF ESCORTED FROM OFFICE AS AUDITORS UNCOVER SHELL VENDOR";
-                    e.Lines.Add("Monday, 9:04 AM. Erin Sato opened the tray on the conference table, read for eleven minutes and made one phone call.");
+                    e.Lines.Add("Tuesday, 9:04 AM. Erin Sato opened the tray on the conference table, read for eleven minutes and made one phone call.");
                     e.Lines.Add("Marian Cole left the building at 10:40 with two officers and her orchid.");
                     e.Lines.Add("Theo kept his job. He keeps a copy of everything now.");
                     if (PriyaForwards(s)) e.Lines.Add("Priya was named Head of Systems. She changed every password before lunch.");
@@ -74,14 +74,14 @@ namespace AfterHours
                 case "cleanbooks":
                     e.Title = "Clean Books";
                     e.Headline = "HALVORSEN FREIGHT PASSES ANNUAL AUDIT; JUNIOR ACCOUNTANT DISMISSED OVER 'IRREGULAR APPROVALS'";
-                    e.Lines.Add("Monday, 9:04 AM. The auditors found what Marian wanted them to find: Theo's initials on every invoice.");
+                    e.Lines.Add("Tuesday, 9:04 AM. The auditors found what Marian wanted them to find: Theo's initials on every invoice.");
                     e.Lines.Add("Theo cleared his desk by noon. Nobody said goodbye properly.");
                     e.Lines.Add("Marian left an envelope in your locker. \"Senior Night Custodian\" pin, and a card: Thank you for your discretion.");
                     break;
                 case "spotless":
                     e.Title = "Spotless";
                     e.Headline = "LOCAL FREIGHT FIRM: NOTHING TO REPORT";
-                    e.Lines.Add("Monday, 9:04 AM. The auditors complimented the conference room. It had never looked better.");
+                    e.Lines.Add("Tuesday, 9:04 AM. The auditors complimented the conference room. It had never looked better.");
                     e.Lines.Add("Whatever was in the red folder went out with the morning pickup.");
                     e.Lines.Add(s.Evidence.Any(x => x.Fate == Fate.Seen)
                         ? "You read every page and put each one back exactly where it was. Some people would call that professional."
@@ -90,7 +90,7 @@ namespace AfterHours
                 default:
                     e.Title = "Loose Threads";
                     e.Headline = "FINANCE DIRECTOR RESIGNS 'TO PURSUE OTHER OPPORTUNITIES'";
-                    e.Lines.Add("Monday, 9:04 AM. The auditors asked a lot of questions. Nobody could quite answer them.");
+                    e.Lines.Add("Tuesday, 9:04 AM. The auditors asked a lot of questions. Nobody could quite answer them.");
                     e.Lines.Add("Marian resigned on Wednesday. No charges, no explanation, a very nice farewell lunch.");
                     if (s.FateOf("red_folder") == Fate.Kept) e.Lines.Add("The red folder is still in your locker. Maybe someday someone will ask for it.");
                     else e.Lines.Add("Half the story reached the right desk. The other half went down the chute.");
