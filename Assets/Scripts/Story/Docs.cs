@@ -221,7 +221,7 @@ namespace AfterHours
             Add(new DocDef
             {
                 Id = "payment_ledger", Style = DocStyle.Ledger, Title = "Northgate payment ledger", Header = "Archive box marked DESTROY",
-                Body = "<b>VENDOR LEDGER — NORTHGATE SUPPLY</b>\n\n02-14   NG-0398   $14,200   paid\n02-28   NG-0403   $22,750   paid\n03-07   NG-0409   $12,400   paid\n03-13   NG-0410   $18,900   paid\n03-21   NG-0411    $9,750   paid\n<b>Total YTD   $78,000</b>\n\n<size=85%>Signatory on file: M. Cole</size>",
+                Body = "<b>VENDOR LEDGER — NORTHGATE SUPPLY</b>\n\n02-14   NG-0398   $14,200   paid\n02-28   NG-0403   $22,750   paid\n03-08   NG-0409   $12,400   paid\n03-09   NG-0410   $18,900   paid\n03-11   NG-0411    $9,750   paid\n<b>Total YTD   $78,000</b>\n\n<size=85%>Signatory on file: M. Cole</size>",
                 Evidence = true, Key = true, Owner = "marian", Prop = "binder", Phrase = "northgate",
             });
             Add(new DocDef

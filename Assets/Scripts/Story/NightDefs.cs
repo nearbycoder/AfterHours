@@ -24,6 +24,11 @@ namespace AfterHours
         public const int Count = 7;
 
         public static readonly string[] Days = { "", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Sunday", "Monday" };
+        static readonly string[] Week = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+
+        /// <summary>The calendar day after night <paramref name="n"/>'s shift (the morning chat's day).</summary>
+        public static string MorningAfter(int n) => Week[(System.Array.IndexOf(Week, Days[n]) + 1) % 7];
+
         public static readonly string[] Titles = { "", "First Shift", "Glass", "The Whiteboard", "The Corner Office", "Pieces", "Prep", "Audit Eve" };
 
         // ---- shared helpers ----------------------------------------------------------------------

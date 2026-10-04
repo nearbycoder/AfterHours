@@ -493,7 +493,7 @@ namespace AfterHours
              .Say("9:30 AM", "theo", "has anyone seen the vendor folder from FC-2? asking for… me", s => s.FateOf("northgate_invoices") is Fate.Kept or Fate.Delivered or Fate.Shredded or Fate.Trashed)
              .Say("9:31 AM", "marian", "Theo. My office.", s => Delivered(s, "northgate_invoices", "marian"))
              .Say("10:02 AM", "priya", "rebooted FIN01. nobody should be on it overnight anyway. right?", s => s.Knows("logins"))
-             .Say("11:15 AM", "russ", "FRIDAY DRINKS TOMORROW. bring snacks. I'm bringing the good confetti")
+             .Say("11:15 AM", "russ", "FRIDAY DRINKS TONIGHT. bring snacks. I'm bringing the good confetti")
              .Say("11:16 AM", "dana", "Russ no", react: "★");
             return n;
         }
@@ -745,8 +745,8 @@ namespace AfterHours
 
             n.Say("9:00 AM", "dana", "Brightwater arrives at 9 tomorrow. Conference room is ready and GORGEOUS.")
              .Say("9:12 AM", "marian", "Who moved the archive boxes? They were to be collected.", s => s.FateOf("payment_ledger") is Fate.Kept or Fate.Delivered or Fate.Shredded)
-             .Say("9:30 AM", "priya", "@Erin Sato welcome! I left something in your tray. Ask me anything.", s => Endings.PriyaForwards(s))
-             .Say("9:31 AM", "auditor", "Thank you, Priya. Noted.", s => Endings.PriyaForwards(s))
+             .Say("9:30 AM", "priya", "@Erin Sato welcome to the channel. There'll be something in your tray tomorrow. Ask me anything.", s => Endings.PriyaForwards(s))
+             .Say("9:31 AM", "auditor", "Thank you, Priya. See you at 9.", s => Endings.PriyaForwards(s))
              .Say("11:59 PM", "marian", "I'll be in early tomorrow.");
             return n;
         }

@@ -132,6 +132,15 @@ namespace AfterHours.Tests
         }
 
         [Test]
+        public void MorningChatsFallOnTheNextDay()
+        {
+            Assert.AreEqual("Tuesday", NightDefs.MorningAfter(1));
+            Assert.AreEqual("Saturday", NightDefs.MorningAfter(5), "Friday's shift is followed by Saturday morning");
+            Assert.AreEqual("Monday", NightDefs.MorningAfter(6));
+            Assert.AreEqual("Tuesday", NightDefs.MorningAfter(7), "the audit morning");
+        }
+
+        [Test]
         public void DocsAreConsistent()
         {
             foreach (var d in Docs.All.Values)
