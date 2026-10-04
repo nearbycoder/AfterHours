@@ -111,7 +111,7 @@ namespace AfterHours
         void Update()
         {
             if (!Target) return;
-            Target.color = Color.Lerp(Target.color, selected && GameInput.UsingPad ? On : Off, 1f - Mathf.Exp(-Time.unscaledDeltaTime * 14f));
+            Target.color = Color.Lerp(Target.color, selected && GameInput.UsingPad ? On : Off, 1f - Mathf.Exp(-GameTime.UnscaledDelta * 14f));
         }
     }
 }

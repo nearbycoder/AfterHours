@@ -111,7 +111,7 @@ namespace AfterHours
             panel.sizeDelta = new Vector2(760, 140 + y);
             selected = 0;
             open = true;
-            openedAt = Time.unscaledTime;
+            openedAt = GameTime.Unscaled;
             group.blocksRaycasts = true;
             GameRoot.Instance?.SetBlocked("choice", true, true);
             Sfx.Play("ui_click", null, 0.4f, 1f, 0f, AudioBus.Ui);
@@ -123,9 +123,9 @@ namespace AfterHours
         {
             if (!open) return;
             for (int i = 0; i < rows.Count; i++)
-                rows[i].bg.color = Color.Lerp(rows[i].bg.color, i == selected ? new Color(1f, 0.78f, 0.34f, 0.22f) : new Color(1, 1, 1, 0.04f), 1f - Mathf.Exp(-Time.unscaledDeltaTime * 18f));
+                rows[i].bg.color = Color.Lerp(rows[i].bg.color, i == selected ? new Color(1f, 0.78f, 0.34f, 0.22f) : new Color(1, 1, 1, 0.04f), 1f - Mathf.Exp(-GameTime.UnscaledDelta * 18f));
             if (AutoPick >= 0) { int p = AutoPick; AutoPick = -1; Choose(Mathf.Min(p, options.Count - 1)); return; }
-            if (Time.unscaledTime - openedAt < 0.2f) return;
+            if (GameTime.Unscaled - openedAt < 0.2f) return;
             var m = GameInput.Menu;
             if (m.Up) Move(-1);
             if (m.Down) Move(1);

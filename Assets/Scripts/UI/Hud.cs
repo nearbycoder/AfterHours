@@ -173,7 +173,7 @@ namespace AfterHours
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = GameTime.UnscaledDelta;
             bool busy = GameRoot.Instance != null && GameRoot.Instance.Blocked;
             // Scale rather than deactivate: TMP can't measure labels built while inactive.
             promptRoot.localScale = busy ? Vector3.zero : Vector3.one;
@@ -184,7 +184,7 @@ namespace AfterHours
             ringShow = Mathf.Lerp(ringShow, targetShow, 1f - Mathf.Exp(-dt * 14f));
             if (show) ringValue = Mathf.Lerp(ringValue, cc.Target.Completion, 1f - Mathf.Exp(-dt * 16f));
             var accent = show ? ToolDefs.Accent(cc.Target.Tool) : Color.white;
-            float s = Mathf.Lerp(0.55f, 1f, ringShow) * (1f + (cc != null && cc.Cleaning ? Mathf.Sin(Time.unscaledTime * 18f) * 0.03f : 0f));
+            float s = Mathf.Lerp(0.55f, 1f, ringShow) * (1f + (cc != null && cc.Cleaning ? Mathf.Sin(GameTime.Unscaled * 18f) * 0.03f : 0f));
             reticleRoot.localScale = Vector3.one * (s * 0.62f);
             ring.fillAmount = ringValue;
             ring.color = new Color(accent.r, accent.g, accent.b, ringShow);

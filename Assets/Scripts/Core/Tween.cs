@@ -77,7 +77,7 @@ namespace AfterHours
         void Update()
         {
             if (adding.Count > 0) { jobs.AddRange(adding); adding.Clear(); }
-            float udt = Time.unscaledDeltaTime, sdt = Time.deltaTime;
+            float udt = GameTime.UnscaledDelta, sdt = Time.deltaTime;
             for (int i = jobs.Count - 1; i >= 0; i--)
             {
                 var j = jobs[i];

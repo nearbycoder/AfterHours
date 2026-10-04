@@ -150,7 +150,7 @@ namespace AfterHours
         {
             // Mouse hover, or pad selection (a mouse click also selects, which shouldn't stick).
             bool on = over || (selected && GameInput.UsingPad);
-            k = Mathf.MoveTowards(k, on ? 1f : 0f, Time.unscaledDeltaTime * 8f);
+            k = Mathf.MoveTowards(k, on ? 1f : 0f, GameTime.UnscaledDelta * 8f);
             float e = Ease.OutCubic(k);
             bg.color = primary ? Color.Lerp(baseCol, new Color(1f, 0.86f, 0.5f, 1f), e) : Color.Lerp(baseCol, new Color(1f, 0.78f, 0.34f, 0.18f), e);
             label.rectTransform.anchoredPosition = labelHome + new Vector2(e * 10f, 0);
@@ -174,9 +174,9 @@ namespace AfterHours
             RectTransformUtility.ScreenPointToLocalPointInRectangle(track, e.position, e.pressEventCamera, out var lp);
             float v = Mathf.Clamp01((lp.x - track.rect.xMin) / track.rect.width);
             set(v);
-            if (Time.unscaledTime - lastSound > 0.06f)
+            if (GameTime.Unscaled - lastSound > 0.06f)
             {
-                lastSound = Time.unscaledTime;
+                lastSound = GameTime.Unscaled;
                 Sfx.Play("ui_hover", null, 0.18f, 0.8f + v * 0.6f, 0f, AudioBus.Ui);
             }
         }

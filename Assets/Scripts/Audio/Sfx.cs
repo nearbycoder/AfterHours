@@ -84,7 +84,7 @@ namespace AfterHours
             float pitchJitter = 0.06f, AudioBus bus = AudioBus.Sfx, float minGap = 0.025f, float spatialRange = 14f)
         {
             var self = Instance;
-            float now = Time.unscaledTime;
+            float now = GameTime.Unscaled;
             if (self.lastPlayed.TryGetValue(name, out var t) && now - t < minGap) return null;
             var clip = Pick(name);
             if (clip == null) return null;
@@ -167,7 +167,7 @@ namespace AfterHours
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = GameTime.UnscaledDelta;
             float k = TargetVolume > volume ? Attack : Release;
             volume = Mathf.Lerp(volume, TargetVolume, 1f - Mathf.Exp(-dt * k));
             Source.volume = volume * Sfx.BusVolume(Bus) * (Bus == AudioBus.Music ? Sfx.Duck : 1f);

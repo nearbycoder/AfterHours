@@ -123,7 +123,7 @@ namespace AfterHours
 
         void Update()
         {
-            float dt = Time.unscaledDeltaTime;
+            float dt = GameTime.UnscaledDelta;
             dofWeight = Mathf.MoveTowards(dofWeight, dofTarget, dt * 4f);
             dof.active = dofWeight > 0.01f;
             dof.aperture.Override(Mathf.Lerp(16f, 2.2f, dofWeight));

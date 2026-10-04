@@ -19,7 +19,7 @@ namespace AfterHours
         /// <summary>True while any interstitial is showing or still fading out.</summary>
         public static bool AnyOpen => open.Count > 0;
 
-        protected virtual void LateUpdate() => age += Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+        protected virtual void LateUpdate() => age += Mathf.Min(GameTime.UnscaledDelta, 0.05f);
 
         protected void Setup(string name, int order, Color bg)
         {
@@ -313,13 +313,13 @@ namespace AfterHours
         void Update()
         {
             if (rooms.Count == 0) return;
-            t += Time.unscaledDeltaTime;
+            t += GameTime.UnscaledDelta;
             float k = Mathf.Clamp01((t - 0.8f) / 1.1f);
             k = Ease.InOutCubic(k);
             afterMask.sizeDelta = new Vector2(640 * k, 0);
             line.anchoredPosition = new Vector2(640 * k, 0);
             line.gameObject.SetActive(k > 0.001f && k < 0.999f);
-            if (t > 0.8f && t - Time.unscaledDeltaTime <= 0.8f) Sfx.Play("toss", null, 0.35f, 1.2f, 0.05f, AudioBus.Ui);
+            if (t > 0.8f && t - GameTime.UnscaledDelta <= 0.8f) Sfx.Play("toss", null, 0.35f, 1.2f, 0.05f, AudioBus.Ui);
             if (t > 4.2f && rooms.Count > 1) Next();
         }
     }

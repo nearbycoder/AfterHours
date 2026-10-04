@@ -28,6 +28,8 @@ namespace AfterHours
         bool audioOk;
 
         protected override bool PadChecks => false;
+        // Every epilogue line (one per 3.2 s) and the stats row, then a beat to read them.
+        protected override float EndingTime => 27f;
         protected override float ReadTime => rec ? 2.4f : 0.35f;
         protected override float MenuTime => rec ? 1.3f : 0.3f;
 

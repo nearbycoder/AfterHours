@@ -102,8 +102,8 @@ namespace AfterHours
                 if (dir.magnitude > 0.55f)
                     snapped = Mathf.Abs(dir.x) > Mathf.Abs(dir.y) ? new Vector2(Mathf.Sign(dir.x), 0) : new Vector2(0, Mathf.Sign(dir.y));
                 bool fire = false;
-                if (snapped != heldDir) { heldDir = snapped; fire = snapped != Vector2.zero; repeatAt = Time.unscaledTime + 0.4f; }
-                else if (snapped != Vector2.zero && Time.unscaledTime >= repeatAt) { fire = true; repeatAt = Time.unscaledTime + 0.12f; }
+                if (snapped != heldDir) { heldDir = snapped; fire = snapped != Vector2.zero; repeatAt = GameTime.Unscaled + 0.4f; }
+                else if (snapped != Vector2.zero && GameTime.Unscaled >= repeatAt) { fire = true; repeatAt = GameTime.Unscaled + 0.12f; }
                 if (fire)
                 {
                     m.Up |= snapped.y > 0; m.Down |= snapped.y < 0;
@@ -189,7 +189,7 @@ namespace AfterHours
                 var m = pad.leftStick.ReadValue();
                 if (m.sqrMagnitude > 0.02f) f.Move = m;
                 var l = pad.rightStick.ReadValue();
-                if (l.sqrMagnitude > 0.01f) f.Look += l * (160f * sens * Time.unscaledDeltaTime);
+                if (l.sqrMagnitude > 0.01f) f.Look += l * (160f * sens * GameTime.UnscaledDelta);
                 f.Use |= pad.rightTrigger.isPressed;
                 f.Spray |= pad.leftTrigger.isPressed;
                 f.Interact |= pad.buttonSouth.wasPressedThisFrame;

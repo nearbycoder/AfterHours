@@ -85,7 +85,7 @@ namespace AfterHours
             open = true;
             mode = m;
             callback = done;
-            openedAt = Time.unscaledTime;
+            openedAt = GameTime.Unscaled;
             header.text = d.Header.ToUpperInvariant();
             Style(d);
             // Keyboard key or pad button (Y keep, A close, X throw away / switch off).
@@ -156,7 +156,7 @@ namespace AfterHours
         void Update()
         {
             if (!open) return;
-            if (Time.unscaledTime - openedAt < 0.25f) return;
+            if (GameTime.Unscaled - openedAt < 0.25f) return;
             var kb = UnityEngine.InputSystem.Keyboard.current;
             var mouse = UnityEngine.InputSystem.Mouse.current;
             var f = GameInput.Frame;

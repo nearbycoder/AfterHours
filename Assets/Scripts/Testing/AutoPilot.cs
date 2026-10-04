@@ -37,7 +37,7 @@ namespace AfterHours
 
         void Update()
         {
-            if (sampling && Time.captureFramerate == 0) frameTimes.Add(Time.unscaledDeltaTime * 1000f);
+            if (sampling && Time.captureFramerate == 0) frameTimes.Add(GameTime.UnscaledDelta * 1000f);
         }
 
         void LogFrameStats(int n)
@@ -82,9 +82,9 @@ namespace AfterHours
             }
             // Ending
             float t = 0;
-            while (FindAnyObjectByType<EndingScreen>() == null && t < 20f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (FindAnyObjectByType<EndingScreen>() == null && t < 20f) { t += GameTime.UnscaledDelta; yield return null; }
             Check(FindAnyObjectByType<EndingScreen>() != null, "ending screen appears after night 7");
-            yield return Wait(8f);
+            yield return Wait(EndingTime);
             yield return Shot("ending");
             string expected = route == "marian" ? "cleanbooks" : route;
             if (route == "marian")
@@ -113,6 +113,8 @@ namespace AfterHours
         /// <summary>Hook: foam a window on camera before the route finishes the spray directly.</summary>
         protected virtual IEnumerator ShowSpray(GrimeSurface s) { yield break; }
         protected virtual float ReadTime => 0.35f;
+        /// <summary>How long to watch the ending before clicking through it.</summary>
+        protected virtual float EndingTime => 8f;
         protected virtual float MenuTime => 0.3f;
 
         IEnumerator PlayNight(int n)
@@ -158,7 +160,7 @@ namespace AfterHours
             yield return CompleteTasks(n);
 
             // The remote-session beat ignores lights going off in the first minute of the night.
-            if (n == 1) for (float t = 0; dir.Elapsed < 62f && t < 90f; t += Time.unscaledDeltaTime) yield return null;
+            if (n == 1) for (float t = 0; dir.Elapsed < 62f && t < 90f; t += GameTime.UnscaledDelta) yield return null;
             yield return Beat("lockup", n);
             // Lock up: lights off through the real switches.
             foreach (var room in dir.Def.Rooms.Concat(new[] { "closet" }))
@@ -186,7 +188,7 @@ namespace AfterHours
             yield return Wait(0.6f);
             if (ChoiceMenu.IsOpen) { yield return Wait(MenuTime); ChoiceMenu.AutoPick = 0; }
             float w = 0;
-            while (!Interstitial.AnyOpen && w < 10f) { w += Time.unscaledDeltaTime; yield return null; }
+            while (!Interstitial.AnyOpen && w < 10f) { w += GameTime.UnscaledDelta; yield return null; }
             Check(Story.State.ResultFor(n) != null, $"night {n}: clocking out records a result (grade {Story.State.ResultFor(n)?.Grade})");
             yield return Wait(3.2f);
             yield return Shot($"n{n}_report");
@@ -322,7 +324,7 @@ namespace AfterHours
                             yield return Shot("n5_shred_puzzle");
                             ShredPuzzle.AutoSolve = true;
                             float t = 0;
-                            while (!InspectView.IsOpen && t < 6f) { t += Time.unscaledDeltaTime; yield return null; }
+                            while (!InspectView.IsOpen && t < 6f) { t += GameTime.UnscaledDelta; yield return null; }
                             InspectView.AutoChoice = InspectChoice.Keep;
                             yield return Wait(0.8f);
                             Check(Story.State.FateOf("reconstructed_invoice") == Fate.Kept, "the shred puzzle rebuilds the invoice");
@@ -375,7 +377,7 @@ namespace AfterHours
                         yield return Shot("n7_jam");
                         shred.Interact(null);
                         float t = 0;
-                        while (!InspectView.IsOpen && t < 4f) { t += Time.unscaledDeltaTime; yield return null; }
+                        while (!InspectView.IsOpen && t < 4f) { t += GameTime.UnscaledDelta; yield return null; }
                         yield return Wait(0.6f);
                         yield return Shot("n7_red_folder");
                         var folderChoice = route switch { "cleanbooks" => InspectChoice.Toss, "spotless" => InspectChoice.Close, _ => InspectChoice.Keep };
@@ -472,7 +474,7 @@ namespace AfterHours
             yield return Approach(ev.transform.position);
             ev.Interact(null);
             float t = 0;
-            while (!InspectView.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (!InspectView.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(0.5f);
             yield return Shot("pad_inspect");
             yield return Press(GamepadButton.North);
@@ -487,7 +489,7 @@ namespace AfterHours
             yield return Approach(tray.transform.position);
             tray.Interact(null);
             float t = 0;
-            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(0.4f);
             for (int i = 0; i < index; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.1f); }
             yield return Shot("pad_choice");
@@ -719,11 +721,11 @@ namespace AfterHours
         {
             open();
             float t = 0;
-            while (!InspectView.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (!InspectView.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(ReadTime);
             InspectView.AutoChoice = choice;
             t = 0;
-            while (InspectView.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (InspectView.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(0.2f);
         }
 
@@ -854,7 +856,7 @@ namespace AfterHours
             yield return Approach(sh.transform.position + Vector3.up * 0.6f);
             sh.Interact(null);
             float t = 0;
-            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(MenuTime);
             ChoiceMenu.AutoPick = index;
             yield return Wait(1.6f);
@@ -870,7 +872,7 @@ namespace AfterHours
             yield return Approach(tray.transform.position);
             tray.Interact(null);
             float t = 0;
-            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(MenuTime);
             ChoiceMenu.AutoPick = Story.State.Inventory.Count; // the row after the inventory
             yield return Wait(0.5f);
@@ -893,7 +895,7 @@ namespace AfterHours
             yield return Approach(trays[person].transform.position);
             trays[person].Interact(null);
             float t = 0;
-            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += GameTime.UnscaledDelta; yield return null; }
             yield return Wait(MenuTime);
             if (person == "auditor" && !auditorTrayShot) { auditorTrayShot = true; yield return Wait(0.3f); yield return Shot("auditor_tray"); }
             ChoiceMenu.AutoPick = index;

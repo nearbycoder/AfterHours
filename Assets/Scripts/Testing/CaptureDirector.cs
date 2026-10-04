@@ -143,10 +143,10 @@ namespace AfterHours
                 yield return Wait(0.5f);
                 var ms = new System.Collections.Generic.List<float>();
                 double mainSum = 0, renderSum = 0; int n = 0;
-                for (float t = 0; t < 3f; t += Time.unscaledDeltaTime)
+                for (float t = 0; t < 3f; t += GameTime.UnscaledDelta)
                 {
                     yield return null;
-                    ms.Add(Time.unscaledDeltaTime * 1000f);
+                    ms.Add(GameTime.UnscaledDelta * 1000f);
                     if (main.Valid && main.LastValue > 0) { mainSum += main.LastValue / 1e6; renderSum += render.Valid ? render.LastValue / 1e6 : 0; n++; }
                 }
                 ms.Sort();
@@ -512,7 +512,7 @@ namespace AfterHours
         protected IEnumerator WaitUnblocked(float timeout = 20f)
         {
             float t = 0;
-            while ((Interstitial.AnyOpen || root.Blocked) && t < timeout) { t += Time.unscaledDeltaTime; yield return null; }
+            while ((Interstitial.AnyOpen || root.Blocked) && t < timeout) { t += GameTime.UnscaledDelta; yield return null; }
             if (root.Blocked) Log("still blocked by " + root.BlockerList);
         }
 
@@ -520,7 +520,7 @@ namespace AfterHours
         {
             if (Time.captureDeltaTime > 0f)
             {
-                for (float t = 0; t < s; t += Time.unscaledDeltaTime) yield return null;
+                for (float t = 0; t < s; t += GameTime.UnscaledDelta) yield return null;
                 yield break;
             }
             float end = Time.realtimeSinceStartup + s;

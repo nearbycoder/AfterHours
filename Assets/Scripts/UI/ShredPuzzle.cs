@@ -145,7 +145,7 @@ namespace AfterHours
 
         void Update()
         {
-            age += Mathf.Min(Time.unscaledDeltaTime, 0.05f);
+            age += Mathf.Min(GameTime.UnscaledDelta, 0.05f);
             for (int i = 0; i < N; i++)
                 outlines[order[i]].color = new Color(1f, 0.8f, 0.35f, i == cursor && !done ? 0.9f : i == held ? 0.5f : 0f);
             if (done || age < 0.3f) return;

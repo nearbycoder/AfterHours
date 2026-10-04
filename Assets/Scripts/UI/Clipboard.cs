@@ -125,7 +125,7 @@ namespace AfterHours
         {
             if (Open)
             {
-                refresh -= Time.unscaledDeltaTime;
+                refresh -= GameTime.UnscaledDelta;
                 if (refresh <= 0f) { refresh = 0.5f; Refresh(); }
                 if (GameInput.Menu.Clipboard || GameInput.Menu.Back) Close();
             }

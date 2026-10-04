@@ -106,14 +106,14 @@ namespace AfterHours
         {
             // Cinematic drift between pairs of keyframes.
             var p = GameRoot.Instance.Player;
-            t += Time.unscaledDeltaTime;
+            t += GameTime.UnscaledDelta;
             int shot = (int)(t / 12f) % (Shots.Length / 2);
             float k = Mathf.SmoothStep(0, 1, (t % 12f) / 12f);
             var a = Shots[shot * 2];
             var b = Shots[shot * 2 + 1];
             p.Teleport(Vector3.Lerp(a.pos, b.pos, k), Mathf.LerpAngle(a.yaw, b.yaw, k), Mathf.Lerp(a.pitch, b.pitch, k));
             // Logo flickers like a tube light warming up.
-            float f = Mathf.PerlinNoise(Time.unscaledTime * 3f, 0.5f);
+            float f = Mathf.PerlinNoise(GameTime.Unscaled * 3f, 0.5f);
             logo.alpha = f > 0.12f ? 1f : 0.55f;
             var kb = Keyboard.current;
             if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen)
