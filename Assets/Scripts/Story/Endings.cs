@@ -83,7 +83,9 @@ namespace AfterHours
                     e.Headline = "LOCAL FREIGHT FIRM: NOTHING TO REPORT";
                     e.Lines.Add("Monday, 9:04 AM. The auditors complimented the conference room. It had never looked better.");
                     e.Lines.Add("Whatever was in the red folder went out with the morning pickup.");
-                    e.Lines.Add("You never read a single page that wasn't yours. Some people would call that professional.");
+                    e.Lines.Add(s.Evidence.Any(x => x.Fate == Fate.Seen)
+                        ? "You read every page and put each one back exactly where it was. Some people would call that professional."
+                        : "You never read a single page that wasn't yours. Some people would call that professional.");
                     break;
                 default:
                     e.Title = "Loose Threads";
@@ -94,15 +96,23 @@ namespace AfterHours
                     else e.Lines.Add("Half the story reached the right desk. The other half went down the chute.");
                     break;
             }
-            // Personal epilogues
-            if (s.IsDelivered("walt_letter", "auditor") || (PriyaForwards(s) && s.IsDelivered("walt_letter", "priya")))
+            // Personal epilogues. In Clean Books the fraud stays buried, so nobody is vindicated and
+            // Marian, not BrightStar's suspicion, decides who cleans her floor.
+            bool buried = id == "cleanbooks";
+            bool waltHeard = s.IsDelivered("walt_letter", "auditor") || (PriyaForwards(s) && s.IsDelivered("walt_letter", "priya"));
+            if (waltHeard && !buried)
                 e.Lines.Add("Walt got a phone call, an apology and eleven years of back pay. He sent you a postcard: \"Told you. — W.\"");
+            else if (waltHeard)
+                e.Lines.Add("Walt's letter reached the auditors. Next to Theo's initials on every invoice, it read like a grudge.");
             else if (s.Knows("walt"))
                 e.Lines.Add("Walt never found out who believed him.");
             if (s.Has("took_money")) e.Lines.Add("You kept the fifty dollars. You told yourself it was a tip.");
-            e.Lines.Add(s.Suspicion >= 3
-                ? "BrightStar Janitorial moved you to a parking garage across town. \"Client request.\""
-                : "BrightStar offered you the Meridian Tower contract permanently. You said you'd think about it.");
+            if (buried)
+                e.Lines.Add("BrightStar made the Meridian Tower contract permanent. Marian asked for you by name.");
+            else
+                e.Lines.Add(s.Suspicion >= 3
+                    ? "BrightStar Janitorial moved you to a parking garage across town. \"Client request.\""
+                    : "BrightStar offered you the Meridian Tower contract permanently. You said you'd think about it.");
             return e;
         }
     }

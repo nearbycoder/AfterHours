@@ -72,6 +72,21 @@ namespace AfterHours.Tests
         }
 
         [Test]
+        public void CleanBooksEpilogueVindicatesNobody()
+        {
+            // Walt's letter went to the auditor, but the folder was shredded: no apology for Walt,
+            // and Marian keeps you on rather than having you moved.
+            var s = Fresh();
+            s.SetFate("walt_letter", Fate.Delivered, "auditor");
+            s.SetFate("red_folder", Fate.Shredded);
+            s.Suspicion = 5;
+            var e = Endings.Resolve(s);
+            Assert.AreEqual("cleanbooks", e.Id);
+            Assert.IsFalse(e.Lines.Any(l => l.Contains("back pay")), "Walt is not vindicated when the fraud stays buried");
+            Assert.IsFalse(e.Lines.Any(l => l.Contains("parking garage")), "Marian doesn't have the custodian she owes moved");
+        }
+
+        [Test]
         public void LooseThreadsWhenTheFolderIsKept()
         {
             var s = Fresh();
