@@ -49,7 +49,7 @@ namespace AfterHours
                       $"median {P(0.5f):F1} ms, p95 {P(0.95f):F1} ms, p99 {P(0.99f):F1} ms, worst {sorted[^1]:F0} ms");
         }
 
-        void Check(bool ok, string what)
+        protected void Check(bool ok, string what)
         {
             if (ok) passes++; else fails++;
             Debug.Log($"[AutoPilot] {(ok ? "PASS" : "FAIL")} {what}  (t={Time.time:F1})");
@@ -590,7 +590,7 @@ namespace AfterHours
 
         // ---- task completion through real components -------------------------------------------
 
-        IEnumerator CompleteTasks(int n)
+        protected IEnumerator CompleteTasks(int n)
         {
             var dir = root.Director;
             // Surfaces: the real brush maths, stroke by stroke.
@@ -640,7 +640,7 @@ namespace AfterHours
             .OrderBy(b => (b.transform.position - item.transform.position).sqrMagnitude).FirstOrDefault();
 
         /// <summary>A standing spot <paramref name="range"/> from the bin with room for the player and a clear view of its mouth.</summary>
-        static Vector3? ThrowSpot(Bin bin, float range)
+        protected static Vector3? ThrowSpot(Bin bin, float range)
         {
             var b = bin.transform.position;
             var mouth = b + Vector3.up * (bin.Height + 0.25f);
@@ -659,7 +659,7 @@ namespace AfterHours
         }
 
         /// <summary>Camera pitch for which a throw at charge <paramref name="c"/> from <paramref name="from"/> drops into the bin (same maths as <see cref="Hands"/>).</summary>
-        float? SolvePitch(Vector3 from, Bin bin, float c)
+        protected float? SolvePitch(Vector3 from, Bin bin, float c)
         {
             var target = bin.transform.position;
             float targetY = target.y + bin.Height;
@@ -681,7 +681,7 @@ namespace AfterHours
         }
 
         /// <summary>Clean a surface with its tool's real brush: boustrophedon strokes until it's done.</summary>
-        IEnumerator CleanSurface(GrimeSurface s)
+        protected IEnumerator CleanSurface(GrimeSurface s)
         {
             var brush = ToolDefs.For(s.Tool);
             float r = brush.Radius;
@@ -717,7 +717,7 @@ namespace AfterHours
 
         // ---- small helpers -----------------------------------------------------------------------
 
-        IEnumerator Inspect(Action open, InspectChoice choice)
+        protected IEnumerator Inspect(Action open, InspectChoice choice)
         {
             open();
             float t = 0;
@@ -884,7 +884,7 @@ namespace AfterHours
             Check(!ChoiceMenu.IsOpen && !root.Blocked, "after the note, the player can move again");
         }
 
-        IEnumerator Deliver(string doc, string person)
+        protected IEnumerator Deliver(string doc, string person)
         {
             var trays = root.Director.Furniture.Trays;
             Check(trays.ContainsKey(person), $"{person}'s tray exists");

@@ -60,7 +60,7 @@ namespace AfterHours
             var s = Current;
             if (Application.isEditor) return;
             var args = Environment.GetCommandLineArgs();
-            bool automated = Array.IndexOf(args, "-ahCapture") >= 0 || Array.IndexOf(args, "-ahAutopilot") >= 0 || Array.IndexOf(args, "-ahShowcase") >= 0;
+            bool automated = Array.IndexOf(args, "-ahCapture") >= 0 || Array.IndexOf(args, "-ahAutopilot") >= 0 || Array.IndexOf(args, "-ahShowcase") >= 0 || Array.IndexOf(args, "-ahTrailer") >= 0;
             if (!automated)
             {
                 var mode = s.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
