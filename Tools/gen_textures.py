@@ -533,6 +533,122 @@ def screens():
 TASKS["screens"] = screens
 
 
+
+# =============================================================================================
+# Story textures: shredded invoice, UV ink marks, notepad rubbing
+# =============================================================================================
+
+def shred_invoice():
+    W, H = 720, 960
+    img = Image.new("RGB", (W, H), (246, 243, 234))
+    d = ImageDraw.Draw(img)
+    t = font("SpecialElite.ttf", 44)
+    m = font("SpecialElite.ttf", 30)
+    s = font("CourierPrime.ttf", 26)
+    d.text((50, 50), "NORTHGATE SUPPLY CO.", font=t, fill=(30, 32, 40))
+    d.text((50, 108), "PO Box 77  ·  no phone listed", font=s, fill=(80, 84, 92))
+    d.line((50, 160, W - 50, 160), fill=(60, 60, 70), width=3)
+    d.text((50, 190), "INVOICE  NG-0412", font=m, fill=(30, 32, 40))
+    d.text((50, 240), "Date: 03/21", font=s, fill=(50, 52, 60))
+    d.text((50, 320), "Strategic review services", font=s, fill=(30, 32, 40))
+    d.text((W - 270, 320), "$48,500.00", font=m, fill=(30, 32, 40))
+    d.line((50, 400, W - 50, 400), fill=(160, 160, 170), width=2)
+    d.text((50, 430), "TOTAL DUE", font=m, fill=(30, 32, 40))
+    d.text((W - 270, 430), "$48,500.00", font=m, fill=(170, 30, 30))
+    d.text((50, 540), "Remit to account  ••7731", font=m, fill=(30, 32, 40))
+    d.text((50, 640), "Approved:", font=s, fill=(50, 52, 60))
+    d.text((210, 610), "M. Cole", font=font("Caveat.ttf", 90), fill=(25, 40, 110))
+    d.rectangle((W - 260, 700, W - 60, 800), outline=(170, 40, 40), width=5)
+    d.text((W - 238, 728), "PAID", font=font("SpecialElite.ttf", 54), fill=(170, 40, 40))
+    a = np.asarray(img).astype(np.float32)
+    rng = np.random.default_rng(3)
+    # Strip edges: torn, slightly darker, with tape glints.
+    n = 6
+    sw = W // n
+    for i in range(1, n):
+        x = i * sw
+        for y in range(H):
+            j = int(rng.integers(-3, 4))
+            a[y, max(0, x + j - 2):x + j + 2] *= 0.75
+    for i in range(n):
+        y0 = int(rng.integers(100, 800))
+        a[y0:y0 + 46, i * sw + 6:(i + 1) * sw - 6] = a[y0:y0 + 46, i * sw + 6:(i + 1) * sw - 6] * 0.85 + np.array([255, 250, 225]) * 0.15
+    save(Image.fromarray(a.clip(0, 255).astype(np.uint8)), "Docs/shred_invoice.png")
+
+
+def uv_marks():
+    def mark(name, draw_fn, size=(512, 512)):
+        img = Image.new("L", size, 0)
+        d = ImageDraw.Draw(img)
+        draw_fn(d)
+        img = img.filter(ImageFilter.GaussianBlur(2))
+        out = np.zeros((size[1], size[0], 4), np.uint8)
+        out[..., :3] = 255
+        out[..., 3] = np.asarray(img)
+        save(Image.fromarray(out, "RGBA"), f"Uv/{name}.png")
+    rng = random.Random(1)
+
+    def arrow(d):
+        wobble_line(d, [(60, 256), (420, 256)], 255, 26, rng, 3)
+        wobble_line(d, [(420, 256), (320, 160)], 255, 26, rng, 3)
+        wobble_line(d, [(420, 256), (320, 352)], 255, 26, rng, 3)
+    mark("arrow", arrow)
+
+    def w_sig(d):
+        d.text((256, 250), "W", font=font("PermanentMarker.ttf", 300), fill=255, anchor="mm")
+    mark("w", w_sig)
+
+    def look_up(d):
+        d.text((256, 180), "LOOK", font=font("PermanentMarker.ttf", 120), fill=255, anchor="mm")
+        d.text((256, 330), "UP", font=font("PermanentMarker.ttf", 150), fill=255, anchor="mm")
+        wobble_line(d, [(256, 500), (256, 420)], 255, 16, rng, 2)
+    mark("look_up", look_up)
+
+    def in_here(d):
+        d.text((256, 200), "IN", font=font("PermanentMarker.ttf", 150), fill=255, anchor="mm")
+        d.text((256, 360), "HERE", font=font("PermanentMarker.ttf", 130), fill=255, anchor="mm")
+    mark("in_here", in_here)
+
+    def boxes(d):
+        d.text((256, 256), "?? -W", font=font("PermanentMarker.ttf", 120), fill=255, anchor="mm")
+    mark("question", boxes)
+
+
+def notepad_rubbing():
+    """Graphite shading with the indented letters left white (revealed by rubbing)."""
+    W, H = 420, 560
+    rng = np.random.default_rng(5)
+    shade = (rng.random((H, W)) * 0.35 + 0.55)
+    yy, xx = np.mgrid[0:H, 0:W]
+    shade *= 0.85 + 0.15 * np.sin((xx * 0.9 + yy * 0.4) * 0.35)
+    letters = Image.new("L", (W, H), 0)
+    d = ImageDraw.Draw(letters)
+    f1 = font("Caveat.ttf", 72)
+    f2 = font("Caveat.ttf", 58)
+    d.text((40, 70), "NORTHGATE", font=f1, fill=255)
+    d.text((40, 170), "wire 48,500", font=f2, fill=255)
+    d.text((40, 250), "acct ••7731", font=f2, fill=255)
+    d.text((40, 330), "FRI — before", font=f2, fill=255)
+    d.text((40, 400), "  audit", font=f2, fill=255)
+    lt = np.asarray(letters.filter(ImageFilter.GaussianBlur(1.2))).astype(np.float32) / 255
+    alpha = np.clip(shade * (1 - lt * 0.95), 0, 1)
+    out = np.zeros((H, W, 4), np.uint8)
+    out[..., 0] = 70
+    out[..., 1] = 72
+    out[..., 2] = 80
+    out[..., 3] = (alpha * 220).astype(np.uint8)
+    save(Image.fromarray(out, "RGBA"), "Grime/notepad_rubbing.png")
+
+
+def story_textures():
+    shred_invoice()
+    uv_marks()
+    notepad_rubbing()
+
+
+TASKS["story"] = story_textures
+
+
 if __name__ == "__main__":
     names = sys.argv[1:] or list(TASKS)
     for n in names:

@@ -42,6 +42,8 @@ namespace AfterHours
         public float FoamStrength;
         public float DirtSmoothness = 0.2f;
         public bool Required = true;
+        public bool RevealOnly;          // no dirt: "cleaning" reveals the ghost layer (pencil rubbing)
+        public string Verb;              // prompt override
         public GrimeSpec Spec = new();
 
         public event Action<GrimeSurface> Completed;
@@ -187,7 +189,7 @@ namespace AfterHours
                 }
             }
 
-            Done = totalWeight <= 0.0001f;
+            Done = !RevealOnly && totalWeight <= 0.0001f;
             Completion = Done ? 1f : 0f;
             GhostReveal = 0; GhostRemaining = 1; GhostWasRevealed = false; GhostWasScrubbed = false;
             finishT = -1; gleamT = -1; wetTexels = 0;
@@ -388,7 +390,7 @@ namespace AfterHours
 
         void UpdateProgress()
         {
-            Completion = totalWeight > 0f ? Mathf.Clamp01(1f - remainingWeight / totalWeight) : 1f;
+            Completion = RevealOnly ? GhostReveal : totalWeight > 0f ? Mathf.Clamp01(1f - remainingWeight / totalWeight) : 1f;
             if (!Done && Completion >= AutoFinishAt)
             {
                 Done = true;
@@ -406,6 +408,11 @@ namespace AfterHours
                 }
                 GhostReveal = rev / ghostWeightTotal;
                 GhostRemaining = rem / ghostWeightTotal;
+                if (RevealOnly)
+                {
+                    Completion = Mathf.Clamp01(GhostReveal / 0.7f);
+                    if (!Done && GhostReveal >= 0.7f) { Done = true; Completed?.Invoke(this); }
+                }
                 if (!GhostWasRevealed && GhostReveal > 0.45f)
                 {
                     GhostWasRevealed = true;

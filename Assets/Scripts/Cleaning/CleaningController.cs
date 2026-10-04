@@ -183,9 +183,21 @@ namespace AfterHours
             }
         }
 
+        float popTimer;
+
         void Emit(float removed, float dt)
         {
             if (!Cleaning) return;
+            if (Equipped == ToolKind.Vacuum && removed > 0.00015f)
+            {
+                // Debris rattling up the wand.
+                popTimer -= dt;
+                if (popTimer <= 0f)
+                {
+                    popTimer = UnityEngine.Random.Range(0.04f, 0.13f) / Mathf.Clamp(removed * 600f, 0.6f, 2.5f);
+                    Sfx.Play("suck_pop", ContactPoint, UnityEngine.Random.Range(0.12f, 0.3f), UnityEngine.Random.Range(0.8f, 1.4f), 0f, AudioBus.Sfx, 0.03f);
+                }
+            }
             particleBudget += Mathf.Min(removed * 900f, 40f) * dt * 60f * 0.02f + (Rig.ScrubSpeed > 0.2f ? dt * 6f : 0f);
             int n = Mathf.FloorToInt(particleBudget);
             if (n <= 0) return;

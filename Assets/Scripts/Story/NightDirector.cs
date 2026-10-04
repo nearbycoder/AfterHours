@@ -17,6 +17,10 @@ namespace AfterHours
         public NightDef Def { get; private set; }
         public NightContext Ctx { get; private set; }
         public bool Running { get; private set; }
+        public bool Paused { get; private set; }
+
+        /// <summary>Hold the clock and scripts (title backdrop, title card).</summary>
+        public void Pause(bool p) => Paused = p;
         public float ClockMinutes { get; private set; }
         public float Elapsed { get; private set; }
 
@@ -46,7 +50,7 @@ namespace AfterHours
 
         public void Begin(int night)
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var timer = System.Diagnostics.Stopwatch.StartNew();
             Def = NightDefs.Get(night);
             if (Def == null) { Debug.LogError("[Night] no night " + night); return; }
             Cleanup();
@@ -101,7 +105,7 @@ namespace AfterHours
             {
                 if (!Def.ChairsOut.Contains(kv.Key)) continue;
                 var c = kv.Value;
-                var back = c.HomeRot * Vector3.forward;
+                var back = -(c.HomeRot * Vector3.forward);   // chairs face their desk; pull out away from it
                 var pos = c.HomePos + back * rng.Range(0.5f, 0.9f) + c.HomeRot * Vector3.right * rng.Range(-0.35f, 0.35f);
                 c.Untuck(pos, c.HomeRot * Quaternion.Euler(0, rng.Range(-60f, 60f), 0));
             }
@@ -130,8 +134,13 @@ namespace AfterHours
             Elapsed = 0;
             Running = true;
             AudioDirector.Instance?.SetNight(Def);
+            if (RoomPhotos.Instance)
+            {
+                RoomPhotos.Instance.Clear();
+                RoomPhotos.Instance.Snap(Def.Rooms, true);
+            }
             NightStarted?.Invoke(night);
-            Debug.Log($"[Night] began night {night}: {Def.Dirt.Count} surfaces, {Def.Spawns.Count} spawns, {Def.Tasks.Count} tasks ({sw.ElapsedMilliseconds} ms)");
+            Debug.Log($"[Night] began night {night}: {Def.Dirt.Count} surfaces, {Def.Spawns.Count} spawns, {Def.Tasks.Count} tasks ({timer.ElapsedMilliseconds} ms)");
         }
 
         void Cleanup()
@@ -211,7 +220,7 @@ namespace AfterHours
 
         void Update()
         {
-            if (!Running) return;
+            if (!Running || Paused) return;
             float dt = Time.deltaTime;
             Elapsed += dt;
             ClockMinutes = Mathf.Min(465f, ClockMinutes + dt * (480f / 720f));
@@ -263,7 +272,7 @@ namespace AfterHours
                 }
                 case TaskKind.Reset:
                 {
-                    var items = Resettable.All.Where(r => r.Required && (t.Targets.Length == 0 || t.Targets.Contains(RoomOf(r.HomePos)) || t.Targets.Contains(r.Id))).ToList();
+                    var items = Resettable.All.Where(r => r.Required && (t.Targets.Length == 0 || t.Targets.Contains(RoomOf(r.HomeAnchor)) || t.Targets.Contains(RoomOf(r.transform.position)) || t.Targets.Contains(r.Id))).ToList();
                     return (items.Count(r => r.AtHome), items.Count);
                 }
                 case TaskKind.Chairs:
@@ -361,6 +370,7 @@ namespace AfterHours
         public void EndNight()
         {
             if (!Running) return;
+            RoomPhotos.Instance?.Snap(Def.Rooms, false);
             Running = false;
             Sfx.Play("punch_clock", null, 0.8f);
             int reqTotal = Def.Tasks.Count(t => !t.Optional), reqDone = Def.Tasks.Count(t => !t.Optional && IsDone(t));

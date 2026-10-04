@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Linq;
 using System.IO;
 using UnityEngine;
 
@@ -37,6 +38,7 @@ namespace AfterHours
             {
                 case "proto": yield return Proto(); break;
                 case "night1": yield return Night1(); break;
+                case "tour": yield return NightTour(); break;
                 default: yield return OfficeTour(); break;
             }
             Log("done");
@@ -170,15 +172,15 @@ namespace AfterHours
             var o = root.Office;
             var player = root.Player;
             var dir = root.Director;
-            yield return Wait(1.5f);
+            yield return Wait(1.6f);
             yield return Shot("titlecard");
-            Interstitial.AutoAdvance = true;
-            yield return Wait(1.2f);
+            yield return WaitUnblocked();
+            yield return Wait(0.5f);
             yield return Shot("closet_start");
 
             // Dana's note on the corkboard
             var note = GameObject.Find("dana_welcome");
-            yield return LookAndUse(note.transform.position, 0.5f);
+            yield return UseAt(note.transform.position, 1.1f, new Vector3(16.5f, 0, 2.5f));
             yield return Wait(0.8f);
             yield return Shot("read_dana_note");
             InspectView.AutoChoice = InspectChoice.Close;
@@ -186,7 +188,7 @@ namespace AfterHours
 
             // Walt's locker
             var locker = GameObject.Find("FURN_locker_walt");
-            yield return LookAndUse(locker.transform.position + Vector3.up * 1.2f + Vector3.left * 0.2f, 0.5f);
+            yield return UseAt(locker.transform.position + Vector3.up * 1.2f + Vector3.left * 0.26f, 1.1f, new Vector3(16f, 0, 3.6f));
             yield return Wait(0.8f);
             yield return Shot("read_walt_note");
             InspectView.AutoChoice = InspectChoice.Close;
@@ -201,69 +203,70 @@ namespace AfterHours
 
             // Reception: lights on, wipe the desk
             player.Teleport(new Vector3(14.2f, 0, 2.0f), -90f, 10f);
-            yield return Wait(0.5f);
-            yield return LookAndUse(o.Switches["reception"].transform.position, 0.4f);
+            yield return UseAt(o.Switches["reception"].transform.position, 0.9f, new Vector3(13f, 0, 2.2f));
             yield return Wait(1.2f);
+            player.Teleport(new Vector3(12.6f, 0, 1.0f), -40f, 8f);
+            yield return Wait(0.3f);
             yield return Shot("reception_lit");
             var desk = o.Surfaces["desk_reception"];
-            player.Teleport(new Vector3(11.5f, 0, 1.9f), 0f, 30f);
-            yield return Sweep(desk, new Rect(0.04f, 0.1f, 0.92f, 0.8f), 3, 1.6f, true, true, false, "reception_wipe", 1);
-            yield return Sweep(desk, new Rect(0.04f, 0.1f, 0.92f, 0.8f), 3, 1.6f, true, true, false);
+            player.Teleport(new Vector3(11.5f, 0, 2.3f), 0f, 30f);
+            yield return Sweep(desk, new Rect(0.03f, 0.15f, 0.94f, 0.7f), 2, 2.2f, true, true, false, "reception_wipe", 0);
+            yield return Sweep(desk, new Rect(0.03f, 0.15f, 0.94f, 0.7f), 2, 2.2f, true, true, false);
             Log($"reception desk {desk.Completion:P0} done={desk.Done}");
 
-            // Throw a coffee cup into the bin by the desk
+            // Throw a coffee cup into the bin
             var cup = FindTrashNear(new Vector3(13.9f, 0, 4.05f));
             if (cup)
             {
-                player.Teleport(new Vector3(13.5f, 0, 1.4f), 20f, 20f);
-                yield return LookAndUse(cup.transform.position, 0.4f);
+                yield return UseAt(cup.transform.position, 1.0f, new Vector3(13.5f, 0, 2.5f));
                 yield return Wait(0.3f);
                 var bin = o.Anchor("BIN_trash_reception_1").position;
-                player.Teleport(new Vector3(10.6f, 0, 1.2f), 0, 0);
-                yield return Aim(bin + Vector3.up * 1.2f, 0.4f);
+                player.Teleport(bin + new Vector3(-3.6f, 0, -2.0f), 0, 0);
+                yield return Aim(bin + Vector3.up * 1.1f, 0.4f);
                 input.Use = true;
-                yield return Wait(0.45f);
+                yield return Wait(0.5f);
                 yield return Shot("throw_arc");
                 input.Use = false;
-                yield return Wait(1.5f);
-                Log($"cup binned={cup.Binned}");
+                yield return Wait(1.6f);
+                Log($"cup binned={cup.Binned} held={root.Hands.Holding != null}");
                 yield return Shot("after_throw");
             }
 
             // Bullpen: lights, the crumpled note
-            player.Teleport(new Vector3(13.0f, 0, 6.0f), 0f, 5f);
-            yield return LookAndUse(o.Switches["bullpen"].transform.position, 0.4f);
+            yield return UseAt(o.Switches["bullpen"].transform.position, 0.9f, new Vector3(13.6f, 0, 6.5f));
             yield return Wait(1.2f);
+            player.Teleport(new Vector3(8.0f, 0, 6.0f), 40f, 6f);
+            yield return Wait(0.3f);
             yield return Shot("bullpen_lit");
             var theoNote = GameObject.Find("theo_note");
-            player.Teleport(new Vector3(10.9f, 0, 9.6f), 0f, 40f);
-            yield return LookAndUse(theoNote.transform.position, 0.4f);
+            yield return UseAt(theoNote.transform.position, 0.9f, new Vector3(10.8f, 0, 9.5f));
             yield return Wait(0.9f);
             yield return Shot("inspect_theo_note");
             InspectView.AutoChoice = InspectChoice.Keep;
             yield return Wait(1.2f);
+            Log($"theo_note fate after keep={Story.State.FateOf("theo_note")}");
 
             // Vacuum under Theo's desk
             var floor = o.Surfaces["floor_bullpen"];
-            player.Teleport(new Vector3(10.5f, 0, 10.2f), 0f, 55f);
+            player.Teleport(new Vector3(10.45f, 0, 10.05f), 0f, 55f);
             input.Crouch = true;
-            yield return Wait(0.4f);
-            for (int i = 0; i < 3; i++)
+            yield return Wait(0.5f);
+            for (int i = 0; i < 4; i++)
             {
-                yield return SweepWorld(floor, new Vector3(9.9f, 0, 11.4f + i * 0.25f), new Vector3(11.0f, 0, 11.4f + i * 0.25f), 0.8f);
-                yield return SweepWorld(floor, new Vector3(11.0f, 0, 11.5f + i * 0.25f), new Vector3(9.9f, 0, 11.5f + i * 0.25f), 0.8f);
+                yield return SweepWorld(floor, new Vector3(9.95f, 0, 11.3f + i * 0.2f), new Vector3(10.9f, 0, 11.3f + i * 0.2f), 0.7f);
+                yield return SweepWorld(floor, new Vector3(10.9f, 0, 11.4f + i * 0.2f), new Vector3(9.95f, 0, 11.4f + i * 0.2f), 0.7f);
             }
-            input.Crouch = false;
-            yield return Wait(0.8f);
+            yield return Wait(0.3f);
             yield return Shot("vacuum_key");
+            input.Crouch = false;
+            yield return Wait(0.6f);
             var key = GameObject.Find("key");
-            if (key) { yield return LookAndUse(key.transform.position, 0.3f); yield return Wait(0.5f); }
+            if (key) { yield return UseAt(key.transform.position, 0.8f, new Vector3(10.4f, 0, 10f)); yield return Wait(0.5f); }
             Log($"key found={Story.State.Has("has_key_fc2")}");
 
             // Deliver the note to Priya
             var tray = root.Director.Furniture.Trays["priya"];
-            player.Teleport(new Vector3(9.4f, 0, 13.4f), 120f, 30f);
-            yield return LookAndUse(tray.transform.position + Vector3.up * 0.05f, 0.4f);
+            yield return UseAt(tray.transform.position + Vector3.up * 0.06f, 0.8f, new Vector3(9.0f, 0, 13.4f));
             yield return Wait(0.6f);
             yield return Shot("tray_menu");
             ChoiceMenu.AutoPick = 0;
@@ -277,10 +280,9 @@ namespace AfterHours
             foreach (var c in dir.Furniture.Chairs.Values) c.Tuck(true);
             foreach (var m in dir.Furniture.Monitors.Values) if (m.On && m.CountsForTask) m.SetOn(false, true);
             yield return Wait(1f);
-            player.Teleport(new Vector3(13.0f, 0, 6.0f), 0f, 5f);
             o.Rooms["reception"].SetLights(false, true);
-            yield return LookAndUse(o.Switches["bullpen"].transform.position, 0.4f);
-            player.Teleport(new Vector3(13.6f, 0, 9.0f), -10f, 10f);
+            yield return UseAt(o.Switches["bullpen"].transform.position, 0.9f, new Vector3(13.6f, 0, 6.5f));
+            player.Teleport(new Vector3(13.4f, 0, 8.6f), 10f, 8f);
             yield return Wait(2.5f);
             yield return Aim(dir.Furniture.Monitors["walt"].transform.position + Vector3.up * 0.35f, 0.5f);
             yield return Wait(0.5f);
@@ -290,14 +292,53 @@ namespace AfterHours
             // Clock out
             player.Teleport(new Vector3(16.4f, 0, 2.5f), -90f, 0f);
             dir.RequestClockOut();
-            yield return Wait(2.5f);
+            yield return Wait(3.5f);
             yield return Shot("shift_report");
             Interstitial.AutoAdvance = true;
-            yield return Wait(6f);
+            yield return Wait(9f);
             yield return Shot("morning_chat");
             Interstitial.AutoAdvance = true;
-            yield return Wait(3f);
+            yield return Wait(2.5f);
             yield return Shot("night2_card");
+        }
+
+        /// <summary>For -ahNight N: photograph each unlocked room with lights on and log the night setup.</summary>
+        IEnumerator NightTour()
+        {
+            var o = root.Office;
+            var dir = root.Director;
+            yield return WaitUnblocked();
+            yield return Wait(0.5f);
+            int n = dir.Def.Number;
+            Log($"night {n} spawns={dir.Ctx.Spawned.Count} trash={Object.FindObjectsByType<TrashItem>(FindObjectsSortMode.None).Length} evidence={Object.FindObjectsByType<EvidenceItem>(FindObjectsSortMode.None).Length} readables={Object.FindObjectsByType<Readable>(FindObjectsSortMode.None).Length} resets={Resettable.All.Count}");
+            foreach (var t in dir.Def.Tasks) Log($"task {t.Id}: {dir.Progress(t)}");
+            yield return Shot($"n{n}_closet");
+            (string room, Vector3 pos, float yaw, float pitch)[] views =
+            {
+                ("reception", new Vector3(14.3f, 0, 0.7f), -55f, 12f),
+                ("bullpen", new Vector3(8.2f, 0, 6.2f), 35f, 12f),
+                ("conference", new Vector3(6.3f, 0, 15.3f), -140f, 14f),
+                ("office", new Vector3(18.7f, 0, 15.2f), 140f, 14f),
+                ("breakroom", new Vector3(6.4f, 0, 8.6f), -140f, 16f),
+            };
+            foreach (var v in views)
+            {
+                if (!dir.Def.Rooms.Contains(v.room)) continue;
+                root.Player.Teleport(v.pos, v.yaw, v.pitch);
+                o.Rooms[v.room].SetLights(true, true);
+                yield return Wait(0.6f);
+                yield return Shot($"n{n}_{v.room}");
+            }
+            if (Story.State.Has("has_uv_torch") || n >= 2)
+            {
+                Story.State.Set("has_uv_torch");
+                root.Player.Teleport(new Vector3(9.5f, 0, 8.6f), -90f, 2f);
+                o.Rooms["bullpen"].SetLights(false, true);
+                input.TorchOnce = true;
+                yield return Wait(0.8f);
+                yield return Shot($"n{n}_uv");
+                input.TorchOnce = true;
+            }
         }
 
         TrashItem FindTrashNear(Vector3 p)
@@ -312,8 +353,26 @@ namespace AfterHours
             return best;
         }
 
+        /// <summary>Stand within reach of target (horizontal distance d), then look at it and press E.</summary>
+        protected IEnumerator UseAt(Vector3 target, float d = 1.2f, Vector3? from = null)
+        {
+            var p = root.Player.transform.position;
+            var dir = (from ?? p) - target;
+            dir.y = 0;
+            if (dir.sqrMagnitude < 1e-4f) dir = Vector3.back;
+            var stand = target + dir.normalized * d;
+            stand.y = 0;
+            root.Player.Teleport(stand, root.Player.Yaw, 0);
+            yield return null;
+            yield return LookAndUse(target, 0.35f);
+        }
+
         protected IEnumerator LookAndUse(Vector3 target, float aimTime)
         {
+            InspectView.AutoChoice = null;
+            ChoiceMenu.AutoPick = -1;
+            Interstitial.AutoAdvance = false;
+            if (root.Blocked) Log("blocked before use: " + root.BlockerList);
             yield return Aim(target, aimTime);
             yield return null;
             input.InteractOnce = true;
@@ -336,6 +395,13 @@ namespace AfterHours
         // ---- helpers -------------------------------------------------------------------------
 
         protected void Log(string msg) => Debug.Log("[Capture] " + msg);
+
+        protected IEnumerator WaitUnblocked(float timeout = 20f)
+        {
+            float t = 0;
+            while ((Interstitial.AnyOpen || root.Blocked) && t < timeout) { t += Time.unscaledDeltaTime; yield return null; }
+            if (root.Blocked) Log("still blocked by " + root.BlockerList);
+        }
 
         protected IEnumerator Wait(float s)
         {

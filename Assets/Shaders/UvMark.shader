@@ -16,6 +16,7 @@ Shader "AfterHours/UvMark"
             Tags { "LightMode" = "UniversalForward" }
             Blend One One
             ZWrite Off
+            Cull Off
             Offset -2, -2
             HLSLPROGRAM
             #pragma vertex Vert

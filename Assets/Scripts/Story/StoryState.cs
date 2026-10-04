@@ -102,7 +102,19 @@ namespace AfterHours
 
         // ---- persistence -------------------------------------------------------------------------
 
-        static string Dir => Application.persistentDataPath;
+        /// <summary>Save directory; -ahProfile NAME isolates automated runs from real saves.</summary>
+        static string Dir
+        {
+            get
+            {
+                var args = Environment.GetCommandLineArgs();
+                int i = Array.IndexOf(args, "-ahProfile");
+                if (i < 0 || i + 1 >= args.Length) return Application.persistentDataPath;
+                var d = Path.Combine(Application.persistentDataPath, "profile_" + args[i + 1]);
+                Directory.CreateDirectory(d);
+                return d;
+            }
+        }
         static string SavePath => Path.Combine(Dir, "save.json");
         static string SnapPath(int night) => Path.Combine(Dir, $"night{night}_start.json");
 

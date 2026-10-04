@@ -143,9 +143,9 @@ namespace AfterHours
             // Walt's old hot desk: empty-ish
             Dress("walt", "paper_stack", new Vector3(-0.5f, 0, -0.1f), 5);
             // Marian: orchid, plaque, phone (notepad is a story object)
-            Dress("marian", "orchid", new Vector3(-0.75f, 0, -0.3f), 0);
-            Dress("marian", "award_plaque", new Vector3(0.75f, 0, -0.33f), -10);
-            Dress("marian", "desk_phone", new Vector3(0.6f, 0, 0.0f), -15);
+            Dress("marian", "orchid", new Vector3(-0.75f, 0, -0.3f), 0, "marian_orchid");
+            Dress("marian", "award_plaque", new Vector3(0.75f, 0, -0.33f), -10, "marian_plaque");
+            Dress("marian", "desk_phone", new Vector3(0.6f, 0, 0.0f), -15, "marian_phone");
             Place("orchid", o.Anchor("ANCHOR_credenza_office"), new Vector3(0.4f, 0, 0), 0, "orchid_credenza");
             Place("award_plaque", o.Anchor("ANCHOR_credenza_office"), new Vector3(-0.3f, 0, 0), 0, null);
             // Bookshelf contents
@@ -173,10 +173,10 @@ namespace AfterHours
             Place("plant_succulent", o.Anchor("ANCHOR_credenza_conf"), new Vector3(-0.5f, 0, 0), 0, null);
         }
 
-        void Dress(string desk, string prop, Vector3 off, float yaw)
+        void Dress(string desk, string prop, Vector3 off, float yaw, string name = null)
         {
             var a = office.Anchor("ANCHOR_desk_" + desk);
-            if (a != null) Place(prop, a, off, yaw, null);
+            if (a != null) Place(prop, a, off, yaw, name);
         }
 
         void AddChair(string id, string prop, Transform anchor)

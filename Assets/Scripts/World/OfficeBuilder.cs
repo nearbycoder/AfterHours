@@ -192,7 +192,6 @@ namespace AfterHours
                     l.innerSpotAngle = 75f;
                     l.shadows = LightShadows.Soft;
                     l.shadowStrength = 0.75f;
-                    l.shadowResolution = UnityEngine.Rendering.LightShadowResolution.Medium;
                 }
             }
             else if (kind == "lamp")

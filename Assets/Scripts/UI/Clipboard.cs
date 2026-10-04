@@ -63,7 +63,7 @@ namespace AfterHours
             if (NightDirector.Instance == null || NightDirector.Instance.Def == null) return;
             Open = true;
             Refresh();
-            GameRoot.Instance?.SetGameplayBlocked(true, false);
+            GameRoot.Instance?.SetBlocked("clipboard", true);
             group.blocksRaycasts = true;
             Sfx.Play("ui_page", null, 0.5f, 1f, 0.1f, AudioBus.Ui);
             Tween.Run(0.3f, k =>
@@ -75,9 +75,10 @@ namespace AfterHours
 
         public void Close()
         {
+            if (!Open) return;
             Open = false;
             group.blocksRaycasts = false;
-            GameRoot.Instance?.SetGameplayBlocked(false, false);
+            GameRoot.Instance?.SetBlocked("clipboard", false);
             Sfx.Play("ui_page", null, 0.35f, 0.9f, 0.1f, AudioBus.Ui);
             Tween.Run(0.2f, k =>
             {

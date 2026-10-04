@@ -144,7 +144,9 @@ namespace AfterHours
             Setup("ShiftReport", 70, new Color(0.02f, 0.025f, 0.04f, 0.94f));
             var board = Ui.Panel(root, "Clipboard", Palette.Hex("8A5A34"), 22);
             var brt = board.rectTransform;
-            Ui.Place(brt, new Vector2(0.5f, 0.5f), new Vector2(0, -10), new Vector2(860, 940));
+            bool photos = RoomPhotos.Instance != null && RoomPhotos.Instance.After.Count > 0;
+            Ui.Place(brt, new Vector2(0.5f, 0.5f), new Vector2(photos ? -330 : 0, -10), new Vector2(860, 940));
+            if (photos) PolaroidWipe.Create(root, def);
             brt.localRotation = Quaternion.Euler(0, 0, 1.2f);
             var clip = Ui.Panel(brt, "Clip", Palette.Hex("B9C0C7"), 10);
             Ui.Place(clip.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 26), new Vector2(260, 70), new Vector2(0.5f, 1));
@@ -197,7 +199,8 @@ namespace AfterHours
                 stamp.alpha = 1;
                 Sfx.Play("punch_clock", null, 0.7f, 1.3f, 0f, AudioBus.Ui);
                 Tween.Run(0.22f, k => { if (stamp) stamp.rectTransform.localScale = Vector3.one * Mathf.Lerp(2.2f, 1f, k); }, Ease.InCubic);
-                Tween.Run(0.3f, k => { if (brt) brt.anchoredPosition = new Vector2(Mathf.Sin(k * 50) * 8 * (1 - k), -10); }, Ease.Linear, null, 0.2f);
+                float bx = brt.anchoredPosition.x;
+                Tween.Run(0.3f, k => { if (brt) brt.anchoredPosition = new Vector2(bx + Mathf.Sin(k * 50) * 8 * (1 - k), -10); }, Ease.Linear, null, 0.2f);
             });
 
             var hint = Ui.Label(root, "Press  E  to see what happened in the morning", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
@@ -208,6 +211,86 @@ namespace AfterHours
         void Update()
         {
             if (done != null && age > 1.2f && Advance()) Finish();
+        }
+    }
+
+    /// <summary>Before/after polaroid: the after photo wipes across the before, like a squeegee.</summary>
+    public class PolaroidWipe : MonoBehaviour
+    {
+        RectTransform frame, afterMask, line;
+        RawImage before, after;
+        TextMeshProUGUI caption;
+        readonly List<string> rooms = new();
+        int index = -1;
+        float t;
+
+        public static void Create(RectTransform parent, NightDef def)
+        {
+            var go = new GameObject("Polaroid", typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            var p = go.AddComponent<PolaroidWipe>();
+            p.Build(def);
+        }
+
+        void Build(NightDef def)
+        {
+            var photos = RoomPhotos.Instance;
+            foreach (var r in def.Rooms) if (photos.Before.ContainsKey(r) && photos.After.ContainsKey(r)) rooms.Add(r);
+            var rt = (RectTransform)transform;
+            Ui.Place(rt, new Vector2(0.5f, 0.5f), new Vector2(520, 30), new Vector2(700, 560));
+            rt.localRotation = Quaternion.Euler(0, 0, 2.5f);
+            var shadow = Ui.Panel(rt, "Shadow", new Color(0, 0, 0, 0.5f), 10);
+            Ui.Stretch(shadow.rectTransform, -4);
+            shadow.rectTransform.anchoredPosition = new Vector2(10, -12);
+            var paper = Ui.Panel(rt, "Paper", Palette.Hex("F7F5EE"), 4);
+            Ui.Stretch(paper.rectTransform);
+            frame = Ui.Rect(rt, "Photo");
+            Ui.Place(frame, new Vector2(0.5f, 1), new Vector2(0, -28), new Vector2(640, 400), new Vector2(0.5f, 1));
+            before = new GameObject("Before", typeof(RectTransform)).AddComponent<RawImage>();
+            before.transform.SetParent(frame, false);
+            Ui.Stretch(before.rectTransform);
+            afterMask = Ui.Rect(frame, "AfterMask");
+            afterMask.anchorMin = new Vector2(0, 0); afterMask.anchorMax = new Vector2(0, 1);
+            afterMask.pivot = new Vector2(0, 0.5f);
+            afterMask.sizeDelta = new Vector2(0, 0);
+            afterMask.gameObject.AddComponent<RectMask2D>();
+            after = new GameObject("After", typeof(RectTransform)).AddComponent<RawImage>();
+            after.transform.SetParent(afterMask, false);
+            after.rectTransform.anchorMin = after.rectTransform.anchorMax = new Vector2(0, 0.5f);
+            after.rectTransform.pivot = new Vector2(0, 0.5f);
+            after.rectTransform.sizeDelta = new Vector2(640, 400);
+            var l = Ui.Image(frame, "Line", new Color(1f, 1f, 1f, 0.9f));
+            line = l.rectTransform;
+            line.anchorMin = new Vector2(0, 0); line.anchorMax = new Vector2(0, 1);
+            line.sizeDelta = new Vector2(4, 0);
+            caption = Ui.Label(rt, "", UiFont.Hand, 40, Ui.Ink, TextAlignmentOptions.Center);
+            Ui.Place(caption.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(640, 90), new Vector2(0.5f, 0));
+            Next();
+        }
+
+        void Next()
+        {
+            if (rooms.Count == 0) return;
+            index = (index + 1) % rooms.Count;
+            var id = rooms[index];
+            before.texture = RoomPhotos.Instance.Before[id];
+            after.texture = RoomPhotos.Instance.After[id];
+            string name = OfficeBuilder.Instance.Rooms.TryGetValue(id, out var r) ? r.DisplayName : id;
+            caption.text = $"{name}  <size=70%><color=#888>before → after</color></size>";
+            t = 0f;
+        }
+
+        void Update()
+        {
+            if (rooms.Count == 0) return;
+            t += Time.unscaledDeltaTime;
+            float k = Mathf.Clamp01((t - 0.8f) / 1.1f);
+            k = Ease.InOutCubic(k);
+            afterMask.sizeDelta = new Vector2(640 * k, 0);
+            line.anchoredPosition = new Vector2(640 * k, 0);
+            line.gameObject.SetActive(k > 0.001f && k < 0.999f);
+            if (t > 0.8f && t - Time.unscaledDeltaTime <= 0.8f) Sfx.Play("toss", null, 0.35f, 1.2f, 0.05f, AudioBus.Ui);
+            if (t > 4.2f && rooms.Count > 1) Next();
         }
     }
 

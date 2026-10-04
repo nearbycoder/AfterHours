@@ -91,7 +91,7 @@ namespace AfterHours
                 InspectMode.Screen => $"{key("E")}  Close        {key("Q")}  Switch off monitor",
                 _ => $"{key("E")}  Close",
             };
-            GameRoot.Instance?.SetGameplayBlocked(true, false);
+            GameRoot.Instance?.SetBlocked("inspect", true);
             PostFx.Instance?.SetInspect(true);
             Sfx.Duck = 0.45f;
             group.blocksRaycasts = true;
@@ -185,7 +185,7 @@ namespace AfterHours
                 group.alpha = 1 - k;
                 card.anchoredPosition = new Vector2(0, Mathf.Lerp(10, -300, k));
             }, Ease.InCubic, owner: this);
-            GameRoot.Instance?.SetGameplayBlocked(false, false);
+            GameRoot.Instance?.SetBlocked("inspect", false);
             var cb = callback;
             callback = null;
             cb?.Invoke(c);

@@ -26,6 +26,9 @@ namespace AfterHours
 
         public static void ClearSlots() { slots.Clear(); occupied.Clear(); }
 
+        /// <summary>Where this item belongs (first slot of its group, or its own home).</summary>
+        public Vector3 HomeAnchor => !string.IsNullOrEmpty(Group) && slots.TryGetValue(Group, out var l) && l.Count > 0 ? l[0].pos : HomePos;
+
         public static void AddSlot(string group, Vector3 pos, Quaternion rot)
         {
             if (!slots.TryGetValue(group, out var list)) slots[group] = list = new List<(Vector3, Quaternion)>();
@@ -128,6 +131,7 @@ namespace AfterHours
                     transform.localScale = new Vector3(scale.x * s, scale.y / s, scale.z * s);
                 }, Ease.Linear, () => transform.localScale = scale);
                 Sfx.Play("snap_home", pos, 0.6f, 1f + Random.Range(-0.05f, 0.08f));
+                if (Group == "dishrack" || Group == "glasses") Sfx.Play("ceramic_clink", pos, 0.5f);
                 Fx.Burst(FxKind.Puff, pos, Vector3.up, 5, new Color(0.9f, 0.9f, 0.85f, 0.25f), 0.3f, 1f, 0.05f);
                 Fx.Burst(FxKind.Glint, pos + Vector3.up * 0.05f, Vector3.up, 2, new Color(1f, 0.95f, 0.8f), 0.1f, 0.3f);
                 bool was = AtHome;

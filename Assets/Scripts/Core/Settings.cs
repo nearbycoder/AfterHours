@@ -53,5 +53,21 @@ namespace AfterHours
         }
 
         public static void NotifyChanged() => Changed?.Invoke();
+
+        /// <summary>Fullscreen and render scale.</summary>
+        public static void ApplyGraphics()
+        {
+            var s = Current;
+            if (Application.isEditor) return;
+            var args = Environment.GetCommandLineArgs();
+            bool automated = Array.IndexOf(args, "-ahCapture") >= 0 || Array.IndexOf(args, "-ahAutopilot") >= 0 || Array.IndexOf(args, "-ahShowcase") >= 0;
+            if (!automated)
+            {
+                var mode = s.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+                if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
+            }
+            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp)
+                urp.renderScale = Mathf.Clamp(s.RenderScale, 0.5f, 1f);
+        }
     }
 }

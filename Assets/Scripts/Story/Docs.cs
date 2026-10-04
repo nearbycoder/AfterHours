@@ -235,6 +235,43 @@ namespace AfterHours
                 Body = "<i>[Sunday 11:48 PM — from: M. Cole, mobile]</i>\n\n\"…no, it's fine. Everything in the archive boxes goes out with the morning pickup. <b>All of it.</b> I'll handle the folder myself.\"",
             });
 
+            // ------------------------------------------------------------------ extras
+            Add(new DocDef
+            {
+                Id = "dana_office_key", Style = DocStyle.Note, Title = "Dana's note about the key", Header = "Note · pinned in the closet",
+                Body = "Marian asked for a <b>deep clean</b> of her office before the auditors. Her door's unlocked tonight.\n\nPlease put everything back <u>exactly</u> where it was. She notices. Trust me.\n\n<align=right>— Dana</align>",
+            });
+            Add(new DocDef
+            {
+                Id = "notepad_blank", Style = DocStyle.Notepad, Title = "Marian's legal pad", Header = "Legal pad · Marian's desk",
+                Body = "The top page is blank.\n\nBut if you tilt it toward the lamp you can see <i>indentations</i>, pressed through from a page that's been torn off.\n\n<size=80%>A pencil rubbing might bring them out.</size>",
+            });
+            Add(new DocDef
+            {
+                Id = "marian_memo", Style = DocStyle.Printout, Title = "All-staff memo", Header = "Printout · Dana's desk",
+                Body = "<b>TO: ALL STAFF</b>\n<b>FROM: Marian Cole, Director of Finance</b>\n\nGraffiti on company property, including windows, will be treated as a disciplinary matter.\n\nWalt Bremner's departure is a closed HR issue. Please do not speculate about it.\n\nThank you.",
+            });
+            Add(new DocDef
+            {
+                Id = "priya_forward", Style = DocStyle.Sticky, Title = "Priya's note", Header = "Sticky note · the auditor's tray",
+                Body = "Ms. Sato —\nEverything I had is in the blue folder.\nThe rest you'll have to find.\n\n— P. Anand",
+            });
+            Add(new DocDef
+            {
+                Id = "flight_note", Style = DocStyle.Note, Title = "Flight confirmation", Header = "Torn printout · Marian's bin",
+                Body = "<b>BOOKING CONFIRMED</b>\nPassenger: COLE / MARIAN A.\nDeparting Monday 4:15 PM\n<b>One way.</b>",
+            });
+            Add(new DocDef
+            {
+                Id = "test_page", Style = DocStyle.Printout, Title = "Test page", Header = "The copier printed by itself",
+                Body = "<b>TEST PAGE</b>\n\nPrinter: HALVORSEN-COPIER-01\nStatus: OK\nToner: 12%\n\n<size=80%>(Somebody sent this from FIN01 at 3:33 AM.)</size>",
+            });
+            Add(new DocDef
+            {
+                Id = "archive_label", Style = DocStyle.Printout, Title = "Archive box", Header = "Archive box · by the entrance",
+                Body = "<size=140%><b>ARCHIVE — DESTROY</b></size>\nFor collection Monday 6:00 AM\n\n<size=85%>Do not open. — M.C.</size>",
+            });
+
             // ------------------------------------------------------------------ night 7
             Add(new DocDef
             {

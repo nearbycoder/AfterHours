@@ -112,7 +112,7 @@ namespace AfterHours
             open = true;
             openedAt = Time.unscaledTime;
             group.blocksRaycasts = true;
-            GameRoot.Instance?.SetGameplayBlocked(true, true);
+            GameRoot.Instance?.SetBlocked("choice", true, true);
             Sfx.Play("ui_click", null, 0.4f, 1f, 0f, AudioBus.Ui);
             panel.localScale = Vector3.one * 0.9f;
             Tween.Run(0.25f, k => { group.alpha = k; panel.localScale = Vector3.one * Mathf.LerpUnclamped(0.9f, 1f, k); }, Ease.OutBack, owner: this);
@@ -148,7 +148,7 @@ namespace AfterHours
             group.blocksRaycasts = false;
             var pick = options[i].Pick;
             Tween.Run(0.18f, k => group.alpha = 1 - k, Ease.InCubic, owner: this);
-            GameRoot.Instance?.SetGameplayBlocked(false, true);
+            GameRoot.Instance?.SetBlocked("choice", false);
             Sfx.Play(pick == null ? "ui_back" : "ui_click", null, 0.45f, 1f, 0f, AudioBus.Ui);
             pick?.Invoke();
         }

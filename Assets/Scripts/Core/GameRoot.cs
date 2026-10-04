@@ -24,7 +24,10 @@ namespace AfterHours
         public NightDirector Director { get; private set; }
         public bool InNight => Director != null && Director.Running;
 
-        int blockers, cursorBlockers;
+        readonly HashSet<string> blockers = new();
+        readonly HashSet<string> cursorBlockers = new();
+        public bool Blocked => blockers.Count > 0;
+        public string BlockerList => string.Join(",", blockers);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -74,6 +77,7 @@ namespace AfterHours
             Hands = Player.gameObject.AddComponent<Hands>();
             Hands.Player = Player;
             Hands.Cleaning = Cleaning;
+            UvTorch.Create(Player);
             Interactor = Player.gameObject.AddComponent<Interactor>();
             Interactor.Player = Player;
             Interactor.Cleaning = Cleaning;
@@ -91,6 +95,7 @@ namespace AfterHours
             Clipboard.Create();
             if (!proto)
             {
+                RoomPhotos.Create();
                 Director = NightDirector.Create(Office);
                 Director.transform.SetParent(transform, false);
             }
@@ -102,6 +107,7 @@ namespace AfterHours
             if (HasArg("-ahAutopilot")) gameObject.AddComponent<AutoPilot>();
             if (Proto != null) { LockCursor(true); return; }
 
+            Settings.ApplyGraphics();
             int night = int.TryParse(Arg("-ahNight"), out var n) ? n : 0;
             if (HasArg("-ahFresh")) Story.State = new StoryState();
             else Story.State = StoryState.Load() ?? new StoryState();
@@ -111,7 +117,19 @@ namespace AfterHours
                 if (snap != null) Story.State = snap;
                 StartNight(night);
             }
-            else StartNight(Mathf.Clamp(Story.State.Night, 1, NightDefs.Count));
+            else ToTitle();
+        }
+
+        /// <summary>Back to the title: the current night's office becomes the backdrop.</summary>
+        public void ToTitle()
+        {
+            var saved = StoryState.Load();
+            if (saved != null) Story.State = saved;
+            int n = Mathf.Clamp(Story.State.Night, 1, NightDefs.Count);
+            Director.Begin(n);
+            Director.Pause(true);
+            foreach (var r in Office.Rooms.Values) r.SetLights(false, true);
+            TitleScreen.ShowTitle();
         }
 
         // =========================================================================================
@@ -120,16 +138,18 @@ namespace AfterHours
 
         public void StartNight(int n)
         {
-            Director.Begin(n);
             Block(true, false);
             Hud.Instance.SetVisible(false);
-            TitleCard.Show(Director.Def, () =>
+            // The card covers the screen first; the (heavy) night setup happens behind it.
+            TitleCard.Show(NightDefs.Get(n), () =>
             {
                 Block(false, false);
                 Hud.Instance.SetVisible(true);
+                Director.Pause(false);
                 LockCursor(true);
                 if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption("Your shift sheet is on the clipboard  ·  Tab", 4f));
             });
+            Tween.Delay(0.15f, () => { Director.Begin(n); Director.Pause(true); });
         }
 
         public void OnNightEnded(NightDef def, NightResult result)
@@ -159,18 +179,18 @@ namespace AfterHours
         // Input gating
         // =========================================================================================
 
-        /// <summary>Block gameplay input (stacked). cursor: free the mouse for UI.</summary>
-        public void SetGameplayBlocked(bool blocked, bool cursor) => Block(blocked, cursor);
-
-        void Block(bool on, bool cursor)
+        /// <summary>Block gameplay input while a UI owns the screen. cursor: free the mouse for UI.</summary>
+        public void SetBlocked(string who, bool blocked, bool cursor = false)
         {
-            blockers = Mathf.Max(0, blockers + (on ? 1 : -1));
-            if (cursor) cursorBlockers = Mathf.Max(0, cursorBlockers + (on ? 1 : -1));
-            GameInput.GameplayEnabled = blockers == 0;
-            if (Player) { Player.LookLocked = blockers > 0; Player.MoveLocked = blockers > 0; }
-            if (Interactor) Interactor.Locked = blockers > 0;
-            LockCursor(cursorBlockers == 0);
+            if (blocked) { blockers.Add(who); if (cursor) cursorBlockers.Add(who); }
+            else { blockers.Remove(who); cursorBlockers.Remove(who); }
+            GameInput.GameplayEnabled = blockers.Count == 0;
+            if (Player) { Player.LookLocked = blockers.Count > 0; Player.MoveLocked = blockers.Count > 0; }
+            if (Interactor) Interactor.Locked = blockers.Count > 0;
+            LockCursor(cursorBlockers.Count == 0);
         }
+
+        void Block(bool on, bool cursor) => SetBlocked("flow", on, cursor);
 
         static void LockCursor(bool locked)
         {
@@ -188,7 +208,9 @@ namespace AfterHours
             var hud = Hud.Instance;
             if (hud == null) return;
             var f = GameInput.Frame;
-            if (blockers == 0 && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb != null && kb.escapeKey.wasPressedThisFrame && blockers.Count == 0 && InNight && !PauseMenu.IsOpen) PauseMenu.Show();
+            if (blockers.Count == 0 && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
 
             if (Hands != null && Hands.Holding != null)
             {
@@ -204,7 +226,7 @@ namespace AfterHours
             }
             if (t != null && Cleaning.InReach && !Cleaning.Suspended)
             {
-                string verb = t.Tool switch
+                string verb = !string.IsNullOrEmpty(t.Verb) ? t.Verb : t.Tool switch
                 {
                     ToolKind.Vacuum => "Vacuum",
                     ToolKind.Squeegee => "Squeegee",
