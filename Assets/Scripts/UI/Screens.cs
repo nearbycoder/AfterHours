@@ -102,8 +102,12 @@ namespace AfterHours
             var sub = Ui.Label(rt, $"{def.Day.ToUpperInvariant()}  —  {def.Title}", UiFont.SansMedium, 34, Palette.Hex("3A3F4A"), TextAlignmentOptions.Center);
             Ui.Place(sub.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -50), new Vector2(940, 50));
             sub.alpha = 0;
-            var tag = Ui.Label(rt, def.Tagline, UiFont.Hand, 40, Palette.Hex("1E3A6E"), TextAlignmentOptions.Center);
-            Ui.Place(tag.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 38), new Vector2(940, 60), new Vector2(0.5f, 0));
+            // Handwritten in the bottom-left, clear of the IN stamp on the right.
+            var tag = Ui.Label(rt, def.Tagline, UiFont.Hand, 40, Palette.Hex("1E3A6E"), TextAlignmentOptions.Left);
+            Ui.Place(tag.rectTransform, new Vector2(0, 0), new Vector2(60, 36), new Vector2(590, 60), new Vector2(0, 0));
+            tag.enableAutoSizing = true;
+            tag.fontSizeMin = 28;
+            tag.fontSizeMax = 40;
             tag.alpha = 0;
             var stamp = Ui.Label(rt, "IN  10:02 PM", UiFont.Mono, 30, new Color(0.75f, 0.15f, 0.12f, 0.9f), TextAlignmentOptions.Center);
             Ui.Place(stamp.rectTransform, new Vector2(1, 0), new Vector2(-170, 96), new Vector2(260, 50), new Vector2(0.5f, 0.5f));
