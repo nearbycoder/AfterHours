@@ -173,8 +173,9 @@ Tools/unity.sh                # open the project in the editor
   walking up to things and holding documents open, and writes every frame (fixed 30 fps clock)
   plus the game's own audio to DIR for a gameplay video.
 
-Latest results on the shipped build, all seven nights each: **audit 196, loose 192, cleanbooks
-192, spotless 167, marian 187 checks passed, 0 failed**, each reaching its expected ending; EditMode tests **13 of
+Latest results on the shipped build, all seven nights each: **audit 224, loose 220, cleanbooks
+220, spotless 195, marian 215 checks passed, 0 failed**, each reaching its expected ending (the
+checks include no props overlapping, sunk into furniture or floating, on every night); EditMode tests **13 of
 13** passing.
 
 Performance (1600x900, AMD Radeon 8060S iGPU, OpenGL Core, vsync off): the perf probe renders the

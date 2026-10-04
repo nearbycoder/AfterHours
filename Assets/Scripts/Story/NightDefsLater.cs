@@ -671,7 +671,8 @@ namespace AfterHours
             n.Decor("archive_box", 13.9f, 0.27f, 1.0f, -5, null, "archive_2");
             n.Decor("archive_box", 13.4f, 0.0f, 0.75f, 30, null, "archive_3");
             n.Spawns.Add(new SpawnDef { Prop = "sticky_note", Anchor = "ANCHOR_desk_dana", Pos = new Vector3(-0.4f, 0.03f, 0.13f), Kind = SpawnKind.Readable, Doc = "dana_doubt", Id = "dana_doubt" });
-            n.Decor("card_box", 10.6f, 0.742f, 11.65f, 15, s => Delivered(s, "theo_note", "marian") || Delivered(s, "theo_planner", "marian"));
+            n.Decor("card_box", 11.4f, 0.0f, 11.85f, 15, // on the floor at the end of his desk, half packed
+                 s => Delivered(s, "theo_note", "marian") || Delivered(s, "theo_planner", "marian"));
             CommonCloset(n);
 
             Monitors(n, ("dana", "Textures/Screens/login_dana"), ("priya", "Textures/Screens/login_priya"), ("marian", "Textures/Screens/marian_lock"));
