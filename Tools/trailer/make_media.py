@@ -41,8 +41,8 @@ TEASER = [
     ("n1_throw", 1.6, 1.9, None),
 ]
 
-# The trailer frame used for the README poster (seconds into the trailer).
-POSTER_AT = None
+# The trailer frame used for the README poster (seconds into the trailer): the title card.
+POSTER_AT = 10.8
 
 
 def frame_path(clips, clip, t):
@@ -69,7 +69,9 @@ def poster(trailer):
     os.makedirs(os.path.dirname(tmp), exist_ok=True)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{POSTER_AT:.2f}", "-i", trailer, "-frames:v", "1", tmp], check=True)
     dst = os.path.join(MEDIA, "trailer-poster.jpg")
-    cards.play_overlay(tmp, dst, "Watch the trailer")
+    secs = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", trailer],
+                                stdout=subprocess.PIPE, text=True, check=True).stdout)
+    cards.play_overlay(tmp, dst, f"Watch the trailer  ·  {int(secs // 60)}:{int(round(secs % 60)):02d}", cy_frac=0.745, size=0.075, veil_alpha=0)
     print(f"  {dst}  {os.path.getsize(dst) / 1e6:.2f} MB")
 
 

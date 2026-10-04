@@ -1,250 +1,346 @@
-# After Hours
+<p align="center">
+  <img src="docs/media/teaser.webp" width="100%" alt="After Hours: erasing a whiteboard, foam on a window, vacuum stripes and a UV torch in a dark office at night">
+</p>
 
-> You're the new night cleaner at a small freight company on the 14th floor, and over seven
-> nights the grime you scrub away shows what the day shift is hiding. You decide which evidence
-> survives until morning.
+<h1 align="center">After Hours</h1>
 
-A first-person cleaning game with a mystery underneath. Wipe desks, squeegee glass, vacuum,
-mop, bin the rubbish and put the office back the way it was. Along the way you find what the
-day shift left behind: crumpled notes, ghost writing under a whiteboard, finger-writing that
-only shows through window foam, invisible-ink arrows under a UV torch, a notepad that gives
-up its last page to a pencil rubbing, a bag of shredded invoices. Every piece of evidence is
-yours to keep, put back, bin, shred, or deliver to someone's inbox tray, and the office
-remembers what you did.
+<p align="center">
+  <b>A first-person cleaning game with a mystery underneath.</b><br>
+  You're the new night cleaner on the 14th floor. Over seven nights, the grime you scrub away shows
+  what the day shift is hiding, and you decide which evidence survives until morning.
+</p>
 
-Built with Unity 6000.6.2f1 (URP). Every 3D model is generated in Blender 4.5 with `bpy`, and
-every sound, music track and texture is synthesised by scripts in this repository.
+<p align="center">
+  <img alt="Unity 6000.6 (URP)" src="https://img.shields.io/badge/Unity-6000.6%20URP-222c37?logo=unity&logoColor=white">
+  <img alt="Platform: Linux" src="https://img.shields.io/badge/platform-Linux%20x86--64-FCC624?logo=linux&logoColor=black">
+  <img alt="Models: Blender 4.5" src="https://img.shields.io/badge/models-Blender%204.5-E87D0D?logo=blender&logoColor=white">
+  <img alt="Input: keyboard, mouse, gamepad" src="https://img.shields.io/badge/input-keyboard%20%2B%20mouse%20%7C%20gamepad-5FE3FF">
+  <img alt="Status: v0.1.0" src="https://img.shields.io/badge/status-v0.1.0-D9483B">
+</p>
 
-- Design and technical plan: [`docs/PLAN.md`](docs/PLAN.md)
-- The original brief: [`docs/BRIEF.md`](docs/BRIEF.md)
+<p align="center">
+  <a href="https://github.com/nearbycoder/AfterHours/releases/latest"><b>Download for Linux</b></a> ·
+  <a href="docs/media/AfterHours-trailer.mp4"><b>Watch the trailer</b></a> ·
+  <a href="#screenshots"><b>Screenshots</b></a> ·
+  <a href="#build-from-source"><b>Build from source</b></a>
+</p>
 
-## Running it
+## Trailer
 
-```bash
-Tools/play.sh                 # runs Builds/Linux/AfterHours.x86_64 windowed at 1600x900
-Builds/Linux/AfterHours.x86_64  # or launch the player directly
-```
+<p align="center">
+  <a href="docs/media/AfterHours-trailer.mp4">
+    <img src="docs/media/trailer-poster.jpg" width="100%" alt="Play the After Hours trailer (MP4, with sound)">
+  </a>
+</p>
 
-`play.sh` passes `-force-wayland` when a Wayland session is present, because XWayland hangs at
-start-up on the development machine.
+<p align="center"><sub>1 min 54 s · 1920×1080 at 30 fps · H.264 and AAC with the game's own music and sound · 36 MB.<br>
+Every shot was filmed by the game itself from scripted input; the cut is made by <a href="Tools/trailer"><code>Tools/trailer</code></a>.</sub></p>
 
-## Controls
+## About
+
+It's 10 PM at Halvorsen Freight, Suite 1408 of Meridian Tower. The day shift has gone home and left
+the usual mess: coffee rings, confetti from somebody's birthday, a crumpled note under a desk.
+You've got a cart, a clipboard and the whole floor to yourself.
+
+The cleaning is the toy. Every surface has its own tool and its own feel: a cloth that lifts coffee
+rings, a vacuum that leaves stripes in the carpet, foam and a squeegee for the glass, a mop that
+leaves a wet sheen. Rubbish gets sorted and thrown, things go back where they belong, and when a
+surface is clean it gleams and dings.
+
+But grime hides things. Erase the brainstorm on the conference-room whiteboard and something
+older shows through. Foam a window and someone's finger-writing appears. A notepad gives up its
+last page to a pencil. Everything you find is yours to keep, put back, throw away, shred, or
+leave in someone's inbox tray, and the office remembers what you did. The next morning's office
+chat reacts, the next night has changed, and on the seventh night you decide what survives.
+
+- **Seven nights** in one office that changes around you, each designed to take five to eight minutes.
+- **Four endings**, plus personal epilogues that depend on what you took and what you left.
+- **No fail state and no timer pressure.** The wristwatch runs from 10 PM towards dawn, but it
+  never ends your shift for you.
+
+## How to play
 
 | Keyboard and mouse | Gamepad | Action |
 |---|---|---|
-| WASD, mouse | left stick, right stick | move, look |
-| Left Shift | right bumper | brisk walk |
-| C or Left Ctrl | left stick click | crouch (reach under desks) |
-| Left mouse (hold) | right trigger | clean with the current tool; with something in hand, hold to charge a throw |
-| Right mouse | left trigger | spray (squeegee and cloth) |
-| E | A / south | interact: pick up, place, tuck a chair, switch, door, monitor, tray, read |
-| Q | B / east | drop what you're holding |
-| F | d-pad up | UV torch (from Night 2) |
-| Tab | select | clipboard: tonight's tasks, secrets, leads and what's in your pocket |
-| 1 to 4, mouse wheel | | pin a tool (otherwise the right tool is picked for the surface) |
-| Esc | start | pause |
+| <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, mouse | left stick, right stick | move, look |
+| <kbd>Shift</kbd> | right bumper | brisk walk |
+| <kbd>C</kbd> or <kbd>Ctrl</kbd> | left stick click | crouch (reach under desks) |
+| left mouse (hold) | right trigger | clean with the current tool; with something in hand, hold to charge a throw |
+| right mouse | left trigger | spray (squeegee and cloth) |
+| <kbd>E</kbd> | A | interact: pick up, put back, tuck a chair, light switch, door, monitor, inbox tray, read |
+| <kbd>Q</kbd> | B | drop what you're holding |
+| <kbd>F</kbd> | d-pad up | UV torch (from Night 2) |
+| <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket |
+| <kbd>1</kbd>–<kbd>4</kbd>, mouse wheel | | pin a tool (otherwise the right tool comes up for the surface) |
+| <kbd>Esc</kbd> | Start / Menu | pause |
 
-In the inspect view: **Tab** (pad **Y**) keeps a document, **E** (pad **A**) puts it back, **X**
-(pad **X**) throws it away. On a monitor, **Q** (pad **X**) switches it off.
+When a document is open: <kbd>Tab</kbd> (pad Y) keeps it, <kbd>E</kbd> (pad A) puts it back,
+<kbd>X</kbd> (pad X) throws it away. On a monitor, <kbd>Q</kbd> (pad X) switches it off. Menus
+and choices take <kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> or the arrow keys,
+<kbd>E</kbd>/<kbd>Enter</kbd> and <kbd>Esc</kbd>, or the d-pad, A and B. On-screen prompts switch
+between keys and pad buttons depending on what you touched last.
 
-Menus, choices, the shred puzzle and the shift report work with W/S/A/D or the arrow keys, E or
-Enter to confirm and Esc to go back; on a pad, the d-pad or left stick, **A** and **B**. Prompts
-switch between keyboard keys and pad buttons depending on what you touched last.
+**A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
+clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
+to do with whatever you find. Lights off, clock out at the punch clock, and read the shift report
+and the next morning's chat.
 
-## How it plays
+## Features
 
-- **A night** starts in the cleaning closet with your cart. The clipboard lists tonight's shift
-  sheet, room by room. The wristwatch runs from 10 PM towards dawn; there's no fail timer.
-- **Smart tools.** Look at a dirty surface and the right tool comes up: cloth for desks,
-  squeegee for glass (spray first, then pull), vacuum for carpet, mop for hard floors. The
-  reticle becomes a progress ring and surfaces finish themselves with a gleam once they're
-  nearly clean.
-- **Rubbish** goes in the matching bin: food and wrappers in black, cans and bottles in blue
-  recycling, paper in either. Wrong bins bounce it back out. Throws charge while you hold the
-  button and show an arc.
-- **Putting things back.** Moved items have home spots; a ghost shows where something belongs
-  and E snaps it home. Chairs tuck in and monitors switch off. Lights go off when you leave.
-- **Evidence.** Story documents open in an inspect view. Keep them in your pocket, put them
-  back, or throw them away; later, deliver them to someone's inbox tray, feed them to a
-  shredder, or leave a sticky note made from the leads you've learned.
-- **Suspicion.** In Marian's office, anything you move and don't return, and anything that goes
-  missing, is noticed. It changes her notes and your epilogue, never your ability to finish.
-- **Clocking out** at the punch clock ends the night with a shift report (grade S to C, secrets
-  found, before-and-after polaroids of the rooms you cleaned), then the next morning's office
-  chat, which reacts to what you did.
+### Cleaning that feels good on its own
 
-## Content
+<img src="docs/media/screenshots/02-wipe.jpg" width="100%" alt="Wiping the grime off the reception counter with a cloth">
 
-One office (Suite 1408: reception, bullpen, break room, conference room, Marian's corner office,
-and the cleaning closet) that changes over seven nights:
+- **Smart tools.** Look at a dirty surface and the right tool comes up: cloth for desks and
+  counters, squeegee for glass, vacuum for carpet, mop for hard floors. The reticle turns into a
+  progress ring, and a surface that's nearly clean finishes itself with a gleam, a sparkle and a
+  ding whose pitch climbs if you clean several in a row.
+- **Every tool is different.** The cloth rewards scrubbing. The vacuum leaves light and dark stripes
+  in the carpet nap and pulls confetti into the nozzle. Glass needs foam first, then a squeegee.
+  Mopped floors stay wet for a few seconds, then dry.
+- **Rubbish and throwing.** Food and wrappers go in the black bins, cans and bottles in blue
+  recycling, paper in either. Hold the button to charge a throw and follow the arc; long shots get
+  a swish and a "Nice shot!". The wrong bin bounces the item back out, so nothing is ever lost.
+- **Putting things back.** Moved objects have home spots: a ghost shows where something belongs and
+  it snaps into place. Chairs tuck in, monitors switch off, lights go out when you leave.
 
-1. **Monday, "First Shift"**: the tutorial night. A crumpled note under Theo's desk, a brass key
-   the vacuum knocks loose, and a monitor that wakes up by itself at 1 AM.
-2. **Tuesday, "Glass"**: squeegee and mop; foam on the break-room window shows finger-writing;
-   Walt's locker gives you a UV torch.
-3. **Wednesday, "The Whiteboard"**: erasing the brainstorm reveals the ghost diagram underneath.
-4. **Thursday, "The Corner Office"**: a pencil rubbing, a locked cabinet, $50 in an envelope and a
-   shredder bag Marian wants gone.
-5. **Friday, "Pieces"**: the big post-party mess and a shred-strip reconstruction puzzle.
-6. **Sunday, "Prep"**: the auditor's tray appears, plus boxes marked for destruction and a
-   voicemail.
-7. **Monday, "Audit Eve"**: a storm, flickering power, and the shredder in Marian's office jammed
-   on a red folder.
+<img src="docs/media/screenshots/04-throw.jpg" width="49%" alt="A charged throw into the reception bin: Nice shot!"> <img src="docs/media/screenshots/05-vacuum.jpg" width="49%" alt="Vacuum stripes in the bullpen carpet">
 
-There are four endings: **The Audit**, **Clean Books**, **Loose Threads** and the secret
-**Spotless**, each with personal epilogue variations. Night Select replays any reached night from
-its saved start state.
+### Grime hides things
+
+<img src="docs/media/screenshots/03-whiteboard.jpg" width="100%" alt="An erased whiteboard showing the ghost of an older diagram underneath">
+
+Clues turn up *because* you clean. Erasing a whiteboard leaves the ghost of what was written there
+before. Window foam shows letters someone traced on the glass. The vacuum knocks something loose
+from under a desk. A pencil rubbing brings back the last page torn from a notepad. From Night 2,
+a UV torch shows invisible-ink marks left by the cleaner before you, and any grime you missed.
+
+<img src="docs/media/screenshots/06-window.jpg" width="49%" alt="Spray foam on the break-room window reveals finger-writing"> <img src="docs/media/screenshots/07-uv.jpg" width="49%" alt="The UV torch showing invisible-ink arrows on the wall">
+
+### Your hands decide
+
+<img src="docs/media/screenshots/08-evidence.jpg" width="100%" alt="Reading a crumpled note in the inspect view: keep it, put it back or throw it away">
+
+- **Evidence.** Notes, emails, ledgers and printouts open in an inspect view. Keep them in your
+  pocket, put them back, or throw them away.
+- **Deliveries.** Leave a document in someone's inbox tray and they find it in the morning. Feed it
+  to a shredder. Or write an anonymous sticky note from the leads you've pieced together.
+- **Suspicion.** One office belongs to someone who notices when things move. Anything you take or
+  fail to put back changes what she writes to you and how your story ends. It never stops you
+  finishing a night.
+- **Puzzles.** Tape a bag of shredded strips back into a page; open a locked cabinet; follow a
+  trail only the UV torch can see.
+
+### The end of every shift
+
+<img src="docs/media/screenshots/09-report.jpg" width="100%" alt="The shift report: an S grade stamped on the clipboard and before-and-after polaroids">
+
+Clocking out brings up the shift report: a grade from S to C, the secrets you found, and
+before-and-after polaroids of every room you cleaned. Then comes the next morning's office chat,
+where the people whose desks you cleaned react to what you left for them, or to what went
+missing.
+
+## Content overview
+
+One floor of one office (reception, bullpen, break room, conference room, the corner office and
+the cleaning closet) over seven nights. Spoiler-light:
+
+| Night | Title | What's new |
+|---|---|---|
+| 1 · Monday | **First Shift** | The tutorial night: reception and the bullpen, wiping, vacuuming, throwing, tidying. Something under a desk, and a monitor that wakes up on its own. |
+| 2 · Tuesday | **Glass** | The break room. Spray and squeegee, the mop, and the UV torch. |
+| 3 · Wednesday | **The Whiteboard** | The conference room, and what's underneath the marker. |
+| 4 · Thursday | **The Corner Office** | You get the key to the finance director's office. Put everything back exactly. |
+| 5 · Friday | **Pieces** | After the office party: the heaviest clean of the week, and a shredded page to rebuild. |
+| 6 · Sunday | **Prep** | The auditors arrive Tuesday. Boxes marked for destruction, and a new inbox tray. |
+| 7 · Monday | **Audit Eve** | A storm, flickering power, a jammed shredder, and the last decision. |
+
+There are four endings, **The Audit**, **Clean Books**, **Loose Threads** and a secret one, each with
+personal epilogue variations. **Night Select** replays any night you've reached from the state you
+started it in, so you can try another road.
 
 Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
-Settings, Restart this night, Quit to title) and settings (mouse sensitivity, FOV, four volume
-sliders, render scale, invert Y, head bob, fullscreen, captions, reduce flashing). Progress and
-settings save automatically.
+Settings, Restart this night, Quit to title) and settings (mouse sensitivity, field of view, four
+volume sliders, render scale, invert Y, head bob, fullscreen, captions, reduce flashing). Progress
+and settings save automatically.
 
-## Project layout
+## Screenshots
 
-```
-Assets/
-  Scripts/            runtime code, one assembly (AfterHours.asmdef)
-    Cleaning/         grime surfaces (CPU masks, exact completion), brushes, tools
-    Core/             GameRoot boot and flow, input, settings, tweening, events
-    Interaction/      hands (pick up, throw), bins, home spots, doors, switches, story items
-    Story/            night definitions, documents, endings, story state and saving, director
-    World/            office builder (reads Office.fbx), furnisher, prop library
-    UI/               HUD, clipboard, inspect view, menus, shift report, chat, ending
-    FX/, Audio/       particles, post-processing, room photos; sound playback and music
-    Player/           first-person controller, UV torch
-    Testing/          CaptureDirector (scripted screenshots), AutoPilot (self-test)
-  Editor/             BuildScript, ProjectSetup, import rules, EditMode tests
-  Shaders/            Grime overlay, UV ink, skyline, particles
-  Resources/          generated models, textures, audio, fonts
-ArtSource/            Blender generators (office.py, props.py, furniture.py, tools.py) and .blend files
-Tools/                build, play, capture and test scripts; texture and audio generators
-docs/                 brief and plan
-```
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/screenshots/01-title.jpg" alt="Title screen"></td>
+    <td width="50%"><img src="docs/media/screenshots/10-corner-office.jpg" alt="The corner office on Night 4, lit by a desk lamp and the city"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/screenshots/02-wipe.jpg" alt="Wiping the reception counter"></td>
+    <td><img src="docs/media/screenshots/05-vacuum.jpg" alt="Vacuum stripes in the bullpen carpet"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/screenshots/04-throw.jpg" alt="A long throw into the bin: Nice shot!"></td>
+    <td><img src="docs/media/screenshots/06-window.jpg" alt="Spray foam revealing finger-writing on a window"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/screenshots/03-whiteboard.jpg" alt="Old writing showing through an erased whiteboard"></td>
+    <td><img src="docs/media/screenshots/07-uv.jpg" alt="The UV torch revealing invisible ink"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/media/screenshots/08-evidence.jpg" alt="Reading a crumpled note in the inspect view"></td>
+    <td><img src="docs/media/screenshots/09-report.jpg" alt="The shift report with an S grade and before-and-after polaroids"></td>
+  </tr>
+</table>
 
-There's one scene; `GameRoot` builds the office from the FBX and runs everything from code.
+## Play it
 
-## Rebuilding
+1. Download `AfterHours-v0.1.0-linux-x86_64.zip` from the
+   [latest release](https://github.com/nearbycoder/AfterHours/releases/latest).
+2. Unzip it and run `./AfterHours.x86_64`.
 
-The editor needs the old `libxml2.so.2` on this distro. `Tools/unity.sh` points
-`LD_LIBRARY_PATH` at an extracted copy in `~/.local/share/ptt-unity-libs` (override with
-`AH_UNITY_LIBS`), or install `libxml2-legacy`.
+You need 64-bit Linux and a GPU with OpenGL 3.2 or later (the player uses OpenGL Core). It starts
+fullscreen; switch to windowed in Settings. Saves and settings live in
+`~/.config/unity3d/After Hours Team/After Hours/`. If the window never appears under XWayland, start it
+with `./AfterHours.x86_64 -force-wayland` to use Unity's native Wayland backend.
+
+Only a Linux build is published. The project has no Linux-specific code, so building for Windows
+or macOS from the editor should work, but those builds haven't been tested.
+
+## Build from source
+
+**Requirements:** Unity **6000.6.2f1** with Linux Build Support (the project uses URP 17.6 and the
+Input System 1.20 from the Unity registry), Blender **4.5** on `PATH` for the models, and Python 3
+with NumPy, SciPy and Pillow for textures and audio. FFmpeg for the trailer and README media.
 
 ```bash
-# Models (headless Blender), written to Assets/Resources/Models/
-blender -b -P ArtSource/office.py -- [--render DIR]
-blender -b -P ArtSource/props.py  -- [--render DIR] [--only a,b]
+git clone https://github.com/nearbycoder/AfterHours.git && cd AfterHours
 
-# Textures, sound effects and music (Python venv with numpy, scipy, Pillow)
+# Unity: build, test, open
+Tools/unity.sh build-linux      # -> Builds/Linux/AfterHours.x86_64
+Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml
+Tools/unity.sh                  # open the project in the editor
+Tools/play.sh                   # run the build windowed at 1600x900
+```
+
+`Tools/unity.sh` expects the editor at `~/Unity/Hub/Editor/6000.6.2f1/` (override with `UNITY=`).
+On distros that ship only `libxml2.so.16`, the 6000.6 editor exits at start-up because it links
+`libxml2.so.2`: install your distro's legacy libxml2 package, or point `AH_UNITY_LIBS` at a
+directory containing an older copy.
+
+**Regenerating the assets.** Everything in `Assets/Resources/Models`, `Textures` and `Audio` is
+produced by scripts in this repository, and the outputs are committed so the project opens without
+them.
+
+```bash
+# 3D models (headless Blender) -> Assets/Resources/Models/
+blender -b -P ArtSource/office.py -- [--render DIR]          # the office, furniture and layout
+blender -b -P ArtSource/props.py  -- [--render DIR] [--only a,b]   # props and tools
+
+# Textures, sound effects and music
 python -m venv Tools/.venv && Tools/.venv/bin/pip install numpy scipy pillow
 Tools/.venv/bin/python Tools/gen_textures.py
 Tools/.venv/bin/python Tools/audio/build_sfx.py
 Tools/.venv/bin/python Tools/audio/build_music.py
-
-# Unity
-Tools/unity.sh build-linux    # Builds/Linux/AfterHours.x86_64
-Tools/unity.sh test           # EditMode tests -> Logs/test-results.xml
-Tools/unity.sh                # open the project in the editor
 ```
 
-## Verification
+**Testing.**
 
-- **AutoPilot** (`Tools/autopilot.sh [outdir] [nightN|all] [route]`): the built player starts at the title
-  and plays all seven nights through the real game components. It wipes surfaces with the real
-  brush maths, drops rubbish into bins with physics, uses real mouse-and-key input for a wipe, a
-  pick-up, a charged throw and the vacuum, reads and keeps evidence, delivers it to trays, solves
-  the shred puzzle, switches the lights off, clocks out, and checks that the chosen route reaches
-  its ending and returns to the title. The routes are `audit` (default; everything goes to the
-  auditor), `loose` (keep the red folder), `cleanbooks` (bin it), `spotless` (read everything,
-  keep nothing) and `marian` (hoard the evidence, hand it to Marian once her office opens, take
-  her money, shred Priya's log, leave the auditor an anonymous sticky note, give Marian the red
-  folder: Clean Books by a different road). Every route also plugs in a virtual gamepad and drives the title
-  menu, Settings, the document reader and a tray choice with real pad button events. It saves
-  screenshots and prints PASS/FAIL lines.
-- **EditMode tests** (`Tools/unity.sh test`): an exhaustive search of the choice space proves all
-  four endings are reachable, plus specific routes to each, data consistency between documents
-  and nights, and grime pattern generation.
-- **Captures** (`Tools/build_and_capture.sh`, `Tools/capture_all.sh`): scripted screenshot tours
-  of each night.
-- **Perf probe** (`Tools/play.sh -ahCapture DIR perf -ahNight 2 -ahFresh`): stands in the bullpen
-  and times frames with vsync off, then with grime, post-processing, shadows, MSAA and render
-  scale switched off one at a time.
-- **Showcase** (`Tools/play.sh -ahShowcase DIR [nightN]`): plays the AutoPilot route on camera,
-  walking up to things and holding documents open, and writes every frame (fixed 30 fps clock)
-  plus the game's own audio to DIR for a gameplay video.
+- `Tools/autopilot.sh [outdir] [nightN|all] [route]` runs the built game with no human: it starts at
+  the title and plays all seven nights through the real components (brush maths on every dirty
+  surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up, a charged throw
+  and the vacuum, a virtual gamepad for the menus), then checks the chosen route reaches its
+  ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`. It also checks every
+  night for props overlapping, sunk into furniture or floating.
+- `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
+  choices that proves all four endings are reachable.
 
-Latest results on the shipped build, all seven nights each: **audit 224, loose 220, cleanbooks
-220, spotless 195, marian 215 checks passed, 0 failed**, each reaching its expected ending (the
-checks include no props overlapping, sunk into furniture or floating, on every night); EditMode tests **13 of
-13** passing.
+**Trailer and README media.** The trailer is filmed by the game itself and cut by a script:
 
-Performance (1600x900, AMD Radeon 8060S iGPU, OpenGL Core, vsync off): the perf probe renders the
-bullpen in about **3 ms a frame** (around 340 fps). Turning off any single feature saves under
-0.5 ms. Across the AutoPilot's seven nights the median frame is 4-8 ms and the 95th percentile
-6-14 ms. The worst frames, 60-140 ms, come from night set-up (grime patterns are generated while
-the title card is up) and the AutoPilot's bulk brush maths. With vsync on, the game runs at the
-monitor's refresh rate. One trap to know about: Wayland throttles vsync for windows that aren't
-visible, so a test window left behind others runs at 11-20 fps. The AutoPilot therefore runs
-uncapped.
+```bash
+Tools/trailer/record.sh                                   # film every clip at 1920x1080 -> Recordings/trailer/
+Tools/.venv/bin/python Tools/trailer/make_trailer.py      # -> docs/media/AfterHours-trailer.mp4
+Tools/.venv/bin/python Tools/trailer/make_media.py        # screenshots, poster and teaser -> docs/media/
+```
 
-The AutoPilot found and fixed these bugs in the game itself:
+## Project structure
 
-- Story objects from one night leaked into the next. The title screen's backdrop sets up a night
-  in the background, so a new game's Night 1 could start with that night's note in Walt's locker,
-  a stray pencil-rubbing surface on Marian's desk, and old UV marks. Night scripts now parent
-  everything to the night root, and story behaviour added to permanent furniture is removed
-  when a night ends.
-- The camera-kick spring went unstable on long frames (night loads, screenshots) and could leave
-  the camera upside down. It now sub-steps at a fixed rate and resets on teleport.
-- Following Marian's instruction to send her shredder bag down the chute counted as tampering
-  with evidence, which made the Spotless ending unreachable for a player who just did as they
-  were told. Doing what you're asked no longer counts.
-- Marian's reactions to things left in her tray (Theo's note, Russ's betting slip, Theo's
-  planner) were attached to Nights 1-3, when her office is locked, so they could never appear.
-  They now follow whichever night you actually reach her tray.
-- Menus, choices and screens only read the keyboard, so a gamepad player got stuck at the first
-  tray or document. All of them now take pad input.
-- The story calendar contradicted itself: the epilogue had the auditor reading the tray on
-  Monday morning, before Night 7's Monday shift, and a ledger entry was dated a week after it
-  is found. The audit is now Tuesday the 15th, and every document, chat line, lock screen and
-  epilogue agrees with that calendar. Clean Books no longer vindicates Walt.
-- `Interstitial` screens (report, chat, title card, ending) destroyed their UI but never their own
-  object. Leftovers piled up, and a static "a screen is open" flag raced between the chat closing
-  and the next title card opening.
-- The throw-arc preview was invisible (its shader faded everything past the first few
-  centimetres). It now draws as a soft dashed line.
-- Bins only caught items below the rim, so fast flat throws clipped the edge and bounced out.
-  The catch zone now reaches slightly above the rim.
+```
+Assets/
+  Scripts/              runtime code, one assembly
+    Cleaning/           grime surfaces (render-texture masks with a CPU mirror), brushes, tools
+    Core/               boot and game flow, input, settings, tweening, events
+    Interaction/        hands (pick up, throw), bins, home spots, doors, switches, story items
+    Story/              night definitions, documents, endings, story state and saves
+    World/              office builder (reads Office.fbx), furnisher, prop library
+    UI/                 HUD, clipboard, inspect view, menus, shift report, chat, endings
+    FX/ Audio/ Player/  particles and post-processing, sound and music, first-person controller
+    Testing/            AutoPilot (self-test), CaptureDirector, Showcase and Trailer recorders
+  Editor/               build script, import rules, project setup, EditMode tests
+  Shaders/              grime overlay, UV ink, skyline, particles
+  Resources/            generated models, textures, audio; bundled fonts
+ArtSource/              Blender generators (office.py, props.py, furniture.py, tools.py) and .blend files
+Tools/                  build, play and test scripts; texture and audio generators; trailer/
+docs/                   design plan, original brief, media/
+```
 
-## Known limitations
+The game has a single, almost empty scene. `GameRoot` boots from code, builds the office from the
+FBX and runs everything else.
 
-- **Five routes, not every branch.** The AutoPilot plays one route to each ending plus a
-  Marian-sided one. Other mixes (for example notes to Theo, or giving Dana things) are only covered
-  by the EditMode sweep of the ending logic.
-- **A monitor change can crash the game on Wayland.** During testing, a KDE display re-detection
-  (a monitor powering down or reconnecting) crashed two running copies at the same instant inside
-  Unity's Wayland window code (`wl_display_dispatch_queue_pending`). It's an engine/platform issue
-  rather than game code, and `Tools/play.sh` uses the Wayland backend because XWayland hung at
-  startup on this machine.
-- **The AutoPilot takes shortcuts.** It teleports between rooms, triggers most interactions
-  directly, and cleans most surfaces by calling the brush maths rather than moving the mouse.
-  Real mouse-and-key input is exercised for one wipe, the pick-up, a charged throw and the
-  vacuum. No human has played the full game, so pacing, difficulty and the 12-minute clock are
-  untested with real players.
-- **Audio was never heard.** Every sound and music track was checked numerically (level, crest
-  factor, rhythm, loop seams), not by ear.
-- **No physical gamepad was tested.** Pad support is verified with a virtual Input System gamepad
-  (real state events, same code path), but not on hardware, and there is no rumble or remapping.
-- **Performance was measured on one machine only** (32-core Strix Halo with its integrated GPU;
-  numbers above). Lower-end hardware is untested, and there are no quality presets; the only
-  graphics option is render scale in Settings.
-- **The art is stylised and procedural.** Every model is built from code in Blender with chunky
-  bevelled shapes and flat materials. It's cohesive, but it isn't hand-modelled or textured to a
+## Tech highlights
+
+- **Grime as paint masks.** Every cleanable surface is an overlay quad with its own 2D space, so
+  painting never depends on the model's UVs. Each one has a render-texture mask (dirt, vacuum nap,
+  wetness and a reveal channel) plus a quarter-resolution CPU mirror of the dirt channel, which
+  gives exact completion percentages without GPU readbacks. Dirt patterns are composed at night
+  start from procedural stamps: coffee rings, footprints, smudges, marker, confetti and spills.
+- **Secrets in the dirt.** The same masks drive the reveals: ghost text where marker has been
+  erased, letters that stay clear in window foam, and a rubbing layer that shading brings back.
+- **Blender is the level editor.** `office.py` builds the floor in Python, and object names carry
+  the meaning (`GRIME_`, `ANCHOR_`, `LIGHT_`, `DOOR_`, `SWITCH_`, `TRAY_`, `BIN_`, `ROOM_`…).
+  `OfficeBuilder` reads the FBX and attaches behaviour by those names.
+- **Data-driven nights.** Each night is C# data: dirt specs per surface, spawns with conditions over
+  the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
+  and an EditMode test enumerates the choice space to prove every ending is reachable.
+- **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
+  along five story routes, with about 200 checks per route.
+- **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
+  FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
+  noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops.
+- **Deterministic capture.** The trailer recorder runs the game on a fixed 30 fps clock and records
+  the mixed game audio through Unity's `AudioRenderer`, so every shot is scripted and repeatable,
+  whatever the machine's load.
+
+## Credits and tooling
+
+Designed and built with Unity 6 (URP), Blender 4.5, Python (NumPy, SciPy, Pillow) and FFmpeg. All
+code, models, textures, sound effects, music, screenshots and the trailer were made for this
+project.
+
+Fonts (licences in `Assets/Fonts-Licenses/`): **Fira Sans**, **Caveat**, **Courier Prime**,
+**Patrick Hand**, **Reenie Beanie** and **Liberation Sans** (SIL Open Font License 1.1);
+**Permanent Marker** and **Special Elite** (Apache License 2.0); **DejaVu Sans** (Bitstream Vera
+licence). TextMesh Pro's essential resources come from Unity under the Unity Companion License.
+See [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) for the full list.
+
+The design plan is in [`docs/PLAN.md`](docs/PLAN.md) and the original brief in
+[`docs/BRIEF.md`](docs/BRIEF.md).
+
+## Status and known issues
+
+**v0.1.0: complete and playable.** All seven nights, four endings, menus, saves, keyboard and
+mouse, and gamepad. It's a first release, and some things are still rough or untested:
+
+- **No one outside development has played it yet.** Pacing, difficulty, and whether the clues
+  are too obvious or too hidden are untested with real players. The automated runs cover five
+  story routes; other mixes of choices are only covered by the ending-logic tests.
+- **The audio was tuned by numbers, not by ear.** Levels, loops and rhythm were checked
+  numerically.
+- **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
+  gamepad, through the same code path. There's no rumble or button remapping.
+- **Performance was measured on one machine** (AMD Strix Halo integrated GPU: about 3 ms a frame
+  at 1600x900). Lower-end hardware is untested, and the only graphics option is render scale.
+- **Wayland.** On the development machine the player hung at start-up under XWayland, so
+  `Tools/play.sh` passes `-force-wayland`. A monitor powering off or reconnecting under KDE once
+  crashed the player inside Unity's Wayland code.
+- **The art is stylised and procedural.** Every model is generated in Blender from code: chunky,
+  bevelled and flat-shaded. It's consistent, but it isn't hand-modelled or textured to a
   commercial standard.
-
-## Credits and licences
-
-Fonts are bundled with their licences in `Assets/Fonts-Licenses/`: Fira Sans, Caveat, Courier
-Prime, Patrick Hand, Reenie Beanie (SIL OFL), Permanent Marker and Special Elite (Apache 2.0),
-DejaVu Sans (Bitstream Vera licence). Everything else (models, textures, audio, music, code) was
-made for this project.
+- **Linux only.** Windows and macOS builds haven't been made or tested.
+- **No licence has been chosen yet.** Until one is added, the default copyright applies.

@@ -199,14 +199,14 @@ def end_card(path_logo, path_info):
     out.save(path_info)
 
 
-def play_overlay(src, dst, label="Watch the trailer"):
-    """README poster: a frame with a play button and a label."""
+def play_overlay(src, dst, label="Watch the trailer", cy_frac=0.5, size=0.11, veil_alpha=70):
+    """README poster: a frame with a play button (centred at cy_frac of the height) and a label."""
     img = Image.open(src).convert("RGBA")
     w, h = img.size
-    veil = Image.new("RGBA", img.size, (5, 7, 12, 70))
+    veil = Image.new("RGBA", img.size, (5, 7, 12, veil_alpha))
     img.alpha_composite(veil)
-    r = int(h * 0.11)
-    cx, cy = w // 2, h // 2
+    r = int(h * size)
+    cx, cy = w // 2, int(h * cy_frac)
     btn = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(btn)
     d.ellipse((cx - r, cy - r, cx + r, cy + r), fill=(12, 16, 26, 190), outline=AMBER + (255,), width=max(4, r // 18))
@@ -215,7 +215,7 @@ def play_overlay(src, dst, label="Watch the trailer"):
     img.alpha_composite(shadow(btn, 12, 0.6, (0, 6)))
     img.alpha_composite(btn)
     lab = Image.new("RGBA", img.size, (0, 0, 0, 0))
-    draw_text(lab, (cx, cy + r + int(h * 0.075)), label.upper(), TYPE(int(h * 0.05)), CREAM + (255,), 4, anchor="ms")
+    draw_text(lab, (cx, cy + r + int(h * 0.06)), label.upper(), TYPE(int(h * 0.036)), CREAM + (255,), 4, anchor="ms")
     img.alpha_composite(shadow(lab, 6, 0.9, (0, 3)))
     img.alpha_composite(lab)
     img.convert("RGB").save(dst, quality=88, optimize=True, progressive=True)
