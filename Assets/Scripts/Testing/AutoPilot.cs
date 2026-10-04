@@ -798,6 +798,47 @@ namespace AfterHours
                     Log($"overlap night {n}: {Path(a.transform)} {a.transform.position} <-> {Path(b.transform)} {b.transform.position} by {d * 100f:F1} cm");
                 }
             Check(bad == 0, $"night {n}: no props sit inside each other ({bad} overlaps)");
+
+            // Small props sunk into big furniture, walls or floors.
+            var big = FindObjectsByType<Collider>(FindObjectsSortMode.None)
+                .Where(c => c.enabled && !c.isTrigger && c.gameObject.activeInHierarchy && c.gameObject.layer != Layers.Player
+                            && c.gameObject.layer != Layers.Grime // dirt overlays are thin hit volumes, not furniture
+                            && (c.bounds.size.x >= 0.8f || c.bounds.size.y >= 0.8f || c.bounds.size.z >= 0.8f))
+                .ToList();
+            int sunk = 0;
+            foreach (var a in cols)
+            {
+                if (InBin(a.transform) || Path(a.transform).Contains("tray_") || a.name.Contains("sticky") || a.name.Contains("thanks")) continue;
+                foreach (var b in big)
+                {
+                    if (a.attachedRigidbody != null && a.attachedRigidbody == b.attachedRigidbody) continue;
+                    if (a.transform.IsChildOf(b.transform) || b.transform.IsChildOf(a.transform)) continue;
+                    if (!a.bounds.Intersects(b.bounds)) continue;
+                    if (b.name.Contains("printer")) continue; // printouts sit in its output tray, inside the box collider
+                    if (!Physics.ComputePenetration(a, a.transform.position, a.transform.rotation, b, b.transform.position, b.transform.rotation, out _, out float d)) continue;
+                    if (d < 0.015f) continue;
+                    sunk++;
+                    Log($"sunk night {n}: {Path(a.transform)} {a.transform.position} into {Path(b.transform)} by {d * 100f:F1} cm");
+                }
+            }
+            Check(sunk == 0, $"night {n}: no props are sunk into furniture or walls ({sunk})");
+
+            // Loose props should rest on something.
+            int floating = 0;
+            foreach (var h in FindObjectsByType<Holdable>(FindObjectsSortMode.None))
+            {
+                if (!h.gameObject.activeInHierarchy || h.Held || InBin(h.transform)) continue;
+                var c = h.GetComponentInChildren<Collider>();
+                if (c == null || !c.enabled) continue;
+                var bottom = new Vector3(c.bounds.center.x, c.bounds.min.y + 0.005f, c.bounds.center.z);
+                bool rests = Physics.Raycast(bottom, Vector3.down, out var hit, 0.04f, ~0, QueryTriggerInteraction.Ignore)
+                             || Physics.CheckBox(c.bounds.center - Vector3.up * 0.02f, c.bounds.extents, Quaternion.identity, ~(1 << Layers.Player), QueryTriggerInteraction.Ignore)
+                                && Physics.OverlapBox(c.bounds.center - Vector3.up * 0.02f, c.bounds.extents, Quaternion.identity, ~(1 << Layers.Player), QueryTriggerInteraction.Ignore).Any(o => o != c && !o.transform.IsChildOf(h.transform));
+                if (rests) continue;
+                floating++;
+                Log($"floating night {n}: {Path(h.transform)} {h.transform.position}");
+            }
+            Check(floating == 0, $"night {n}: loose props rest on something ({floating} floating)");
         }
 
         static bool InBin(Transform t) { for (; t != null; t = t.parent) if (t.name.StartsWith("Bin_")) return true; return false; }

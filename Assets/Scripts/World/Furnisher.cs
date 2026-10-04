@@ -83,7 +83,7 @@ namespace AfterHours
             var pc = Place("punch_clock", o.Anchor("ANCHOR_punchclock"), Vector3.zero, 0, "punch_clock");
             pc.AddComponent<PunchClock>();
             Place("janitor_cart", o.Anchor("ANCHOR_cart"), Vector3.zero, -90, "cart");
-            Place("mop_bucket", o.Anchor("ANCHOR_cart"), new Vector3(0.75f, 0, -0.3f), 20, "mop_bucket");
+            Place("mop_bucket", o.Anchor("ANCHOR_cart"), new Vector3(0.58f, 0, -0.3f), 20, "mop_bucket");
 
             // Reception odds and ends
             Place("fire_extinguisher", null, new Vector3(13.4f, 0, 0.35f), 180, "extinguisher");
@@ -159,7 +159,8 @@ namespace AfterHours
                     if (rng.Value < 0.25f) continue;
                     float x = -1.5f + i * 0.33f + rng.Range(-0.03f, 0.03f);
                     float y = -0.5f + 0.1f + (s + 1) * (2.1f - 0.12f) / 5 + 0.013f;
-                    Place(rng.Value < 0.75f ? "book" : "binder", shelf, new Vector3(x, y, 0.05f), 90 + rng.Range(-4f, 4f), null);
+                    rng.Value.ToString(); // keep the sequence (and so the layout) stable
+                    Place("book", shelf, new Vector3(x, y, 0.09f), 90 + rng.Range(-4f, 4f), null); // binders are too tall for these shelves
                 }
             }
             var low = o.Anchor("ANCHOR_shelf_bullpen");

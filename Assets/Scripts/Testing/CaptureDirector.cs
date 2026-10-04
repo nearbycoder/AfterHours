@@ -43,6 +43,7 @@ namespace AfterHours
                 case "tour": yield return NightTour(); break;
                 case "perf": yield return PerfProbe(); break;
                 case "monitors": yield return Monitors(); break;
+                case var s when s.StartsWith("look:"): yield return LookAt(s.Substring(5)); break;
                 default: yield return OfficeTour(); break;
             }
             Log("done");
@@ -209,6 +210,24 @@ namespace AfterHours
                 yield return Wait(0.5f);
                 Log($"monitor {kv.Key}: screen {m.ScreenDoc}, forward {front}");
                 yield return Shot("monitor_" + kv.Key);
+            }
+        }
+
+        /// <summary>Photograph a world point from four sides at arm's length: <c>look:x,y,z</c>.</summary>
+        IEnumerator LookAt(string xyz)
+        {
+            var p = xyz.Split(',').Select(v => float.Parse(v, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var target = new Vector3(p[0], p[1], p[2]);
+            yield return WaitUnblocked(30f);
+            foreach (var r in root.Office.Rooms.Values) r.SetLights(true, true);
+            int i = 0;
+            foreach (var dir in new[] { Vector3.forward, Vector3.right, Vector3.back, Vector3.left })
+            {
+                var stand = target + dir * 0.9f; stand.y = 0;
+                root.Player.Teleport(stand, Mathf.Atan2(-dir.x, -dir.z) * Mathf.Rad2Deg, 0f);
+                yield return Aim(target, 0.1f);
+                yield return Wait(0.4f);
+                yield return Shot($"look_{i++}");
             }
         }
 
