@@ -105,6 +105,7 @@ namespace AfterHours
         {
             if (HasArg("-ahCapture")) gameObject.AddComponent<CaptureDirector>();
             if (HasArg("-ahAutopilot")) gameObject.AddComponent<AutoPilot>();
+            if (HasArg("-ahShowcase")) gameObject.AddComponent<Showcase>();
             if (Proto != null) { LockCursor(true); return; }
 
             Settings.ApplyGraphics();
@@ -194,7 +195,7 @@ namespace AfterHours
 
         static void LockCursor(bool locked)
         {
-            if (HasArg("-ahCapture") || HasArg("-ahAutopilot")) return;
+            if (HasArg("-ahCapture") || HasArg("-ahAutopilot") || HasArg("-ahShowcase")) return;
             Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !locked;
         }

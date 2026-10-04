@@ -407,6 +407,11 @@ namespace AfterHours
 
         protected IEnumerator Wait(float s)
         {
+            if (Time.captureDeltaTime > 0f)
+            {
+                for (float t = 0; t < s; t += Time.unscaledDeltaTime) yield return null;
+                yield break;
+            }
             float end = Time.realtimeSinceStartup + s;
             while (Time.realtimeSinceStartup < end) yield return null;
         }

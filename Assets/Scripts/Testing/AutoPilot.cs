@@ -61,9 +61,21 @@ namespace AfterHours
 
         // =========================================================================================
 
+        /// <summary>Hook for subclasses (the showcase recorder) at fixed points of each night.</summary>
+        protected virtual IEnumerator Beat(string phase, int n) { yield break; }
+        /// <summary>Hook: get within reach of <paramref name="target"/> and look at it before using it.</summary>
+        protected virtual IEnumerator Approach(Vector3 target, float reach = 1.1f) { yield break; }
+        /// <summary>Hook: clean a surface on camera. By default the brush maths runs directly.</summary>
+        protected virtual IEnumerator ShowClean(GrimeSurface s) => CleanSurface(s);
+        /// <summary>Hook: foam a window on camera before the route finishes the spray directly.</summary>
+        protected virtual IEnumerator ShowSpray(GrimeSurface s) { yield break; }
+        protected virtual float ReadTime => 0.35f;
+        protected virtual float MenuTime => 0.3f;
+
         IEnumerator PlayNight(int n)
         {
             yield return WaitUnblocked(40f);
+            yield return Beat("start", n);
             var dir = root.Director;
             Check(dir.Def != null && dir.Def.Number == n && dir.Running && !dir.Paused, $"night {n} starts and runs");
             float tilt = Vector3.Angle(root.Player.Camera.transform.up, Vector3.up);
@@ -75,14 +87,17 @@ namespace AfterHours
                 if (root.Office.Rooms.TryGetValue(room, out var r) && !r.LightsOn && root.Office.Switches.TryGetValue(room, out var sw)) sw.Toggle();
 
             yield return Route(n);
+            yield return Beat("afterRoute", n);
             yield return CompleteTasks(n);
 
             // The remote-session beat ignores lights going off in the first minute of the night.
             if (n == 1) for (float t = 0; dir.Elapsed < 62f && t < 90f; t += Time.unscaledDeltaTime) yield return null;
+            yield return Beat("lockup", n);
             // Lock up: lights off through the real switches.
             foreach (var room in dir.Def.Rooms.Concat(new[] { "closet" }))
                 if (root.Office.Rooms.TryGetValue(room, out var r) && r.LightsOn && root.Office.Switches.TryGetValue(room, out var sw)) sw.Toggle();
             yield return Wait(1.5f);
+            yield return Beat("dark", n);
             if (n == 1) yield return ReadMonitor("walt", "screen_remote", "the 1 AM remote session appears when the bullpen goes dark");
             foreach (var room in dir.Def.Rooms)
                 if (root.Office.Rooms.TryGetValue(room, out var r) && r.LightsOn && root.Office.Switches.TryGetValue(room, out var sw)) sw.Toggle();
@@ -93,20 +108,25 @@ namespace AfterHours
             Log($"night {n}: secrets {dir.SecretsFoundCount}/{dir.Def.Secrets.Count}, {Time.realtimeSinceStartup - start:F0}s");
 
             // Clock out at the punch clock.
+            yield return Beat("clockout", n);
             root.Player.Teleport(new Vector3(16.0f, 0, 2.5f), -90f, 0);
-            FindAnyObjectByType<PunchClock>().Interact(null);
+            var clock = FindAnyObjectByType<PunchClock>();
+            yield return Approach(clock.transform.position, 0.9f);
+            clock.Interact(null);
             yield return Wait(0.6f);
-            if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = 0;
+            if (ChoiceMenu.IsOpen) { yield return Wait(MenuTime); ChoiceMenu.AutoPick = 0; }
             float w = 0;
             while (!Interstitial.AnyOpen && w < 10f) { w += Time.unscaledDeltaTime; yield return null; }
             Check(Story.State.ResultFor(n) != null, $"night {n}: clocking out records a result (grade {Story.State.ResultFor(n)?.Grade})");
             yield return Wait(3.2f);
             yield return Shot($"n{n}_report");
+            yield return Beat("report", n);
             Interstitial.AutoAdvance = true;
             yield return Wait(9f);
             yield return Shot($"n{n}_chat");
             for (int i = 0; i < 40 && FindAnyObjectByType<ChatInterlude>() != null; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.25f); }
             Interstitial.AutoAdvance = false;
+            yield return Beat("end", n);
             yield return Wait(1.0f);
         }
 
@@ -133,6 +153,7 @@ namespace AfterHours
                     yield return ReadReadable("fridge_note");
                     {
                         var win = ctx.Surface("win_break_2");
+                        yield return ShowSpray(win);
                         for (float u = 0.1f; u <= 0.9f; u += 0.08f)
                             for (float v = 0.2f; v <= 0.8f; v += 0.1f) win.Spray(new Vector2(u, v), 0.25f, 1f);
                         yield return Wait(0.4f);
@@ -157,7 +178,7 @@ namespace AfterHours
                 case 3:
                     {
                         var wb = ctx.Surface("whiteboard_conf");
-                        yield return CleanSurface(wb);
+                        yield return ShowClean(wb);
                         Check(wb.GhostWasRevealed && dir.HasSecret("whiteboard_ghost"), "erasing the whiteboard reveals the ghost writing");
                         root.Player.Teleport(new Vector3(2.6f, 0, 11.0f), 180f, 4f);
                         yield return Wait(0.8f);
@@ -171,26 +192,33 @@ namespace AfterHours
                     {
                         var rub = GrimeSurface.All.FirstOrDefault(s => s.Id == "notepad_rub");
                         Check(rub != null, "Marian's notepad can be rubbed");
-                        if (rub != null) yield return CleanSurface(rub);
+                        if (rub != null) yield return ShowClean(rub);
                         var pad = ctx.Get("notepad").GetComponent<ScriptedUse>();
+                        yield return Approach(pad.transform.position, 0.8f);
                         yield return Inspect(() => pad.Interact(null), InspectChoice.Keep);
                         Check(Story.State.FateOf("notepad_rubbing") == Fate.Kept, "the rubbing can be torn off and kept");
                         var fc2 = GameObject.Find("FURN_filing_fc2").GetComponent<ScriptedUse>();
+                        yield return Approach(fc2.transform.position + Vector3.up * 0.8f);
                         fc2.Interact(null);
                         yield return Wait(0.5f);
                         yield return Evidence("northgate_invoices", InspectChoice.Keep);
                         var env = ctx.Get("envelope").GetComponent<ScriptedUse>();
+                        yield return Approach(env.transform.position);
                         env.Interact(null);
                         yield return Wait(0.6f);
+                        yield return Wait(ReadTime);
                         InspectView.AutoChoice = InspectChoice.Close;
                         yield return Wait(0.8f);
+                        yield return Wait(MenuTime);
                         if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = 1;
                         yield return Wait(0.6f);
                         Check(Story.State.Has("left_money"), "the money can be left on the desk");
                         var bag = ctx.Furniture.Named.TryGetValue("shredder_office", out var sgo) ? sgo.GetComponent<ScriptedUse>() : null;
                         Check(bag != null, "the office shredder offers its bag");
+                        if (bag != null) yield return Approach(bag.transform.position + Vector3.up * 0.6f);
                         bag?.Interact(null);
                         yield return Wait(0.6f);
+                        yield return Wait(MenuTime);
                         if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = 1;
                         yield return Wait(0.6f);
                         Check(Story.State.Has("kept_shreds"), "the shredder bag can be kept");
@@ -203,8 +231,10 @@ namespace AfterHours
                         Check(box != null, "the kept shredder bag waits on the closet table");
                         if (box != null)
                         {
+                            yield return Approach(box.transform.position);
                             box.GetComponent<ScriptedUse>().Interact(null);
                             yield return Wait(1.0f);
+                            yield return Wait(ReadTime);
                             yield return Shot("n5_shred_puzzle");
                             ShredPuzzle.AutoSolve = true;
                             float t = 0;
@@ -219,6 +249,7 @@ namespace AfterHours
                         Check(tile != null, "Walt's ceiling tile is there with the UV torch");
                         if (tile != null)
                         {
+                            yield return Approach(tile.transform.position, 0.6f);
                             tile.Interact(null);
                             yield return Wait(1.5f);
                             yield return Evidence("walt_letter", InspectChoice.Keep);
@@ -485,7 +516,7 @@ namespace AfterHours
             open();
             float t = 0;
             while (!InspectView.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
-            yield return Wait(0.35f);
+            yield return Wait(ReadTime);
             InspectView.AutoChoice = choice;
             t = 0;
             while (InspectView.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
@@ -498,6 +529,7 @@ namespace AfterHours
             var ev = go != null ? go.GetComponent<EvidenceItem>() : null;
             Check(ev != null, $"evidence {doc} is in the office");
             if (ev == null) yield break;
+            yield return Approach(ev.transform.position);
             yield return Inspect(() => ev.Interact(null), choice);
             if (choice == InspectChoice.Keep) Check(Story.State.FateOf(doc) == Fate.Kept, $"evidence {doc} can be kept");
             else Check(Story.State.FateOf(doc) != Fate.Untouched, $"evidence {doc} can be read");
@@ -508,6 +540,7 @@ namespace AfterHours
             var r = FindObjectsByType<Readable>(FindObjectsSortMode.None).FirstOrDefault(x => x.Doc == doc || x.name == doc);
             Check(r != null, $"readable {doc} is placed");
             if (r == null) yield break;
+            yield return Approach(r.transform.position);
             yield return Inspect(() => r.Interact(null), InspectChoice.Close);
         }
 
@@ -516,6 +549,7 @@ namespace AfterHours
             var locker = GameObject.Find("FURN_locker_walt")?.GetComponent<Readable>();
             Check(locker != null && locker.Doc == doc, $"Walt's locker holds {doc}");
             if (locker == null) yield break;
+            yield return Approach(locker.transform.position + Vector3.up * 1.3f, 1.0f);
             yield return Inspect(() => locker.Interact(null), InspectChoice.Close);
         }
 
@@ -524,6 +558,7 @@ namespace AfterHours
             var m = root.Director.Furniture.Monitors.TryGetValue(desk, out var mm) ? mm : null;
             Check(m != null && m.On && m.ScreenDoc == doc, what);
             if (m == null || !m.On || m.ScreenDoc != doc) yield break;
+            yield return Approach(m.transform.position + Vector3.up * 0.2f, 0.9f);
             yield return Inspect(() => m.Interact(null), InspectChoice.SwitchOff);
         }
 
@@ -535,10 +570,11 @@ namespace AfterHours
             int index = Story.State.Inventory.IndexOf(doc);
             Check(index >= 0, $"{doc} is in your pocket to deliver");
             if (index < 0) yield break;
+            yield return Approach(trays[person].transform.position);
             trays[person].Interact(null);
             float t = 0;
             while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
-            yield return Wait(0.3f);
+            yield return Wait(MenuTime);
             ChoiceMenu.AutoPick = index;
             yield return Wait(0.5f);
             Check(Story.State.IsDelivered(doc, person), $"{doc} delivered to {person}");
