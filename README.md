@@ -172,8 +172,8 @@ Tools/unity.sh                # open the project in the editor
   plus the game's own audio to DIR for a gameplay video.
 
 Latest results on the shipped build, all seven nights each: **audit 196, loose 192, cleanbooks
-192, spotless 167 checks passed, 0 failed**, each reaching its own ending; EditMode tests **11 of
-11** passing.
+192, spotless 167 checks passed, 0 failed**, each reaching its own ending; EditMode tests **13 of
+13** passing.
 
 Performance (1600x900, AMD Radeon 8060S iGPU, OpenGL Core, vsync off): the perf probe renders the
 bullpen in about **3 ms a frame** (around 340 fps). Turning off any single feature saves under
@@ -198,6 +198,10 @@ The AutoPilot found and fixed these bugs in the game itself:
   were told. Doing what you're asked no longer counts.
 - Menus, choices and screens only read the keyboard, so a gamepad player got stuck at the first
   tray or document. All of them now take pad input.
+- The story calendar contradicted itself: the epilogue had the auditor reading the tray on
+  Monday morning, before Night 7's Monday shift, and a ledger entry was dated a week after it
+  is found. The audit is now Tuesday the 15th, and every document, chat line, lock screen and
+  epilogue agrees with that calendar. Clean Books no longer vindicates Walt.
 - `Interstitial` screens (report, chat, title card, ending) destroyed their UI but never their own
   object. Leftovers piled up, and a static "a screen is open" flag raced between the chat closing
   and the next title card opening.
