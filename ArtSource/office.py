@@ -375,7 +375,7 @@ def build():
     L.grime_plane("GRIME_rug_reception", (8.55, 0.0125, 2.45), (0, 1, 0), (2.0, 2.9))
     L.grime_plane("GRIME_floor_reception", (11.0, 0.002, 2.5), (0, 1, 0), (7.8, 4.8))
     anchor("ANCHOR_desk_dana", (11.5, 0.75, 3.75), 0)
-    anchor("TRAY_dana", (12.6, 0.75, 3.7), 0)
+    anchor("TRAY_dana", (12.2, 0.75, 3.7), 0)
     anchor("ANCHOR_chair_dana", (11.5, 0, 4.35), 180)
     anchor("BIN_trash_reception_1", (13.0, 0, 4.4), 0)
     anchor("ANCHOR_plant_reception", (7.45, 0, 0.55), 0)

@@ -127,23 +127,23 @@ namespace AfterHours
             var o = office;
             // Dana: phone, pen cup, calendar
             Dress("dana", "pen_cup", new Vector3(0.45f, 0, 0.0f), 0);
-            Dress("dana", "calendar_desk", new Vector3(0.75f, 0, -0.1f), -15);
+            Dress("dana", "calendar_desk", new Vector3(0.1f, 0, -0.1f), -15);
             Dress("dana", "plant_succulent", new Vector3(-0.95f, 0, -0.15f), 0);
             // Theo: succulent, pen cup, binder
-            Dress("theo", "plant_succulent", new Vector3(0.6f, 0, -0.25f), 0);
+            Dress("theo", "plant_succulent", new Vector3(-0.52f, 0, 0.14f), 0);
             Dress("theo", "pen_cup", new Vector3(-0.45f, 0, -0.22f), 0);
             Dress("theo", "binder", new Vector3(-0.7f, 0, -0.25f), 90);
             // Priya: energy cans as a little tower, laptop
-            Dress("priya", "energy_can", new Vector3(0.62f, 0, -0.25f), 0);
-            Dress("priya", "energy_can", new Vector3(0.68f, 0, -0.18f), 40);
-            Dress("priya", "laptop", new Vector3(-0.5f, 0, 0.05f), 15);
+            Dress("priya", "energy_can", new Vector3(0.32f, 0, -0.3f), 0);
+            Dress("priya", "energy_can", new Vector3(0.38f, 0, -0.22f), 40);
+            Dress("priya", "laptop", new Vector3(0.62f, 0, 0.06f), -15);
             // Russ: photo frame, stress-y desk
             Dress("russ", "photo_frame", new Vector3(0.6f, 0, -0.24f), -20);
             Dress("russ", "mug_red", new Vector3(0.4f, 0, 0.0f), 30);
             // Walt's old hot desk: empty-ish
             Dress("walt", "paper_stack", new Vector3(-0.5f, 0, -0.1f), 5);
             // Marian: orchid, plaque, phone (notepad is a story object)
-            Dress("marian", "orchid", new Vector3(-0.75f, 0, -0.3f), 0, "marian_orchid");
+            Dress("marian", "orchid", new Vector3(0.38f, 0, -0.32f), 0, "marian_orchid");
             Dress("marian", "award_plaque", new Vector3(0.75f, 0, -0.33f), -10, "marian_plaque");
             Dress("marian", "desk_phone", new Vector3(0.6f, 0, 0.0f), -15, "marian_phone");
             Place("orchid", o.Anchor("ANCHOR_credenza_office"), new Vector3(0.4f, 0, 0), 0, "orchid_credenza");
@@ -165,8 +165,8 @@ namespace AfterHours
             var low = o.Anchor("ANCHOR_shelf_bullpen");
             if (low)
             {
-                Place("binder", low, new Vector3(-0.4f, 0, 0), 90, null);
-                Place("binder", low, new Vector3(-0.33f, 0, 0), 90, null);
+                Place("binder", low, new Vector3(-0.58f, 0, 0), 90, null);
+                Place("binder", low, new Vector3(-0.27f, 0, 0), 90, null);
                 Place("paper_stack", low, new Vector3(0.25f, 0, 0), 10, null);
             }
             Place("water_glass", o.Anchor("ANCHOR_credenza_conf"), new Vector3(0.6f, 0, 0), 0, null);

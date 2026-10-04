@@ -443,7 +443,8 @@ namespace AfterHours
                     });
 
                 // The envelope with $50
-                var envPos = desk.TransformPoint(new Vector3(-0.35f, 0.0f, 0.2f));
+                // In the gap between the monitor base and the keyboard, where she'd know you'd see it.
+                var envPos = desk.TransformPoint(new Vector3(0.1f, 0.0f, 0.02f));
                 var env = ctx.Spawn(new SpawnDef { Prop = "envelope", Pos = envPos + Vector3.up * 0.004f, Yaw = desk.eulerAngles.y - 12, Kind = SpawnKind.Decor, Id = "envelope" });
                 bool envDone = false;
                 ScriptedUse.Attach(env, () => envDone ? null : "Read · envelope", () =>

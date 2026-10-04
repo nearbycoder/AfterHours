@@ -125,6 +125,7 @@ namespace AfterHours
             Check(tilt < 60f, $"night {n}: the camera starts upright (tilt {tilt:F0}°)");
             yield return Wait(0.5f);
             yield return Shot($"n{n}_start");
+            CheckOverlaps(n);
             if (n == 1 && PadChecks)
             {
                 Clipboard.Instance.Show();
@@ -766,6 +767,42 @@ namespace AfterHours
         }
 
         bool auditorTrayShot;
+
+        /// <summary>
+        /// Small props shouldn't sit inside each other (a legal pad under a keyboard, a mug in a
+        /// phone). Every pair of solid colliders under 0.8 m is tested for real penetration.
+        /// </summary>
+        void CheckOverlaps(int n)
+        {
+            Physics.SyncTransforms();
+            var cols = FindObjectsByType<Collider>(FindObjectsSortMode.None)
+                .Where(c => c.enabled && !c.isTrigger && c.gameObject.activeInHierarchy && c.gameObject.layer != Layers.Player
+                            && c.bounds.size.x < 0.8f && c.bounds.size.y < 0.8f && c.bounds.size.z < 0.8f)
+                .ToList();
+            int bad = 0;
+            for (int i = 0; i < cols.Count; i++)
+                for (int j = i + 1; j < cols.Count; j++)
+                {
+                    var a = cols[i]; var b = cols[j];
+                    if (a.attachedRigidbody != null && a.attachedRigidbody == b.attachedRigidbody) continue;
+                    if (a.transform.IsChildOf(b.transform) || b.transform.IsChildOf(a.transform)) continue;
+                    // Bins are built from overlapping wall colliders and are meant to hold things.
+                    if (InBin(a.transform) || InBin(b.transform)) continue;
+                    // Trays hold papers; sticky notes are stuck flat onto things.
+                    if (Path(a.transform).Contains("tray_") || Path(b.transform).Contains("tray_")) continue;
+                    if (a.name.Contains("sticky") || b.name.Contains("sticky") || a.name.Contains("thanks") || b.name.Contains("thanks")) continue;
+                    if (!a.bounds.Intersects(b.bounds)) continue;
+                    if (!Physics.ComputePenetration(a, a.transform.position, a.transform.rotation, b, b.transform.position, b.transform.rotation, out _, out float d)) continue;
+                    if (d < 0.01f) continue;
+                    bad++;
+                    Log($"overlap night {n}: {Path(a.transform)} {a.transform.position} <-> {Path(b.transform)} {b.transform.position} by {d * 100f:F1} cm");
+                }
+            Check(bad == 0, $"night {n}: no props sit inside each other ({bad} overlaps)");
+        }
+
+        static bool InBin(Transform t) { for (; t != null; t = t.parent) if (t.name.StartsWith("Bin_")) return true; return false; }
+
+        static string Path(Transform t) => t.parent != null && t.parent.parent != null ? t.parent.name + "/" + t.name : t.name;
 
         IEnumerator ShredAt(string doc, string shredder)
         {
