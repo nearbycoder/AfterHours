@@ -1,0 +1,36 @@
+# Unity
+/Library/
+/Temp/
+/Obj/
+/obj/
+/Logs/
+/Build/
+/Builds/
+/UserSettings/
+/MemoryCaptures/
+/Recordings/
+/Screenshots/
+*.csproj
+*.sln
+*.slnx
+*.pidb
+*.userprefs
+*.unityproj
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+sysinfo.txt
+crashlytics-build.properties
+.vs/
+.vscode/
+.idea/
+.utmp/
+# Tools
+__pycache__/
+/Tools/.venv/
+/ArtSource/renders/tmp/
+*.blend1
+*.blend2
