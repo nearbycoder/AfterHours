@@ -136,6 +136,12 @@ namespace AfterHours
                 yield return Wait(0.6f);
                 Check(PauseMenu.IsOpen, "the pause menu opens during a night");
                 yield return Shot("pause");
+                GameObject.Find("Btn_Restart this night")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+                yield return Wait(0.5f);
+                Check(ChoiceMenu.IsOpen, "Restart this night asks first");
+                yield return Shot("restart_confirm");
+                ChoiceMenu.AutoPick = 99; // "Never mind" (clamped to the last option)
+                yield return Wait(0.4f);
                 PauseMenu.Instance.Close();
                 yield return WaitUnblocked(3f);
                 Check(!root.Blocked, "closing the pause menu hands control back");
@@ -443,6 +449,18 @@ namespace AfterHours
             yield return Press(GamepadButton.East);
             yield return Wait(0.4f);
             Check(!NightSelect.IsOpen, "pad B closes Night Select");
+            // With a save on disk, New Game asks first; the question must sit above the title.
+            var newGame = GameObject.Find("Btn_New Game")?.GetComponent<UnityEngine.UI.Button>();
+            if (newGame != null && StoryState.Load() != null)
+            {
+                newGame.onClick.Invoke();
+                yield return Wait(0.5f);
+                Check(ChoiceMenu.IsOpen, "New Game asks before overwriting a save");
+                yield return Shot("new_game_confirm");
+                yield return Press(GamepadButton.East);
+                yield return Wait(0.4f);
+                Check(!ChoiceMenu.IsOpen && TitleScreen.Instance != null, "pad B backs out of the New Game question");
+            }
         }
 
         IEnumerator PadEvidenceKeep(string doc)
