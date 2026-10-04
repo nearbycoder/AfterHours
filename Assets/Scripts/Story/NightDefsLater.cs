@@ -402,7 +402,8 @@ namespace AfterHours
                 var desk = ctx.Office.Anchor("ANCHOR_desk_marian");
 
                 // Legal pad: rub a pencil over the indentations.
-                var padPos = desk.TransformPoint(new Vector3(0.1f, 0.0f, 0.25f));
+                // Front right, clear of the keyboard and mouse (centre) and the phone (right).
+                var padPos = desk.TransformPoint(new Vector3(0.36f, 0.0f, 0.28f));
                 var pad = ctx.Spawn(new SpawnDef { Prop = "notepad", Pos = padPos, Yaw = desk.eulerAngles.y + 8, Kind = SpawnKind.Decor, Id = "notepad" });
                 var rub = Geo.Grime(ctx.Director.NightRoot, "notepad_rub", padPos + Vector3.up * 0.0125f, Vector3.up, pad.transform.forward, new Vector2(0.2f, 0.27f), ToolKind.Cloth,
                     new GrimeSpec { GhostTexture = "Textures/Grime/notepad_rubbing", GhostMode = 0 }.WithSeed(4), 160f);

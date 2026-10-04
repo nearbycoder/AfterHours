@@ -122,6 +122,13 @@ namespace AfterHours.EditorTools
                 emissive.EnableKeyword("_EMISSION");
                 emissive.globalIlluminationFlags = MaterialGlobalIlluminationFlags.None;
                 emissive.SetColor("_EmissionColor", Color.white);
+                // Glowing surfaces (screens, LEDs, lamps) light themselves: no specular hotspot from
+                // nearby lights and no sky reflection washing the picture out.
+                emissive.SetFloat("_SpecularHighlights", 0f);
+                emissive.EnableKeyword("_SPECULARHIGHLIGHTS_OFF");
+                emissive.SetFloat("_EnvironmentReflections", 0f);
+                emissive.EnableKeyword("_ENVIRONMENTREFLECTIONS_OFF");
+                emissive.SetFloat("_Smoothness", 0.2f);
             }
 
             var glass = Template("AH_LitGlass", lit);

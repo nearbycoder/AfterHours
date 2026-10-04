@@ -42,6 +42,7 @@ namespace AfterHours
                 case "night1": yield return Night1(); break;
                 case "tour": yield return NightTour(); break;
                 case "perf": yield return PerfProbe(); break;
+                case "monitors": yield return Monitors(); break;
                 default: yield return OfficeTour(); break;
             }
             Log("done");
@@ -187,6 +188,28 @@ namespace AfterHours
             yield return Measure("grime renderers off");
             QualitySettings.vSyncCount = vs;
             main.Dispose(); render.Dispose();
+        }
+
+        /// <summary>Every monitor photographed straight on, lit room, to check screen mapping.</summary>
+        IEnumerator Monitors()
+        {
+            yield return WaitUnblocked(30f);
+            foreach (var r in root.Office.Rooms.Values) r.SetLights(true, true);
+            foreach (var kv in root.Director.Furniture.Monitors)
+            {
+                var m = kv.Value;
+                if (!m.On) m.SetOn(true, true);
+                var screenPos = m.transform.position + Vector3.up * 0.38f;
+                // The screen faces away from the stand: the stand sits behind the panel (-forward).
+                var front = m.transform.forward;
+                var stand = screenPos + front * 0.85f;
+                stand.y = 0;
+                root.Player.Teleport(stand, Mathf.Atan2(-front.x, -front.z) * Mathf.Rad2Deg, 0f);
+                yield return Aim(screenPos, 0.1f);
+                yield return Wait(0.5f);
+                Log($"monitor {kv.Key}: screen {m.ScreenDoc}, forward {front}");
+                yield return Shot("monitor_" + kv.Key);
+            }
         }
 
         IEnumerator OfficeTour()
