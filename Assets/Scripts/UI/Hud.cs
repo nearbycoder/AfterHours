@@ -88,13 +88,14 @@ namespace AfterHours
         public void Prompt(params (string key, string label)[] items)
         {
             string signature = string.Join("|", System.Array.ConvertAll(items, i => i.key + i.label));
+            signature += GameInput.UsingPad ? "|pad" : "";
             if (signature == promptKey) return;
             promptKey = signature;
             foreach (Transform c in promptRoot) Destroy(c.gameObject);
             foreach (var (key, label) in items)
             {
                 if (string.IsNullOrEmpty(key)) continue;
-                Ui.KeyCap(promptRoot, key, 34);
+                Ui.KeyCap(promptRoot, GameInput.Glyph(key), 34);
                 var t = Ui.Label(promptRoot, label, UiFont.SansMedium, 22, Ui.Text, TextAlignmentOptions.Left);
                 t.rectTransform.sizeDelta = new Vector2(t.GetPreferredValues(label).x + 18, 34);
                 t.fontMaterial.EnableKeyword("UNDERLAY_ON");

@@ -36,10 +36,9 @@ namespace AfterHours
 
         protected static bool Advance()
         {
-            var kb = Keyboard.current;
             var mouse = Mouse.current;
             if (AutoAdvance) { AutoAdvance = false; return true; }
-            return (kb != null && (kb.eKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame))
+            return GameInput.Menu.Confirm || GameInput.Menu.Start
                    || (mouse != null && mouse.leftButton.wasPressedThisFrame);
         }
 
@@ -228,7 +227,7 @@ namespace AfterHours
                 Tween.Run(0.3f, k => { if (brt) brt.anchoredPosition = new Vector2(bx + Mathf.Sin(k * 50) * 8 * (1 - k), -10); }, Ease.Linear, null, 0.2f);
             });
 
-            var hint = Ui.Label(root, "Press  E  to see what happened in the morning", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
+            var hint = Ui.Label(root, $"Press  {GameInput.Glyph("E")}  to see what happened in the morning", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
             Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1000, 40), new Vector2(0.5f, 0));
             AudioDirector.Instance?.PlayMusic("music_daylight", 0.4f);
         }
@@ -340,7 +339,7 @@ namespace AfterHours
         TextMeshProUGUI typing, hint;
         bool finished;
 
-        string doneHint = "Press  E  to clock in for the next night";
+        string doneHint = $"Press  {GameInput.Glyph("E")}  to clock in for the next night";
 
         public static void Show(string dayLabel, List<ChatLine> chat, Action onDone, string doneHint = null)
         {

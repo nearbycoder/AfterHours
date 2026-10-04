@@ -44,8 +44,12 @@ start-up on the development machine.
 | 1 to 4, mouse wheel | | pin a tool (otherwise the right tool is picked for the surface) |
 | Esc | start | pause |
 
-In the inspect view: **Tab** keeps a document, **E** puts it back, **X** throws it away. On a
-monitor, **Q** switches it off.
+In the inspect view: **Tab** (pad **Y**) keeps a document, **E** (pad **A**) puts it back, **X**
+(pad **X**) throws it away. On a monitor, **Q** (pad **X**) switches it off.
+
+Menus, choices, the shred puzzle and the shift report work with W/S/A/D or the arrow keys, E or
+Enter to confirm and Esc to go back; on a pad, the d-pad or left stick, **A** and **B**. Prompts
+switch between keyboard keys and pad buttons depending on what you touched last.
 
 ## How it plays
 
@@ -145,12 +149,16 @@ Tools/unity.sh                # open the project in the editor
 
 ## Verification
 
-- **AutoPilot** (`Tools/autopilot.sh [outdir] [nightN]`): the built player starts at the title
+- **AutoPilot** (`Tools/autopilot.sh [outdir] [nightN|all] [route]`): the built player starts at the title
   and plays all seven nights through the real game components. It wipes surfaces with the real
   brush maths, drops rubbish into bins with physics, uses real mouse-and-key input for a wipe, a
   pick-up, a charged throw and the vacuum, reads and keeps evidence, delivers it to trays, solves
-  the shred puzzle, switches the lights off, clocks out, and checks that the "audit" route reaches
-  The Audit ending and returns to the title. It saves screenshots and prints PASS/FAIL lines.
+  the shred puzzle, switches the lights off, clocks out, and checks that the chosen route reaches
+  its ending and returns to the title. The four routes are `audit` (default; everything goes to
+  the auditor), `loose` (keep the red folder), `cleanbooks` (bin it) and `spotless` (read
+  everything, keep nothing). Every route also plugs in a virtual gamepad and drives the title
+  menu, Settings, the document reader and a tray choice with real pad button events. It saves
+  screenshots and prints PASS/FAIL lines.
 - **EditMode tests** (`Tools/unity.sh test`): an exhaustive search of the choice space proves all
   four endings are reachable, plus specific routes to each, data consistency between documents
   and nights, and grime pattern generation.
@@ -163,9 +171,9 @@ Tools/unity.sh                # open the project in the editor
   walking up to things and holding documents open, and writes every frame (fixed 30 fps clock)
   plus the game's own audio to DIR for a gameplay video.
 
-Latest results on the shipped build: AutoPilot **191 passed, 0 failed** across all seven nights
-(every required task completed each night, grade S or A, The Audit ending reached), and EditMode
-tests **10 of 10** passing.
+Latest results on the shipped build, all seven nights each: **audit 196, loose 192, cleanbooks
+192, spotless 167 checks passed, 0 failed**, each reaching its own ending; EditMode tests **11 of
+11** passing.
 
 Performance (1600x900, AMD Radeon 8060S iGPU, OpenGL Core, vsync off): the perf probe renders the
 bullpen in about **3 ms a frame** (around 340 fps). Turning off any single feature saves under
@@ -185,6 +193,11 @@ The AutoPilot found and fixed these bugs in the game itself:
   when a night ends.
 - The camera-kick spring went unstable on long frames (night loads, screenshots) and could leave
   the camera upside down. It now sub-steps at a fixed rate and resets on teleport.
+- Following Marian's instruction to send her shredder bag down the chute counted as tampering
+  with evidence, which made the Spotless ending unreachable for a player who just did as they
+  were told. Doing what you're asked no longer counts.
+- Menus, choices and screens only read the keyboard, so a gamepad player got stuck at the first
+  tray or document. All of them now take pad input.
 - `Interstitial` screens (report, chat, title card, ending) destroyed their UI but never their own
   object. Leftovers piled up, and a static "a screen is open" flag raced between the chat closing
   and the next title card opening.
@@ -195,9 +208,9 @@ The AutoPilot found and fixed these bugs in the game itself:
 
 ## Known limitations
 
-- **Only one route is played end to end.** The AutoPilot plays the "audit" route. The other
-  three endings are proven reachable by the EditMode tests, which run the ending logic over the
-  whole choice space, but no automated run plays through them in the built game.
+- **Four routes, not every branch.** The AutoPilot plays one route to each ending. Mixed
+  choices (for example, delivering to Marian, writing sticky notes, taking the money) are only
+  covered by the EditMode sweep of the ending logic.
 - **The AutoPilot takes shortcuts.** It teleports between rooms, triggers most interactions
   directly, and cleans most surfaces by calling the brush maths rather than moving the mouse.
   Real mouse-and-key input is exercised for one wipe, the pick-up, a charged throw and the
@@ -205,7 +218,8 @@ The AutoPilot found and fixed these bugs in the game itself:
   untested with real players.
 - **Audio was never heard.** Every sound and music track was checked numerically (level, crest
   factor, rhythm, loop seams), not by ear.
-- **Gamepad bindings are untested**; no controller was connected during development.
+- **No physical gamepad was tested.** Pad support is verified with a virtual Input System gamepad
+  (real state events, same code path), but not on hardware, and there is no rumble or remapping.
 - **Performance was measured on one machine only** (32-core Strix Halo with its integrated GPU;
   numbers above). Lower-end hardware is untested, and there are no quality presets; the only
   graphics option is render scale in Settings.

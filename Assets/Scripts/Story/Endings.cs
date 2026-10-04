@@ -35,8 +35,14 @@ namespace AfterHours
             return docs + System.Math.Min(2, notes);
         }
 
+        /// <summary>
+        /// Did the player take a side? Sending Marian's shredder bag down the chute is doing exactly
+        /// what the boss asked, so it doesn't count; every other kept, delivered, shredded or binned
+        /// piece of evidence does.
+        /// </summary>
         public static bool Meddled(StoryState s) =>
-            s.Evidence.Any(e => e.Fate is Fate.Kept or Fate.Delivered or Fate.Shredded or Fate.Trashed) || s.Notes.Count > 0;
+            s.Evidence.Any(e => e.Fate is Fate.Kept or Fate.Delivered or Fate.Shredded || (e.Fate == Fate.Trashed && e.Id != "shred_bag"))
+            || s.Notes.Count > 0;
 
         public static string ResolveId(StoryState s)
         {

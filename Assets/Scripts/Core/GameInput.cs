@@ -20,6 +20,22 @@ namespace AfterHours
         public bool Click;
     }
 
+    /// <summary>
+    /// One frame of menu intent, from the keyboard or a gamepad. Unlike <see cref="InputFrame"/> it
+    /// is never zeroed while gameplay is blocked, because that is exactly when menus need it.
+    /// </summary>
+    public struct MenuFrame
+    {
+        public bool Up, Down, Left, Right;
+        public bool Confirm;    // E / Enter / Space, pad A
+        public bool Back;       // Esc, pad B
+        public bool Keep;       // Tab, pad Y
+        public bool Alt;        // X (or Q on monitors), pad X
+        public bool Pause;      // Esc, pad Start
+        public bool Clipboard;  // Tab, pad Select
+        public bool Start;      // pad Start only (Esc already means back)
+    }
+
     public interface IInputProvider
     {
         InputFrame Read(InputFrame devices);
@@ -32,8 +48,14 @@ namespace AfterHours
         public static InputFrame Frame;
         public static IInputProvider Override;
         public static bool GameplayEnabled = true;
+        public static MenuFrame Menu;
+        /// <summary>True when the gamepad was the last device touched; prompts show pad buttons.</summary>
+        public static bool UsingPad;
+        public static event System.Action DeviceChanged;
 
         bool lastUse;
+        Vector2 heldDir;
+        float repeatAt;
 
         void Update()
         {
@@ -48,6 +70,82 @@ namespace AfterHours
                 f.Use = f.UseDown = f.Spray = f.Interact = f.Drop = f.Torch = false;
             }
             Frame = f;
+            Menu = ReadMenu();
+        }
+
+        MenuFrame ReadMenu()
+        {
+            var m = new MenuFrame();
+            var kb = Keyboard.current;
+            var mouse = Mouse.current;
+            var pad = Gamepad.current;
+            bool wasPad = UsingPad;
+            if (kb != null)
+            {
+                m.Up = kb.wKey.wasPressedThisFrame || kb.upArrowKey.wasPressedThisFrame;
+                m.Down = kb.sKey.wasPressedThisFrame || kb.downArrowKey.wasPressedThisFrame;
+                m.Left = kb.aKey.wasPressedThisFrame || kb.leftArrowKey.wasPressedThisFrame;
+                m.Right = kb.dKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame;
+                m.Confirm = kb.eKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame;
+                m.Back = m.Pause = kb.escapeKey.wasPressedThisFrame;
+                m.Keep = m.Clipboard = kb.tabKey.wasPressedThisFrame;
+                m.Alt = kb.xKey.wasPressedThisFrame;
+                if (kb.anyKey.wasPressedThisFrame) UsingPad = false;
+            }
+            if (mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 9f || mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
+                UsingPad = false;
+            if (pad != null)
+            {
+                // D-pad or stick, with key-repeat when held.
+                var dir = pad.dpad.ReadValue() + pad.leftStick.ReadValue();
+                var snapped = Vector2.zero;
+                if (dir.magnitude > 0.55f)
+                    snapped = Mathf.Abs(dir.x) > Mathf.Abs(dir.y) ? new Vector2(Mathf.Sign(dir.x), 0) : new Vector2(0, Mathf.Sign(dir.y));
+                bool fire = false;
+                if (snapped != heldDir) { heldDir = snapped; fire = snapped != Vector2.zero; repeatAt = Time.unscaledTime + 0.4f; }
+                else if (snapped != Vector2.zero && Time.unscaledTime >= repeatAt) { fire = true; repeatAt = Time.unscaledTime + 0.12f; }
+                if (fire)
+                {
+                    m.Up |= snapped.y > 0; m.Down |= snapped.y < 0;
+                    m.Left |= snapped.x < 0; m.Right |= snapped.x > 0;
+                }
+                m.Confirm |= pad.buttonSouth.wasPressedThisFrame;
+                m.Back |= pad.buttonEast.wasPressedThisFrame;
+                m.Keep |= pad.buttonNorth.wasPressedThisFrame;
+                m.Alt |= pad.buttonWest.wasPressedThisFrame;
+                m.Pause |= pad.startButton.wasPressedThisFrame;
+                m.Start = pad.startButton.wasPressedThisFrame;
+                m.Clipboard |= pad.selectButton.wasPressedThisFrame;
+                bool padActive = fire || pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame || pad.buttonNorth.wasPressedThisFrame
+                                 || pad.buttonWest.wasPressedThisFrame || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame
+                                 || pad.rightStick.ReadValue().sqrMagnitude > 0.1f || pad.leftStick.ReadValue().sqrMagnitude > 0.1f
+                                 || pad.rightTrigger.wasPressedThisFrame || pad.leftTrigger.wasPressedThisFrame;
+                if (padActive) UsingPad = true;
+            }
+            if (UsingPad != wasPad) DeviceChanged?.Invoke();
+            return m;
+        }
+
+        /// <summary>
+        /// The button to show for a keyboard/mouse key name in prompts and hints: the key itself, or
+        /// the matching pad button when the gamepad is in use.
+        /// </summary>
+        public static string Glyph(string key)
+        {
+            if (!UsingPad) return key;
+            return key.ToUpperInvariant() switch
+            {
+                "E" or "ENTER" or "SPACE" => "A",
+                "Q" or "ESC" => "B",
+                "TAB" => "Y",
+                "X" => "X",
+                "LMB" => "RT",
+                "RMB" => "LT",
+                "F" => "D-PAD ↑",
+                "SHIFT" => "RB",
+                "A / D" => "◀ ▶",
+                _ => key,
+            };
         }
 
         static InputFrame ReadDevices()

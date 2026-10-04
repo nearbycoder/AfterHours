@@ -27,6 +27,7 @@ namespace AfterHours
         int channels = 2;
         bool audioOk;
 
+        protected override bool PadChecks => false;
         protected override float ReadTime => rec ? 2.4f : 0.35f;
         protected override float MenuTime => rec ? 1.3f : 0.3f;
 

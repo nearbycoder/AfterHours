@@ -78,7 +78,7 @@ namespace AfterHours
                     int secrets = Story.State.Results.Sum(r => r.Secrets), total = Story.State.Results.Sum(r => r.SecretsTotal);
                     string grades = string.Join("  ", Story.State.Results.OrderBy(r => r.Night).Select(r => $"N{r.Night} {r.Grade}"));
                     stats.text = $"SECRETS {secrets}/{total}    ·    {grades}";
-                    hint.text = "Thanks for playing.   Press  E  to return to the title.";
+                    hint.text = $"Thanks for playing.   Press  {GameInput.Glyph("E")}  to return to the title.";
                     Tween.Run(1.2f, k => { if (stats) { stats.alpha = k; hint.alpha = k; } }, Ease.OutCubic);
                 }
             }

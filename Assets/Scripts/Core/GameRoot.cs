@@ -148,7 +148,7 @@ namespace AfterHours
                 Hud.Instance.SetVisible(true);
                 Director.Pause(false);
                 LockCursor(true);
-                if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption("Your shift sheet is on the clipboard  ·  Tab", 4f));
+                if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption($"Your shift sheet is on the clipboard  ·  {(GameInput.UsingPad ? "View" : "Tab")}", 4f));
             });
             Tween.Delay(0.15f, () => { Director.Begin(n); Director.Pause(true); });
         }
@@ -168,7 +168,7 @@ namespace AfterHours
                     else EndingScreen.Show(Endings.Resolve(Story.State));
                 }
                 if (chat.Count == 0) next();
-                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : "Press  E  to continue");
+                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : $"Press  {GameInput.Glyph("E")}  to continue");
             });
         }
 
@@ -211,8 +211,7 @@ namespace AfterHours
             var hud = Hud.Instance;
             if (hud == null) return;
             var f = GameInput.Frame;
-            var kb = UnityEngine.InputSystem.Keyboard.current;
-            if (kb != null && kb.escapeKey.wasPressedThisFrame && blockers.Count == 0 && InNight && !PauseMenu.IsOpen) PauseMenu.Show();
+            if (GameInput.Menu.Pause && blockers.Count == 0 && InNight && !PauseMenu.IsOpen) PauseMenu.Show();
             if (blockers.Count == 0 && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
 
             if (Hands != null && Hands.Holding != null)

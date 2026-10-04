@@ -22,6 +22,18 @@ namespace AfterHours.Tests
         }
 
         [Test]
+        public void SpotlessWhenOnlyFollowingOrders()
+        {
+            // Marian asks for her shredder bag to go down the chute; obeying isn't meddling.
+            var s = Fresh();
+            s.SetFate("shred_bag", Fate.Trashed);
+            s.SetFate("red_folder", Fate.Seen);
+            Assert.AreEqual("spotless", Endings.ResolveId(s));
+            s.SetFate("shred_bag", Fate.Kept);
+            Assert.AreNotEqual("spotless", Endings.ResolveId(s));
+        }
+
+        [Test]
         public void AuditWithRedFolderAndTwoMore()
         {
             var s = Fresh();

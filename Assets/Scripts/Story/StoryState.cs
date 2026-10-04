@@ -102,8 +102,8 @@ namespace AfterHours
 
         // ---- persistence -------------------------------------------------------------------------
 
-        /// <summary>Save directory; -ahProfile NAME isolates automated runs from real saves.</summary>
-        static string Dir
+        /// <summary>Save directory; -ahProfile NAME isolates automated runs from real saves (and settings).</summary>
+        public static string Dir
         {
             get
             {

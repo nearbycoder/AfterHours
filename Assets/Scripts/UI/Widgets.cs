@@ -35,6 +35,9 @@ namespace AfterHours
         {
             var row = Ui.Rect(parent, "Slider_" + label);
             row.sizeDelta = new Vector2(width, 56);
+            var glow = Ui.Panel(row, "Glow", new Color(1, 1, 1, 0f), 10);
+            Ui.Stretch(glow.rectTransform, -8);
+            glow.raycastTarget = false;
             var l = Ui.Label(row, label, UiFont.Sans, 26, Ui.Text, TextAlignmentOptions.MidlineLeft);
             Ui.Place(l.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(300, 50), new Vector2(0, 0.5f));
             var track = Ui.Panel(row, "Track", new Color(1, 1, 1, 0.12f), 6);
@@ -51,14 +54,24 @@ namespace AfterHours
             Ui.Place(val.rectTransform, new Vector2(1, 0.5f), Vector2.zero, new Vector2(100, 50), new Vector2(1, 0.5f));
             format ??= v => Mathf.RoundToInt(v * 100) + "%";
             val.text = format(value);
-            var drag = track.gameObject.AddComponent<SliderDrag>();
-            drag.Init(track.rectTransform, v =>
+            float current = value;
+            void Set(float v)
             {
+                current = v;
                 fill.rectTransform.anchorMax = new Vector2(v, 1);
                 knob.rectTransform.anchorMin = knob.rectTransform.anchorMax = new Vector2(v, 0.5f);
                 val.text = format(v);
                 onChange(v);
-            }, value);
+            }
+            var drag = track.gameObject.AddComponent<SliderDrag>();
+            drag.Init(track.rectTransform, Set, value);
+            // Selectable so the pad can reach it; left/right nudge the value.
+            var sel = row.gameObject.AddComponent<Selectable>();
+            sel.transition = Selectable.Transition.None;
+            var nav = row.gameObject.AddComponent<SliderNav>();
+            nav.Get = () => current;
+            nav.Set = Set;
+            row.gameObject.AddComponent<SelectGlow>().Target = glow;
             return row;
         }
 
@@ -75,6 +88,7 @@ namespace AfterHours
             var dot = Ui.Image(pill.rectTransform, "Dot", Color.white, Ui.Circle(64));
             Ui.Place(dot.rectTransform, new Vector2(0, 0.5f), new Vector2(value ? 54 : 18, 0), new Vector2(26, 26), new Vector2(0.5f, 0.5f));
             bool state = value;
+            row.gameObject.AddComponent<SelectGlow>().Target = row;
             var b = row.gameObject.AddComponent<UnityEngine.UI.Button>();
             b.transition = Selectable.Transition.None;
             b.onClick.AddListener(() =>
@@ -105,11 +119,11 @@ namespace AfterHours
     }
 
     /// <summary>Hover lift + glow on menu buttons.</summary>
-    public class HoverFx : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public class HoverFx : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
     {
         Image bg;
         TextMeshProUGUI label;
-        bool primary, over;
+        bool primary, over, selected;
         Color baseCol;
         float k;
 
@@ -123,9 +137,19 @@ namespace AfterHours
 
         public void OnPointerExit(PointerEventData e) => over = false;
 
+        public void OnSelect(BaseEventData e)
+        {
+            selected = true;
+            if (GameInput.UsingPad) Sfx.Play("ui_hover", null, 0.25f, 1f, 0.03f, AudioBus.Ui);
+        }
+
+        public void OnDeselect(BaseEventData e) => selected = false;
+
         void Update()
         {
-            k = Mathf.MoveTowards(k, over ? 1f : 0f, Time.unscaledDeltaTime * 8f);
+            // Mouse hover, or pad selection (a mouse click also selects, which shouldn't stick).
+            bool on = over || (selected && GameInput.UsingPad);
+            k = Mathf.MoveTowards(k, on ? 1f : 0f, Time.unscaledDeltaTime * 8f);
             float e = Ease.OutCubic(k);
             bg.color = primary ? Color.Lerp(baseCol, new Color(1f, 0.86f, 0.5f, 1f), e) : Color.Lerp(baseCol, new Color(1f, 0.78f, 0.34f, 0.18f), e);
             label.rectTransform.anchoredPosition = new Vector2(e * 10f, 0);

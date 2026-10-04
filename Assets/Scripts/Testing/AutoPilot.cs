@@ -2,6 +2,9 @@ using System;
 using System.Collections;
 using System.Linq;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace AfterHours
 {
@@ -16,6 +19,14 @@ namespace AfterHours
     {
         protected override string ArgName => "-ahAutopilot";
         int passes, fails;
+
+        /// <summary>
+        /// Story route (<c>-ahRoute</c>): "audit" delivers everything to the auditor; "loose" keeps the
+        /// red folder; "cleanbooks" bins it; "spotless" reads everything and keeps nothing.
+        /// </summary>
+        protected string route = "audit";
+        bool Keeps => route != "spotless";
+        InspectChoice Take => Keeps ? InspectChoice.Keep : InspectChoice.Close;
 
         // Frame times while a night is being played (real-time runs only; the showcase fixes the step).
         readonly System.Collections.Generic.List<float> frameTimes = new();
@@ -43,13 +54,15 @@ namespace AfterHours
 
         protected override IEnumerator Run()
         {
-            Debug.Log("[AutoPilot] started");
+            route = GameRoot.Arg("-ahRoute") ?? "audit";
+            Debug.Log($"[AutoPilot] started, route {route}");
             // Test windows usually sit behind others, and Wayland throttles hidden windows' vsync
             // to a crawl (11-20 fps here). Run uncapped so timings measure the game, not the compositor.
             if (Time.captureFramerate == 0) { QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1; }
             yield return Wait(3f);
             Check(TitleScreen.Instance != null, "title screen shows on boot");
             yield return Shot("title");
+            if (PadChecks) yield return PadTitle();
             StoryState.DeleteAll();
             Story.State = new StoryState();
             TitleScreen.Instance?.Begin(1);
@@ -70,7 +83,7 @@ namespace AfterHours
             Check(FindAnyObjectByType<EndingScreen>() != null, "ending screen appears after night 7");
             yield return Wait(8f);
             yield return Shot("ending");
-            Check(Story.State.Ending == "audit", $"audit route reaches the audit ending (got {Story.State.Ending}, score {Endings.AuditScore(Story.State)})");
+            Check(Story.State.Ending == route, $"{route} route reaches the {route} ending (got {Story.State.Ending}, score {Endings.AuditScore(Story.State)})");
             for (int i = 0; i < 8; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.4f); }
             yield return Wait(2f);
             Check(TitleScreen.Instance != null, "ending returns to the title");
@@ -168,9 +181,12 @@ namespace AfterHours
                     yield return ReadReadable("dana_welcome");
                     yield return ReadLocker("walt_note_1");
                     yield return RealInputNight1();
-                    yield return Evidence("theo_note", InspectChoice.Keep);
+                    if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
+                    else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
-                    yield return Deliver("theo_note", "priya");
+                    if (vpad != null && Keeps) yield return PadDeliver("theo_note", "priya");
+                    else if (Keeps) yield return Deliver("theo_note", "priya");
+                    UnplugPad();
                     break;
                 case 2:
                     yield return ReadLocker("walt_note_2");
@@ -189,8 +205,8 @@ namespace AfterHours
                         yield return Wait(0.3f);
                         yield return Shot("n2_window_writing");
                     }
-                    yield return Evidence("russ_slip", InspectChoice.Keep);
-                    yield return Deliver("russ_slip", "priya");
+                    yield return Evidence("russ_slip", Take);
+                    if (Keeps) yield return Deliver("russ_slip", "priya");
                     // UV arrows
                     root.Player.Teleport(new Vector3(9.0f, 0, 8.4f), -90f, 0f);
                     if (!UvTorch.Instance.On) input.TorchOnce = true;
@@ -211,8 +227,8 @@ namespace AfterHours
                         yield return Shot("n3_whiteboard_ghost");
                     }
                     yield return ReadReadable("audit_agenda");
-                    yield return Evidence("theo_planner", InspectChoice.Keep);
-                    yield return Deliver("theo_planner", "priya");
+                    yield return Evidence("theo_planner", Take);
+                    if (Keeps) yield return Deliver("theo_planner", "priya");
                     break;
                 case 4:
                     {
@@ -221,13 +237,14 @@ namespace AfterHours
                         if (rub != null) yield return ShowClean(rub);
                         var pad = ctx.Get("notepad").GetComponent<ScriptedUse>();
                         yield return Approach(pad.transform.position, 0.8f);
-                        yield return Inspect(() => pad.Interact(null), InspectChoice.Keep);
-                        Check(Story.State.FateOf("notepad_rubbing") == Fate.Kept, "the rubbing can be torn off and kept");
+                        yield return Inspect(() => pad.Interact(null), Take);
+                        if (Keeps) Check(Story.State.FateOf("notepad_rubbing") == Fate.Kept, "the rubbing can be torn off and kept");
+                        else Check(Story.State.FateOf("notepad_rubbing") is Fate.Untouched or Fate.Seen, "the rubbing can be read and left on the pad");
                         var fc2 = GameObject.Find("FURN_filing_fc2").GetComponent<ScriptedUse>();
                         yield return Approach(fc2.transform.position + Vector3.up * 0.8f);
                         fc2.Interact(null);
                         yield return Wait(0.5f);
-                        yield return Evidence("northgate_invoices", InspectChoice.Keep);
+                        yield return Evidence("northgate_invoices", Take);
                         var env = ctx.Get("envelope").GetComponent<ScriptedUse>();
                         yield return Approach(env.transform.position);
                         env.Interact(null);
@@ -245,16 +262,18 @@ namespace AfterHours
                         bag?.Interact(null);
                         yield return Wait(0.6f);
                         yield return Wait(MenuTime);
-                        if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = 1;
+                        if (ChoiceMenu.IsOpen) ChoiceMenu.AutoPick = Keeps ? 1 : 0;
                         yield return Wait(0.6f);
-                        Check(Story.State.Has("kept_shreds"), "the shredder bag can be kept");
+                        if (Keeps) Check(Story.State.Has("kept_shreds"), "the shredder bag can be kept");
+                        else Check(Story.State.Has("shred_bag_done") && !Story.State.Has("kept_shreds"), "the shredder bag can go down the chute as asked");
                         yield return ReadMonitor("marian", "screen_marian_lock", "Marian's lock screen shows the 1 AM sign-in");
                     }
                     break;
                 case 5:
                     {
                         var box = ctx.Get("shred_bag_box");
-                        Check(box != null, "the kept shredder bag waits on the closet table");
+                        if (Keeps) Check(box != null, "the kept shredder bag waits on the closet table");
+                        else Check(box == null, "no shredder bag on the closet table after sending it down the chute");
                         if (box != null)
                         {
                             yield return Approach(box.transform.position);
@@ -269,7 +288,7 @@ namespace AfterHours
                             yield return Wait(0.8f);
                             Check(Story.State.FateOf("reconstructed_invoice") == Fate.Kept, "the shred puzzle rebuilds the invoice");
                         }
-                        yield return Evidence("vpn_log", InspectChoice.Keep);
+                        yield return Evidence("vpn_log", Take);
                         yield return Evidence("theo_resignation", InspectChoice.Close);
                         var tile = FindObjectsByType<ScriptedUse>(FindObjectsSortMode.None).FirstOrDefault(s => s.name == "CeilingTile");
                         Check(tile != null, "Walt's ceiling tile is there with the UV torch");
@@ -278,12 +297,14 @@ namespace AfterHours
                             yield return Approach(tile.transform.position, 0.6f);
                             tile.Interact(null);
                             yield return Wait(1.5f);
-                            yield return Evidence("walt_letter", InspectChoice.Keep);
+                            yield return Evidence("walt_letter", Take);
                         }
                         dir.SetClock(332.9f);
                         yield return Wait(1.2f);
                         yield return ReadReadable("printout");
-                        Check(dir.HasSecret("priya_ally"), "Priya's 3:33 AM printout");
+                        // Priya only reaches out if you've helped her; otherwise the copier prints a test page.
+                        if (Keeps) Check(dir.HasSecret("priya_ally"), "Priya's 3:33 AM printout");
+                        else Check(!dir.HasSecret("priya_ally"), "without your help, the 3:33 AM copier prints only a test page");
                     }
                     break;
                 case 6:
@@ -294,7 +315,7 @@ namespace AfterHours
                         yield return Wait(0.6f);
                         InspectView.AutoChoice = InspectChoice.Close;
                         yield return Wait(0.8f);
-                        yield return Evidence("payment_ledger", InspectChoice.Keep);
+                        yield return Evidence("payment_ledger", Take);
                         var phone = ctx.Furniture.Named["phone_reception"].GetComponent<ScriptedUse>();
                         yield return Inspect(() => phone.Interact(null), InspectChoice.Close);
                         yield return ReadReadable("dana_doubt");
@@ -315,15 +336,109 @@ namespace AfterHours
                         while (!InspectView.IsOpen && t < 4f) { t += Time.unscaledDeltaTime; yield return null; }
                         yield return Wait(0.6f);
                         yield return Shot("n7_red_folder");
-                        InspectView.AutoChoice = InspectChoice.Keep;
+                        var folderChoice = route switch { "cleanbooks" => InspectChoice.Toss, "spotless" => InspectChoice.Close, _ => InspectChoice.Keep };
+                        InspectView.AutoChoice = folderChoice;
                         yield return Wait(0.8f);
-                        Check(Story.State.FateOf("red_folder") == Fate.Kept, "the red folder can be pulled from the jam");
+                        var folder = Story.State.FateOf("red_folder");
+                        switch (route)
+                        {
+                            case "cleanbooks": Check(folder == Fate.Trashed, "the red folder can be thrown away"); break;
+                            case "spotless": Check(folder == Fate.Seen, "the red folder can be read and left"); break;
+                            default: Check(folder == Fate.Kept, "the red folder can be pulled from the jam"); break;
+                        }
                         yield return Evidence("flight_note", InspectChoice.Close);
-                        yield return Deliver("red_folder", "auditor");
-                        Check(Story.State.IsDelivered("red_folder", "auditor"), "the red folder reaches the auditor");
+                        if (route == "audit")
+                        {
+                            yield return Deliver("red_folder", "auditor");
+                            Check(Story.State.IsDelivered("red_folder", "auditor"), "the red folder reaches the auditor");
+                        }
+                        if (route == "spotless") Check(!Endings.Meddled(Story.State), "nothing has been kept, moved or binned");
                     }
                     break;
             }
+        }
+
+        // ---- virtual gamepad ------------------------------------------------------------------
+        // A software Gamepad device fed real state events, so menus, prompts and choices are
+        // exercised through the same Input System path a controller uses.
+
+        Gamepad vpad;
+        protected virtual bool PadChecks => true;
+
+        IEnumerator Press(GamepadButton b)
+        {
+            InputSystem.QueueStateEvent(vpad, new GamepadState().WithButton(b));
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(vpad, new GamepadState());
+            yield return null; yield return null;
+        }
+
+        static string Selected => EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null
+            ? EventSystem.current.currentSelectedGameObject.name : "(none)";
+
+        IEnumerator PadTitle()
+        {
+            vpad = InputSystem.AddDevice<Gamepad>("AutoPilotPad");
+            yield return Press(GamepadButton.DpadDown);
+            yield return Wait(0.3f);
+            Check(GameInput.UsingPad, "touching the gamepad switches prompts to pad buttons");
+            Check(Selected.StartsWith("Btn_"), $"the title menu gets a pad selection ({Selected})");
+            for (int i = 0; i < 6 && Selected != "Btn_Settings"; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.15f); }
+            Check(Selected == "Btn_Settings", "the d-pad walks the title menu to Settings");
+            yield return Press(GamepadButton.South);
+            yield return Wait(0.5f);
+            Check(SettingsPanel.IsOpen, "pad A opens Settings");
+            Check(Selected.StartsWith("Slider_"), $"Settings selects its first row for the pad ({Selected})");
+            float before = Settings.Current.MouseSensitivity;
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.2f);
+            Check(Settings.Current.MouseSensitivity > before + 1e-3f, "d-pad right nudges the selected slider");
+            yield return Press(GamepadButton.DpadLeft);
+            yield return Wait(0.2f);
+            yield return Press(GamepadButton.East);
+            yield return Wait(0.4f);
+            Check(!SettingsPanel.IsOpen, "pad B closes Settings");
+            yield return Shot("pad_title");
+        }
+
+        IEnumerator PadEvidenceKeep(string doc)
+        {
+            var ev = root.Director.Ctx.Get(doc)?.GetComponent<EvidenceItem>();
+            Check(ev != null, $"evidence {doc} is in the office");
+            if (ev == null) yield break;
+            yield return Approach(ev.transform.position);
+            ev.Interact(null);
+            float t = 0;
+            while (!InspectView.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            yield return Wait(0.5f);
+            yield return Shot("pad_inspect");
+            yield return Press(GamepadButton.North);
+            yield return Wait(0.5f);
+            Check(Story.State.FateOf(doc) == Fate.Kept, $"pad Y keeps {doc}");
+        }
+
+        IEnumerator PadDeliver(string doc, string person)
+        {
+            var tray = root.Director.Furniture.Trays[person];
+            int index = Story.State.Inventory.IndexOf(doc);
+            yield return Approach(tray.transform.position);
+            tray.Interact(null);
+            float t = 0;
+            while (!ChoiceMenu.IsOpen && t < 3f) { t += Time.unscaledDeltaTime; yield return null; }
+            yield return Wait(0.4f);
+            for (int i = 0; i < index; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.1f); }
+            yield return Shot("pad_choice");
+            yield return Press(GamepadButton.South);
+            yield return Wait(0.5f);
+            Check(Story.State.IsDelivered(doc, person), $"d-pad and A deliver {doc} to {person}");
+        }
+
+        void UnplugPad()
+        {
+            if (vpad == null) return;
+            InputSystem.RemoveDevice(vpad);
+            vpad = null;
+            GameInput.UsingPad = false;
         }
 
         // ---- real input on night 1 -------------------------------------------------------------

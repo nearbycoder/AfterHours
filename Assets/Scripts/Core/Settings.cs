@@ -25,7 +25,7 @@ namespace AfterHours
         static Settings current;
         public static event Action Changed;
 
-        static string FilePath => Path.Combine(Application.persistentDataPath, "settings.json");
+        static string FilePath => Path.Combine(StoryState.Dir, "settings.json");
 
         public static Settings Current
         {

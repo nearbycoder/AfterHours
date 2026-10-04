@@ -123,12 +123,11 @@ namespace AfterHours
 
         void Update()
         {
-            var kb = Keyboard.current;
             if (Open)
             {
                 refresh -= Time.unscaledDeltaTime;
                 if (refresh <= 0f) { refresh = 0.5f; Refresh(); }
-                if (kb != null && (kb.tabKey.wasPressedThisFrame || kb.escapeKey.wasPressedThisFrame)) Close();
+                if (GameInput.Menu.Clipboard || GameInput.Menu.Back) Close();
             }
         }
     }

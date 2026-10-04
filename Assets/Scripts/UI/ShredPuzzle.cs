@@ -81,7 +81,7 @@ namespace AfterHours
             }
             var title = Ui.Label(root, "Tape the strips back together", UiFont.SansBold, 34, Ui.Text, TextAlignmentOptions.Center);
             Ui.Place(title.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1200, 50), new Vector2(0.5f, 1));
-            hint = Ui.Label(root, "A / D  choose   ·   E  pick up / swap   ·   Esc  give up for now", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
+            hint = Ui.Label(root, $"{GameInput.Glyph("A / D")}  choose   ·   {GameInput.Glyph("E")}  pick up / swap   ·   {GameInput.Glyph("Esc")}  give up for now", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
             Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1200, 40), new Vector2(0.5f, 0));
             Layout(true);
             GameRoot.Instance?.SetBlocked("puzzle", true, true);
@@ -157,12 +157,11 @@ namespace AfterHours
                 Solve();
                 return;
             }
-            var kb = Keyboard.current;
-            if (kb == null) return;
-            if (kb.aKey.wasPressedThisFrame || kb.leftArrowKey.wasPressedThisFrame) { cursor = (cursor + N - 1) % N; Sfx.Play("ui_hover", null, 0.3f, 1f, 0f, AudioBus.Ui); }
-            if (kb.dKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame) { cursor = (cursor + 1) % N; Sfx.Play("ui_hover", null, 0.3f, 1f, 0f, AudioBus.Ui); }
-            if (kb.eKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame) Pick();
-            if (kb.escapeKey.wasPressedThisFrame) Close();
+            var m = GameInput.Menu;
+            if (m.Left) { cursor = (cursor + N - 1) % N; Sfx.Play("ui_hover", null, 0.3f, 1f, 0f, AudioBus.Ui); }
+            if (m.Right) { cursor = (cursor + 1) % N; Sfx.Play("ui_hover", null, 0.3f, 1f, 0f, AudioBus.Ui); }
+            if (m.Confirm) Pick();
+            if (m.Back) Close();
         }
     }
 }

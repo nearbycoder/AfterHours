@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace AfterHours
 {
-    /// <summary>A small modal list of choices (W/S or mouse to pick, E/Enter/click to choose, Esc to cancel).</summary>
+    /// <summary>A small modal list of choices (W/S, d-pad or mouse to pick, E/Enter/A/click to choose, Esc/B to cancel).</summary>
     public class ChoiceMenu : MonoBehaviour
     {
         public class Option
@@ -90,6 +90,7 @@ namespace AfterHours
                 int idx = i;
                 var btn = bg.gameObject.AddComponent<Button>();
                 btn.transition = Selectable.Transition.None;
+                btn.navigation = new Navigation { mode = Navigation.Mode.None }; // keys and pad go through Update
                 btn.onClick.AddListener(() => Choose(idx));
                 var trig = bg.gameObject.AddComponent<UnityEngine.EventSystems.EventTrigger>();
                 var entry = new UnityEngine.EventSystems.EventTrigger.Entry { eventID = UnityEngine.EventSystems.EventTriggerType.PointerEnter };
@@ -125,14 +126,15 @@ namespace AfterHours
                 rows[i].bg.color = Color.Lerp(rows[i].bg.color, i == selected ? new Color(1f, 0.78f, 0.34f, 0.22f) : new Color(1, 1, 1, 0.04f), 1f - Mathf.Exp(-Time.unscaledDeltaTime * 18f));
             if (AutoPick >= 0) { int p = AutoPick; AutoPick = -1; Choose(Mathf.Min(p, options.Count - 1)); return; }
             if (Time.unscaledTime - openedAt < 0.2f) return;
+            var m = GameInput.Menu;
+            if (m.Up) Move(-1);
+            if (m.Down) Move(1);
             var kb = Keyboard.current;
-            if (kb == null) return;
-            if (kb.wKey.wasPressedThisFrame || kb.upArrowKey.wasPressedThisFrame) Move(-1);
-            if (kb.sKey.wasPressedThisFrame || kb.downArrowKey.wasPressedThisFrame) Move(1);
-            for (int i = 0; i < Mathf.Min(9, options.Count); i++)
-                if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame) { Choose(i); return; }
-            if (kb.eKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame) Choose(selected);
-            else if (kb.escapeKey.wasPressedThisFrame || kb.tabKey.wasPressedThisFrame) Choose(options.Count - 1);
+            if (kb != null)
+                for (int i = 0; i < Mathf.Min(9, options.Count); i++)
+                    if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame) { Choose(i); return; }
+            if (m.Confirm) Choose(selected);
+            else if (m.Back || m.Keep) Choose(options.Count - 1);
         }
 
         void Move(int d)

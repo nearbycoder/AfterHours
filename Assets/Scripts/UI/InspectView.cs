@@ -88,12 +88,13 @@ namespace AfterHours
             openedAt = Time.unscaledTime;
             header.text = d.Header.ToUpperInvariant();
             Style(d);
-            string key(string k) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{k}</b></mark>";
+            // Keyboard key or pad button (Y keep, A close, X throw away / switch off).
+            string key(string kb, string pad) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{(GameInput.UsingPad ? pad : kb)}</b></mark>";
             hints.text = m switch
             {
-                InspectMode.Evidence => $"{key("TAB")}  Keep it        {key("E")}  Put it back        {key("X")}  Throw it away",
-                InspectMode.Screen => $"{key("E")}  Close        {key("Q")}  Switch off monitor",
-                _ => $"{key("E")}  Close",
+                InspectMode.Evidence => $"{key("TAB", "Y")}  Keep it        {key("E", "A")}  Put it back        {key("X", "X")}  Throw it away",
+                InspectMode.Screen => $"{key("E", "A")}  Close        {key("Q", "X")}  Switch off monitor",
+                _ => $"{key("E", "A")}  Close",
             };
             GameRoot.Instance?.SetBlocked("inspect", true);
             PostFx.Instance?.SetInspect(true);
@@ -159,11 +160,12 @@ namespace AfterHours
             var kb = UnityEngine.InputSystem.Keyboard.current;
             var mouse = UnityEngine.InputSystem.Mouse.current;
             var f = GameInput.Frame;
-            bool e = f.Interact || (kb != null && (kb.eKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame));
-            bool esc = kb != null && kb.escapeKey.wasPressedThisFrame || (mouse != null && mouse.rightButton.wasPressedThisFrame);
-            bool tab = kb != null && kb.tabKey.wasPressedThisFrame || f.Clipboard;
-            bool x = kb != null && kb.xKey.wasPressedThisFrame;
-            bool q = kb != null && kb.qKey.wasPressedThisFrame;
+            var menu = GameInput.Menu;
+            bool e = f.Interact || menu.Confirm;
+            bool esc = menu.Back || (mouse != null && mouse.rightButton.wasPressedThisFrame);
+            bool tab = menu.Keep || f.Clipboard;
+            bool x = menu.Alt;
+            bool q = (kb != null && kb.qKey.wasPressedThisFrame) || menu.Alt;
             if (AutoChoice.HasValue) { var c = AutoChoice.Value; AutoChoice = null; Close(c); return; }
             if (mode == InspectMode.Evidence)
             {

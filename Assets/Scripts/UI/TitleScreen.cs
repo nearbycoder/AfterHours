@@ -63,6 +63,7 @@ namespace AfterHours
             Widgets.Button(menu, "Night Select", () => NightSelect.Show(), 460, 64);
             Widgets.Button(menu, "Settings", () => SettingsPanel.Show(), 460, 64);
             Widgets.Button(menu, "Quit", Application.Quit, 460, 64);
+            MenuFocus.AttachAll(menu.gameObject);
 
             var foot = Ui.Label(root, "BrightStar Janitorial · Meridian Tower, Suite 1408 · Night shift", UiFont.Sans, 18, new Color(1, 1, 1, 0.35f), TextAlignmentOptions.BottomLeft);
             Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(1200, 30), new Vector2(0, 0));
@@ -115,7 +116,7 @@ namespace AfterHours
             float f = Mathf.PerlinNoise(Time.unscaledTime * 3f, 0.5f);
             logo.alpha = f > 0.12f ? 1f : 0.55f;
             var kb = Keyboard.current;
-            if (kb != null && kb.enterKey.wasPressedThisFrame && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen)
+            if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen)
                 Begin(Story.State.Night >= 1 && Story.State.Night <= NightDefs.Count ? Story.State.Night : 1);
         }
     }
@@ -171,6 +172,7 @@ namespace AfterHours
                 }),
             }), 460, 64);
             Widgets.Button(col, "Quit to title", () => { Close(); GameRoot.Instance.ToTitle(); }, 460, 64);
+            MenuFocus.AttachAll(col.gameObject);
             Sfx.Play("ui_click", null, 0.5f, 0.8f, 0f, AudioBus.Ui);
         }
 
@@ -186,8 +188,8 @@ namespace AfterHours
 
         void Update()
         {
-            var kb = Keyboard.current;
-            if (kb != null && kb.escapeKey.wasPressedThisFrame && !SettingsPanel.IsOpen && !ChoiceMenu.IsOpen) Close();
+            var m = GameInput.Menu;
+            if ((m.Back || m.Pause) && !SettingsPanel.IsOpen && !ChoiceMenu.IsOpen) Close();
         }
     }
 
@@ -235,6 +237,7 @@ namespace AfterHours
             Widgets.Toggle(col, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v);
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-50, 40), new Vector2(220, 60), new Vector2(1, 0));
+            MenuFocus.AttachAll(panel.gameObject);
         }
 
         void Close()
@@ -247,8 +250,7 @@ namespace AfterHours
 
         void Update()
         {
-            var kb = Keyboard.current;
-            if (kb != null && kb.escapeKey.wasPressedThisFrame) Close();
+            if (GameInput.Menu.Back) Close();
         }
     }
 
@@ -321,6 +323,7 @@ namespace AfterHours
             }
             var back = Widgets.Button(root, "Back", Close, 200, 60);
             Ui.Place(back, new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(200, 60), new Vector2(0.5f, 0));
+            MenuFocus.AttachAll(root.gameObject);
         }
 
         void Close()
@@ -332,8 +335,7 @@ namespace AfterHours
 
         void Update()
         {
-            var kb = Keyboard.current;
-            if (kb != null && kb.escapeKey.wasPressedThisFrame) Close();
+            if (GameInput.Menu.Back) Close();
         }
     }
 }
