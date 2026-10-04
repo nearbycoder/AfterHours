@@ -35,7 +35,9 @@ namespace AfterHours
             yield return Wait(1.5f);
             switch (scenario)
             {
-                default: yield return Proto(); break;
+                case "proto": yield return Proto(); break;
+                case "night1": yield return Night1(); break;
+                default: yield return OfficeTour(); break;
             }
             Log("done");
             yield return Wait(0.3f);
@@ -112,6 +114,223 @@ namespace AfterHours
             yield return Shot("tile_wet");
             yield return Wait(3f);
             yield return Shot("tile_dry");
+        }
+
+        IEnumerator OfficeTour()
+        {
+            var o = root.Office;
+            var player = root.Player;
+            foreach (var kv in o.Surfaces)
+                if (kv.Value.gameObject.activeSelf)
+                    Log($"surface {kv.Key} tool={kv.Value.Tool} size={kv.Value.Size} pos={kv.Value.transform.position} up={kv.Value.transform.up} fwd={kv.Value.transform.forward}");
+            foreach (var kv in o.Rooms) Log($"room {kv.Key} bounds={kv.Value.Bounds} lights={kv.Value.Lights.Count} panels={kv.Value.Panels.Count}");
+            Log($"anchors {o.Anchors.Count}, doors {o.Doors.Count}, switches {o.Switches.Count}");
+            yield return Wait(1f);
+            yield return Shot("closet_dark");
+            o.Rooms["closet"].SetLights(true, true);
+            yield return Wait(0.5f);
+            yield return Shot("closet_lit");
+
+            (string room, Vector3 pos, float yaw, float pitch)[] views =
+            {
+                ("reception", new Vector3(14.3f, 0, 0.7f), -55f, 8f),
+                ("bullpen", new Vector3(8.2f, 0, 6.2f), 35f, 6f),
+                ("conference", new Vector3(6.3f, 0, 15.3f), -140f, 10f),
+                ("office", new Vector3(18.7f, 0, 15.2f), 140f, 10f),
+                ("breakroom", new Vector3(6.4f, 0, 8.6f), -140f, 12f),
+            };
+            foreach (var v in views)
+            {
+                player.Teleport(v.pos, v.yaw, v.pitch);
+                yield return Wait(0.6f);
+                yield return Shot(v.room + "_dark");
+                o.Rooms[v.room].SetLights(true, true);
+                yield return Wait(0.4f);
+                yield return Shot(v.room + "_lit");
+            }
+            // Whiteboard reveal in situ
+            var wb = o.Surfaces["whiteboard_conf"];
+            player.Teleport(new Vector3(2.6f, 0, 10.4f), 180f, 5f);
+            yield return Wait(0.4f);
+            yield return Sweep(wb, new Rect(0.04f, 0.06f, 0.92f, 0.88f), 6, 1.0f, true, true, false);
+            yield return Sweep(wb, new Rect(0.04f, 0.06f, 0.92f, 0.88f), 6, 1.0f, true, true, false);
+            yield return Aim(wb.UvToWorld(new Vector2(0.5f, 0.5f)), 0.3f);
+            yield return Wait(1.0f);
+            yield return Shot("whiteboard_reveal");
+            // Vacuum a lane of the bullpen.
+            var fl = o.Surfaces["floor_bullpen"];
+            player.Teleport(new Vector3(12.0f, 0, 6.2f), 0f, 35f);
+            yield return Sweep(fl, new Rect(0.3f, 0.12f, 0.25f, 0.2f), 5, 0.9f, false, true, false, "bullpen_vacuum", 3);
+            yield return Aim(fl.UvToWorld(new Vector2(0.43f, 0.25f)), 0.3f);
+            yield return Shot("bullpen_stripes");
+        }
+
+        IEnumerator Night1()
+        {
+            var o = root.Office;
+            var player = root.Player;
+            var dir = root.Director;
+            yield return Wait(1.5f);
+            yield return Shot("titlecard");
+            Interstitial.AutoAdvance = true;
+            yield return Wait(1.2f);
+            yield return Shot("closet_start");
+
+            // Dana's note on the corkboard
+            var note = GameObject.Find("dana_welcome");
+            yield return LookAndUse(note.transform.position, 0.5f);
+            yield return Wait(0.8f);
+            yield return Shot("read_dana_note");
+            InspectView.AutoChoice = InspectChoice.Close;
+            yield return Wait(0.6f);
+
+            // Walt's locker
+            var locker = GameObject.Find("FURN_locker_walt");
+            yield return LookAndUse(locker.transform.position + Vector3.up * 1.2f + Vector3.left * 0.2f, 0.5f);
+            yield return Wait(0.8f);
+            yield return Shot("read_walt_note");
+            InspectView.AutoChoice = InspectChoice.Close;
+            yield return Wait(0.6f);
+
+            // Clipboard
+            input.ClipboardOnce = true;
+            yield return Wait(0.8f);
+            yield return Shot("clipboard");
+            Clipboard.Instance.Close();
+            yield return Wait(0.5f);
+
+            // Reception: lights on, wipe the desk
+            player.Teleport(new Vector3(14.2f, 0, 2.0f), -90f, 10f);
+            yield return Wait(0.5f);
+            yield return LookAndUse(o.Switches["reception"].transform.position, 0.4f);
+            yield return Wait(1.2f);
+            yield return Shot("reception_lit");
+            var desk = o.Surfaces["desk_reception"];
+            player.Teleport(new Vector3(11.5f, 0, 1.9f), 0f, 30f);
+            yield return Sweep(desk, new Rect(0.04f, 0.1f, 0.92f, 0.8f), 3, 1.6f, true, true, false, "reception_wipe", 1);
+            yield return Sweep(desk, new Rect(0.04f, 0.1f, 0.92f, 0.8f), 3, 1.6f, true, true, false);
+            Log($"reception desk {desk.Completion:P0} done={desk.Done}");
+
+            // Throw a coffee cup into the bin by the desk
+            var cup = FindTrashNear(new Vector3(13.9f, 0, 4.05f));
+            if (cup)
+            {
+                player.Teleport(new Vector3(13.5f, 0, 1.4f), 20f, 20f);
+                yield return LookAndUse(cup.transform.position, 0.4f);
+                yield return Wait(0.3f);
+                var bin = o.Anchor("BIN_trash_reception_1").position;
+                player.Teleport(new Vector3(10.6f, 0, 1.2f), 0, 0);
+                yield return Aim(bin + Vector3.up * 1.2f, 0.4f);
+                input.Use = true;
+                yield return Wait(0.45f);
+                yield return Shot("throw_arc");
+                input.Use = false;
+                yield return Wait(1.5f);
+                Log($"cup binned={cup.Binned}");
+                yield return Shot("after_throw");
+            }
+
+            // Bullpen: lights, the crumpled note
+            player.Teleport(new Vector3(13.0f, 0, 6.0f), 0f, 5f);
+            yield return LookAndUse(o.Switches["bullpen"].transform.position, 0.4f);
+            yield return Wait(1.2f);
+            yield return Shot("bullpen_lit");
+            var theoNote = GameObject.Find("theo_note");
+            player.Teleport(new Vector3(10.9f, 0, 9.6f), 0f, 40f);
+            yield return LookAndUse(theoNote.transform.position, 0.4f);
+            yield return Wait(0.9f);
+            yield return Shot("inspect_theo_note");
+            InspectView.AutoChoice = InspectChoice.Keep;
+            yield return Wait(1.2f);
+
+            // Vacuum under Theo's desk
+            var floor = o.Surfaces["floor_bullpen"];
+            player.Teleport(new Vector3(10.5f, 0, 10.2f), 0f, 55f);
+            input.Crouch = true;
+            yield return Wait(0.4f);
+            for (int i = 0; i < 3; i++)
+            {
+                yield return SweepWorld(floor, new Vector3(9.9f, 0, 11.4f + i * 0.25f), new Vector3(11.0f, 0, 11.4f + i * 0.25f), 0.8f);
+                yield return SweepWorld(floor, new Vector3(11.0f, 0, 11.5f + i * 0.25f), new Vector3(9.9f, 0, 11.5f + i * 0.25f), 0.8f);
+            }
+            input.Crouch = false;
+            yield return Wait(0.8f);
+            yield return Shot("vacuum_key");
+            var key = GameObject.Find("key");
+            if (key) { yield return LookAndUse(key.transform.position, 0.3f); yield return Wait(0.5f); }
+            Log($"key found={Story.State.Has("has_key_fc2")}");
+
+            // Deliver the note to Priya
+            var tray = root.Director.Furniture.Trays["priya"];
+            player.Teleport(new Vector3(9.4f, 0, 13.4f), 120f, 30f);
+            yield return LookAndUse(tray.transform.position + Vector3.up * 0.05f, 0.4f);
+            yield return Wait(0.6f);
+            yield return Shot("tray_menu");
+            ChoiceMenu.AutoPick = 0;
+            yield return Wait(1f);
+            Log($"theo_note fate={Story.State.FateOf("theo_note")} to={Story.State.DeliveredTo("theo_note")}");
+
+            // Finish everything else quickly, then lights off for the end beat.
+            foreach (var s in o.Surfaces.Values) if (s.gameObject.activeSelf) s.ForceComplete();
+            foreach (var t in Object.FindObjectsByType<TrashItem>(FindObjectsSortMode.None))
+                if (!t.Binned && t.gameObject.activeSelf) { t.MarkBinned(); t.gameObject.SetActive(false); }
+            foreach (var c in dir.Furniture.Chairs.Values) c.Tuck(true);
+            foreach (var m in dir.Furniture.Monitors.Values) if (m.On && m.CountsForTask) m.SetOn(false, true);
+            yield return Wait(1f);
+            player.Teleport(new Vector3(13.0f, 0, 6.0f), 0f, 5f);
+            o.Rooms["reception"].SetLights(false, true);
+            yield return LookAndUse(o.Switches["bullpen"].transform.position, 0.4f);
+            player.Teleport(new Vector3(13.6f, 0, 9.0f), -10f, 10f);
+            yield return Wait(2.5f);
+            yield return Aim(dir.Furniture.Monitors["walt"].transform.position + Vector3.up * 0.35f, 0.5f);
+            yield return Wait(0.5f);
+            yield return Shot("remote_session");
+            foreach (var t in dir.Def.Tasks) Log($"task {t.Id}: {dir.Progress(t)} done={dir.IsDone(t)}");
+
+            // Clock out
+            player.Teleport(new Vector3(16.4f, 0, 2.5f), -90f, 0f);
+            dir.RequestClockOut();
+            yield return Wait(2.5f);
+            yield return Shot("shift_report");
+            Interstitial.AutoAdvance = true;
+            yield return Wait(6f);
+            yield return Shot("morning_chat");
+            Interstitial.AutoAdvance = true;
+            yield return Wait(3f);
+            yield return Shot("night2_card");
+        }
+
+        TrashItem FindTrashNear(Vector3 p)
+        {
+            TrashItem best = null;
+            float bd = 1.5f;
+            foreach (var t in Object.FindObjectsByType<TrashItem>(FindObjectsSortMode.None))
+            {
+                float d = (t.transform.position - p).magnitude;
+                if (d < bd) { bd = d; best = t; }
+            }
+            return best;
+        }
+
+        protected IEnumerator LookAndUse(Vector3 target, float aimTime)
+        {
+            yield return Aim(target, aimTime);
+            yield return null;
+            input.InteractOnce = true;
+            yield return null;
+            yield return null;
+        }
+
+        protected IEnumerator SweepWorld(GrimeSurface s, Vector3 a, Vector3 b, float seconds)
+        {
+            for (float t = 0; t < seconds; t += Time.deltaTime)
+            {
+                var p = Vector3.Lerp(a, b, t / seconds);
+                LookAtNow(new Vector3(p.x, s.transform.position.y, p.z));
+                input.Use = true;
+                yield return null;
+            }
+            input.Use = false;
         }
 
         // ---- helpers -------------------------------------------------------------------------

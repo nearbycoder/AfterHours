@@ -54,6 +54,21 @@ namespace AfterHours
             }
         }
 
+        static TMP_FontAsset symbols;
+
+        /// <summary>DejaVu Sans as a last-resort fallback for symbols (✓ ✗ ☀ ♥ ★ ☺ …).</summary>
+        static TMP_FontAsset Symbols
+        {
+            get
+            {
+                if (symbols) return symbols;
+                var ttf = Resources.Load<Font>("Fonts/DejaVuSans");
+                symbols = TMP_FontAsset.CreateFontAsset(ttf, 64, 6, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 512, 512);
+                symbols.name = "DejaVu SDF";
+                return symbols;
+            }
+        }
+
         public static TMP_FontAsset Font(UiFont f)
         {
             if (fonts.TryGetValue(f, out var fa) && fa != null) return fa;
@@ -74,7 +89,9 @@ namespace AfterHours
             var ttf = Resources.Load<Font>("Fonts/" + file);
             fa = TMP_FontAsset.CreateFontAsset(ttf, 72, 7, UnityEngine.TextCore.LowLevel.GlyphRenderMode.SDFAA, 1024, 1024);
             fa.name = file + " SDF";
-            if (f != UiFont.Sans) fa.fallbackFontAssetTable = new List<TMP_FontAsset> { Font(UiFont.Sans) };
+            fa.fallbackFontAssetTable = new List<TMP_FontAsset>();
+            if (f != UiFont.Sans) fa.fallbackFontAssetTable.Add(Font(UiFont.Sans));
+            fa.fallbackFontAssetTable.Add(Symbols);
             fonts[f] = fa;
             return fa;
         }

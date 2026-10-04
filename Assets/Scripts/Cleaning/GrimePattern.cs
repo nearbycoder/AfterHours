@@ -7,7 +7,7 @@ namespace AfterHours
 
     public enum StampKind
     {
-        Dust, CoffeeRing, Spill, Footprints, Smudge, Haze, Crumbs, Scuff, Grease, Fingerprints, Image, Drips, Trail, Patch,
+        Dust, CoffeeRing, Spill, Footprints, Smudge, Haze, Crumbs, Scuff, Grease, Fingerprints, Image, Drips, Trail, Patch, Confetti,
     }
 
     /// <summary>One authored mark of dirt. Positions are in surface UV (0..1), sizes in metres.</summary>
@@ -53,6 +53,8 @@ namespace AfterHours
             { Kind = StampKind.Grease, Pos = new Vector2(u, v), Size = radius, Color = new Color(0.55f, 0.38f, 0.12f), Toughness = 2f };
         public static GrimeStamp Image(string path, float tough = 1f) => new()
             { Kind = StampKind.Image, Texture = path, Toughness = tough };
+        public static GrimeStamp Confetti(int count, Rect region) => new()
+            { Kind = StampKind.Confetti, Count = count, Region = region, Toughness = 0.4f };
         public static GrimeStamp DripLines(int count, Rect region, Color c) => new()
             { Kind = StampKind.Drips, Count = count, Region = region, Color = c, Toughness = 1.4f };
     }
@@ -110,6 +112,7 @@ namespace AfterHours
                     case StampKind.Drips: Drips(d, r, g, b, s, sizeM, ref rng); break;
                     case StampKind.Trail: Trail(d, r, g, b, s, sizeM, seed); break;
                     case StampKind.Patch: Patch(d, r, g, b, s, sizeM, seed); break;
+                    case StampKind.Confetti: ConfettiBits(d, r, g, b, s, sizeM, ref rng); break;
                 }
             }
             d.Pixels = new Color32[n];
@@ -422,6 +425,29 @@ namespace AfterHours
                     if (dist > 1f) continue;
                     float taper = 1f - Mathf.Abs(t) / (len * 0.5f);
                     Put(d, r, g, b, y * d.Width + x, s.Color, SS(1f, 0.3f, dist) * taper * 0.7f * s.Amount, s.Toughness);
+                }
+            }
+        }
+
+        static void ConfettiBits(GrimePatternData d, float[] r, float[] g, float[] b, GrimeStamp s, Vector2 sizeM, ref Rng rng)
+        {
+            for (int k = 0; k < s.Count; k++)
+            {
+                // Clustered: most bits fall near a few spots.
+                var c = new Vector2(Mathf.Lerp(s.Region.xMin, s.Region.xMax, rng.Value), Mathf.Lerp(s.Region.yMin, s.Region.yMax, rng.Value));
+                if (rng.Value < 0.6f) c = Vector2.Lerp(c, s.Region.center, 0.45f);
+                float size = rng.Range(0.006f, 0.012f), ang = rng.Value * Mathf.PI;
+                var col = Palette.Confetti[rng.Range(0, Palette.Confetti.Length)];
+                Bounds(d, sizeM, c, size, out int x0, out int y0, out int x1, out int y1);
+                var cm = new Vector2(c.x * sizeM.x, c.y * sizeM.y);
+                var ax = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                var ay = new Vector2(-ax.y, ax.x);
+                for (int y = y0; y <= y1; y++)
+                for (int x = x0; x <= x1; x++)
+                {
+                    var m = Metres(d, sizeM, x, y) - cm;
+                    if (Mathf.Abs(Vector2.Dot(m, ax)) > size || Mathf.Abs(Vector2.Dot(m, ay)) > size * 0.7f) continue;
+                    Put(d, r, g, b, y * d.Width + x, col, 0.95f, s.Toughness);
                 }
             }
         }

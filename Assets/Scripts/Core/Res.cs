@@ -43,6 +43,33 @@ namespace AfterHours
             return m;
         }
 
+        static readonly int BumpMap = Shader.PropertyToID("_BumpMap");
+        static readonly int BumpScale = Shader.PropertyToID("_BumpScale");
+
+        /// <summary>Lit material with base map, optional normal map and uniform tiling (repeats per metre).</summary>
+        public static Material LitTextured(Color tint, float smooth, float metallic, Texture2D tex, Texture2D normal, float tiling)
+        {
+            string key = $"litT_{ColorUtility.ToHtmlStringRGB(tint)}_{smooth:F2}_{metallic:F2}_{(tex ? tex.name : "")}_{(normal ? 1 : 0)}_{tiling:F2}";
+            if (variants.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(Material(normal != null ? "AH_LitNormal" : "AH_LitOpaque")) { name = key };
+            m.SetColor(BaseColor, tint);
+            m.SetFloat(Smoothness, smooth);
+            m.SetFloat(Metallic, metallic);
+            if (tex != null)
+            {
+                m.SetTexture(BaseMap, tex);
+                m.SetTextureScale(BaseMap, Vector2.one * tiling);
+            }
+            if (normal != null)
+            {
+                m.SetTexture(BumpMap, normal);
+                m.SetFloat(BumpScale, 1f);
+                m.EnableKeyword("_NORMALMAP");
+            }
+            variants[key] = m;
+            return m;
+        }
+
         public static Material Emissive(Color baseColor, Color emission, float intensity)
         {
             string key = $"emi_{ColorUtility.ToHtmlStringRGB(baseColor)}_{ColorUtility.ToHtmlStringRGB(emission)}_{intensity:F2}";

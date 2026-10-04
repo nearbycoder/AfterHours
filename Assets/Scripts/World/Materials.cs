@@ -48,12 +48,14 @@ namespace AfterHours
             var parts = name.Split('_');
             if (parts.Length < 2) return null;
             Color c = Color.white;
-            float smooth = 0.35f, metal = 0f, intensity = 2f, alpha = 0.15f;
+            float smooth = 0.35f, metal = 0f, intensity = 2f, alpha = 0.15f, tiling = 1f;
+            bool hasSmooth = false;
             Texture2D tex = null;
             foreach (var p in parts)
             {
                 if (p.Length == 6 && TryHex(p, out var col)) c = col;
-                else if (p.Length > 1 && p[0] == 's' && int.TryParse(p.Substring(1), out int sv)) smooth = sv / 100f;
+                else if (p.Length > 1 && p[0] == 's' && int.TryParse(p.Substring(1), out int sv)) { smooth = sv / 100f; hasSmooth = true; }
+                else if (p.Length > 1 && p[0] == 't' && int.TryParse(p.Substring(1), out int tv)) tiling = tv / 100f;
                 else if (p.Length > 1 && p[0] == 'm' && int.TryParse(p.Substring(1), out int mv)) metal = mv / 100f;
                 else if (p.Length > 1 && p[0] == 'i' && int.TryParse(p.Substring(1), out int iv)) intensity = iv / 10f;
                 else if (p.Length > 1 && p[0] == 'a' && int.TryParse(p.Substring(1), out int av)) alpha = av / 100f;
@@ -64,9 +66,12 @@ namespace AfterHours
                 case "glow": return Res.Emissive(c * 0.5f, c, intensity);
                 case "glass": c.a = alpha; return Res.Glass(c);
                 case "tex":
-                    tex = Res.Texture("Textures/" + parts[1]);
+                    var texName = parts[1].Replace('-', '_');
+                    tex = Res.Texture("Textures/Mat/" + texName);
+                    var normal = Res.Texture("Textures/Mat/" + texName + "_n");
                     var tint = parts.Length > 2 && TryHex(parts[2], out var t) ? t : Color.white;
-                    return Res.Lit(tint, smooth, metal, tex);
+                    if (!hasSmooth) smooth = 0.3f;
+                    return Res.LitTextured(tint, smooth, metal, tex, normal, tiling);
                 case "screen":
                     return Res.Emissive(Color.black, Palette.Monitor * 0.15f, 1f);
             }

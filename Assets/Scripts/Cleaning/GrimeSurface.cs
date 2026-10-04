@@ -421,6 +421,14 @@ namespace AfterHours
             }
         }
 
+        /// <summary>Dirt remaining (0..1) at a UV, from the CPU mask.</summary>
+        public float RemainingAt(Vector2 uv)
+        {
+            if (remain == null) return 1f;
+            int x = Mathf.Clamp((int)(uv.x * mw), 0, mw - 1), y = Mathf.Clamp((int)(uv.y * mh), 0, mh - 1);
+            return remain[y * mw + x];
+        }
+
         /// <summary>Fraction of the (optional) ghost texture's area that is currently foamed.</summary>
         public float GhostFoamCoverage()
         {

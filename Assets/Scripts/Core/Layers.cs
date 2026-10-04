@@ -25,7 +25,7 @@ namespace AfterHours
             {
                 Physics.IgnoreLayerCollision(Grime, i, true);
                 Physics.IgnoreLayerCollision(Viewmodel, i, true);
-                Physics.IgnoreLayerCollision(Trigger, i, i != Player);
+                Physics.IgnoreLayerCollision(Trigger, i, i != Player && i != Prop);
             }
             Physics.IgnoreLayerCollision(Player, Prop, true);
         }

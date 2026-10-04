@@ -153,13 +153,25 @@ class MeshBuilder:
         self.bm = bmesh.new()
         self.mats = []
         self.uv = self.bm.loops.layers.uv.new("UVMap")
+        self.xf = Matrix.Identity(4)
+        self._stack = []
+
+    def push(self, pos=(0, 0, 0), yaw=0.0, scale=1.0):
+        """Subsequent parts are authored in a local frame (Unity space) at pos, yawed (degrees)."""
+        self._stack.append(self.xf.copy())
+        self.xf = self.xf @ Matrix.Translation(Vector(pos)) @ Matrix.Rotation(math.radians(yaw), 4, "Y") @ Matrix.Scale(scale, 4)
+        return self
+
+    def pop(self):
+        self.xf = self._stack.pop()
+        return self
 
     def _mat_index(self, mat):
         if mat not in self.mats:
             self.mats.append(mat)
         return self.mats.index(mat)
 
-    def box(self, center, size, mat, bevel=0.0, rot_y=0.0, segments=2, faces=None, uv_scale=1.0):
+    def box(self, center, size, mat, bevel=0.0, rot_y=0.0, segments=2, faces=None, uv_scale=1.0, rot_x=0.0, rot_z=0.0, uv_fit=False):
         """Axis-aligned box in Unity space (optionally yawed about its centre)."""
         cx, cy, cz = center
         sx, sy, sz = size[0] / 2, size[1] / 2, size[2] / 2
@@ -183,12 +195,22 @@ class MeshBuilder:
                 if not keep and max(abs(n.x), abs(n.y), abs(n.z)) > 0.99:
                     kill.append(f)
             bmesh.ops.delete(tmp, geom=kill, context="FACES")
-        rot = Matrix.Rotation(math.radians(rot_y), 4, "Y")
-        self._merge(tmp, mat, lambda co: rot @ co + Vector((cx, cy, cz)), uv_scale)
+        rot = Matrix.Rotation(math.radians(rot_y), 4, "Y") @ Matrix.Rotation(math.radians(rot_x), 4, "X") @ Matrix.Rotation(math.radians(rot_z), 4, "Z")
+        uv_fn = None
+        if uv_fit:
+            # 0..1 across the box: top/bottom use x,z; sides use their two in-plane axes.
+            def uv_fn(co, n):
+                ax, ay, az = abs(n.x), abs(n.y), abs(n.z)
+                if ay >= ax and ay >= az:
+                    return ((co.x + sx) / (2 * sx), (co.z + sz) / (2 * sz))
+                if ax >= az:
+                    return ((co.z + sz) / (2 * sz), (co.y + sy) / (2 * sy))
+                return ((co.x + sx) / (2 * sx), (co.y + sy) / (2 * sy))
+        self._merge(tmp, mat, lambda co: rot @ co + Vector((cx, cy, cz)), uv_scale, uv_fn=uv_fn)
         tmp.free()
         return self
 
-    def cylinder(self, center, radius, height, mat, segments=24, axis="y", bevel=0.0, cap=True, radius_top=None):
+    def cylinder(self, center, radius, height, mat, segments=24, axis="y", bevel=0.0, cap=True, radius_top=None, tilt=None):
         tmp = bmesh.new()
         r2 = radius if radius_top is None else radius_top
         bmesh.ops.create_cone(tmp, cap_ends=cap, cap_tris=False, segments=segments, radius1=radius, radius2=r2, depth=height)
@@ -200,11 +222,31 @@ class MeshBuilder:
         else:
             m = Matrix.Identity(4)
         bmesh.ops.transform(tmp, matrix=m, verts=tmp.verts)
+        if tilt is not None:
+            bmesh.ops.transform(tmp, matrix=Matrix.Rotation(math.radians(tilt[1]), 4, tilt[0]), verts=tmp.verts)
         if bevel > 0:
             edges = [e for e in tmp.edges if len(e.link_faces) == 2 and e.calc_face_angle(0) > 0.5]
             bmesh.ops.bevel(tmp, geom=edges, offset=bevel, segments=2, affect="EDGES", profile=0.5)
         c = Vector(center)
         self._merge(tmp, mat, lambda co: co + c)
+        tmp.free()
+        return self
+
+    def tube(self, a, b, radius, mat, segments=10, radius_b=None):
+        """Cylinder from point a to point b (Unity space)."""
+        a, b = Vector(a), Vector(b)
+        d = b - a
+        length = d.length
+        if length < 1e-6:
+            return self
+        tmp = bmesh.new()
+        bmesh.ops.create_cone(tmp, cap_ends=True, cap_tris=False, segments=segments, radius1=radius,
+                              radius2=radius if radius_b is None else radius_b, depth=length)
+        # cone is along +Z centred at origin; rotate +Z onto d
+        q = Vector((0, 0, 1)).rotation_difference(d.normalized())
+        m = q.to_matrix().to_4x4()
+        mid = (a + b) / 2
+        self._merge(tmp, mat, lambda co: m @ co + mid)
         tmp.free()
         return self
 
@@ -244,28 +286,35 @@ class MeshBuilder:
         tmp.free()
         return self
 
-    def _merge(self, tmp, mat, xform, uv_scale=1.0, uv_override=None):
+    def _merge(self, tmp, mat, xform, uv_scale=1.0, uv_override=None, uv_fn=None):
         mi = self._mat_index(mat)
         vmap = {}
+        outer = self.xf
         for v in tmp.verts:
-            p = xform(v.co.copy()) - self.origin
+            p = outer @ xform(v.co.copy()) - self.origin
             vmap[v] = self.bm.verts.new(u2b(p))
         self.bm.verts.ensure_lookup_table()
+        rot3 = outer.to_3x3()
         for f in tmp.faces:
+            # u2b is a reflection, so reverse winding to keep faces pointing outward.
+            verts = list(reversed(f.verts))
             try:
-                nf = self.bm.faces.new([vmap[v] for v in f.verts])
+                nf = self.bm.faces.new([vmap[v] for v in verts])
             except ValueError:
                 continue
             nf.material_index = mi
             nf.smooth = True
-            # Box-projected UVs in metres (Unity space), so tiling textures are scale-consistent.
-            nrm = f.normal
+            nrm_w = rot3 @ f.normal
+            ax, ay, az = abs(nrm_w.x), abs(nrm_w.y), abs(nrm_w.z)
             for k, loop in enumerate(nf.loops):
                 if uv_override:
-                    loop[self.uv].uv = uv_override[k]
+                    loop[self.uv].uv = uv_override[len(verts) - 1 - k]
                     continue
-                co = xform(f.verts[k].co.copy())
-                ax, ay, az = abs(nrm.x), abs(nrm.y), abs(nrm.z)
+                if uv_fn is not None:
+                    loop[self.uv].uv = uv_fn(verts[k].co, f.normal)
+                    continue
+                # Box-projected UVs in metres (Unity space) so tiling textures are scale-consistent.
+                co = outer @ xform(verts[k].co.copy())
                 if ay >= ax and ay >= az:
                     u, w = co.x, co.z
                 elif ax >= az:
@@ -276,7 +325,7 @@ class MeshBuilder:
 
     def build(self, smooth_angle=35):
         mesh = bpy.data.meshes.new(self.name)
-        bmesh.ops.recalc_face_normals(self.bm, faces=self.bm.faces)
+        self.bm.normal_update()
         self.bm.to_mesh(mesh)
         self.bm.free()
         for m in self.mats:
@@ -298,30 +347,50 @@ def box(name, center, size, mat, bevel=0.0, rot_y=0.0, pivot=None, **kw):
     return mb.build()
 
 
-def empty(name, pos, size=0.15):
+C_U2B = Matrix(((-1, 0, 0), (0, 0, -1), (0, 1, 0)))
+
+
+def frame_matrix(pos_u, right, up, forward, scale_u=(1, 1, 1)):
+    """Blender world matrix for an object whose Unity transform has the given basis/scale."""
+    mu = Matrix((tuple(right), tuple(up), tuple(forward))).transposed()
+    b = C_U2B @ mu @ C_U2B.transposed()
+    m = b.to_4x4()
+    m.translation = u2b(pos_u)
+    # Blender local x,y,z <-> Unity local x,z,y
+    sx, sy, sz = scale_u
+    return m @ Matrix.Diagonal((sx, sz, sy, 1.0))
+
+
+def yaw_basis(yaw_deg):
+    t = math.radians(yaw_deg)
+    fwd = Vector((math.sin(t), 0, math.cos(t)))
+    up = Vector((0, 1, 0))
+    return up.cross(fwd), up, fwd
+
+
+def empty(name, pos, size=0.15, yaw=0.0):
     e = bpy.data.objects.new(name, None)
-    e.empty_display_type = "PLAIN_AXES"
+    e.empty_display_type = "ARROWS"
     e.empty_display_size = size
-    e.location = u2b(pos)
     _link(e)
+    e.matrix_world = frame_matrix(pos, *yaw_basis(yaw))
     return e
 
 
 def grime_plane(name, center, normal, size_uv, v_axis=None):
-    """A quad marking a cleanable surface. normal/v_axis are Unity-space unit vectors."""
+    """An empty marking a cleanable surface: Unity local +Y = surface normal, +Z = the surface's
+    V axis (up on walls, north on floors), local scale x/z = size in metres."""
     n = Vector(normal).normalized()
     if v_axis is None:
         v_axis = (0, 1, 0) if abs(n.y) < 0.5 else (0, 0, 1)
     v = Vector(v_axis).normalized()
-    u = n.cross(v)  # Unity: right = up x forward with up=normal, forward=v  -> right = n x v
-    u.normalize()
-    c = Vector(center) + n * 0.002
-    hu, hv = size_uv[0] / 2, size_uv[1] / 2
-    corners = [c - u * hu - v * hv, c + u * hu - v * hv, c + u * hu + v * hv, c - u * hu + v * hv]
-    mb = MeshBuilder(name, center)
-    mb.quad(corners, "col_FF00FF")
-    obj = mb.build()
-    return obj
+    u = n.cross(v).normalized()
+    e = bpy.data.objects.new(name, None)
+    e.empty_display_type = "CUBE"
+    e.empty_display_size = 0.5
+    _link(e)
+    e.matrix_world = frame_matrix(center, u, n, v, (size_uv[0], 0.02, size_uv[1]))
+    return e
 
 
 # ---------------------------------------------------------------------------------------------

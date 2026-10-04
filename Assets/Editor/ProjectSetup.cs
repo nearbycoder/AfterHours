@@ -73,10 +73,11 @@ namespace AfterHours.EditorTools
             {
                 Physics.IgnoreLayerCollision(grime, i, true);
                 Physics.IgnoreLayerCollision(viewmodel, i, true);
-                Physics.IgnoreLayerCollision(trigger, i, i != player);
+                Physics.IgnoreLayerCollision(trigger, i, i != player && i != prop);
             }
             Physics.IgnoreLayerCollision(player, prop, true);
             Physics.IgnoreLayerCollision(trigger, player, false);
+            Physics.IgnoreLayerCollision(trigger, prop, false);
         }
 
         static void EnsurePlayerSettings()
@@ -105,6 +106,15 @@ namespace AfterHours.EditorTools
 
             var opaque = Template("AH_LitOpaque", lit);
             if (opaque != null) opaque.SetFloat("_Smoothness", 0.35f);
+
+            var normalTmpl = Template("AH_LitNormal", lit);
+            if (normalTmpl != null)
+            {
+                normalTmpl.EnableKeyword("_NORMALMAP");
+                normalTmpl.SetFloat("_Smoothness", 0.3f);
+                var anyNormal = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Resources/Textures/Mat/tile_break_n.png");
+                if (anyNormal != null) normalTmpl.SetTexture("_BumpMap", anyNormal);
+            }
 
             var emissive = Template("AH_LitEmissive", lit);
             if (emissive != null)

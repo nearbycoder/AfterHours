@@ -151,6 +151,24 @@ namespace AfterHours
 
         public void PulseDot() => dotPulse = 1f;
 
+        TextMeshProUGUI caption;
+
+        /// <summary>A subtitle line at the bottom of the screen (sounds, voices, inner thoughts).</summary>
+        public void Caption(string text, float hold = 3f)
+        {
+            if (!Settings.Current.Captions && text.StartsWith("[")) return;
+            if (caption == null)
+            {
+                caption = Ui.Label(root, "", UiFont.SansMedium, 26, Ui.Text, TextAlignmentOptions.Center, "Caption");
+                Ui.Place(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 140), new Vector2(1400, 80), new Vector2(0.5f, 0f));
+                caption.fontMaterial.EnableKeyword("UNDERLAY_ON");
+            }
+            caption.text = text;
+            caption.alpha = 0;
+            Tween.Run(0.3f, k => caption.alpha = k, Ease.OutCubic, owner: caption);
+            Tween.Run(0.6f, k => caption.alpha = 1 - k, Ease.InCubic, null, hold, caption.gameObject);
+        }
+
         void Update()
         {
             float dt = Time.unscaledDeltaTime;

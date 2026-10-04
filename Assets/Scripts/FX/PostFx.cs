@@ -37,9 +37,9 @@ namespace AfterHours
         void Build()
         {
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.16f, 0.2f, 0.29f);
-            RenderSettings.ambientEquatorColor = new Color(0.1f, 0.12f, 0.16f);
-            RenderSettings.ambientGroundColor = new Color(0.06f, 0.06f, 0.07f);
+            RenderSettings.ambientSkyColor = new Color(0.2f, 0.25f, 0.36f);
+            RenderSettings.ambientEquatorColor = new Color(0.13f, 0.15f, 0.21f);
+            RenderSettings.ambientGroundColor = new Color(0.07f, 0.07f, 0.09f);
             RenderSettings.ambientIntensity = 1f;
             RenderSettings.skybox = null;
             RenderSettings.fog = true;
@@ -65,7 +65,7 @@ namespace AfterHours
             bloom.highQualityFiltering.Override(true);
 
             color = profile.Add<ColorAdjustments>(true);
-            color.postExposure.Override(0.35f);
+            color.postExposure.Override(0.6f);
             color.contrast.Override(14f);
             color.saturation.Override(6f);
 
@@ -94,7 +94,7 @@ namespace AfterHours
             dof.aperture.Override(2.8f);
             dof.active = false;
 
-            exposure = exposureTarget = 0.35f;
+            exposure = exposureTarget = 0.6f;
         }
 
         public static void ConfigureCamera(Camera cam)

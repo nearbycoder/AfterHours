@@ -1,11 +1,13 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace AfterHours
 {
     /// <summary>
-    /// Bootstraps the game after the (empty) Main scene loads. Everything is built from code and
-    /// Resources, so there is no scene wiring to break.
+    /// Bootstraps the game after the (empty) Main scene loads and runs the top-level flow:
+    /// title → night (title card, play, clock out) → shift report → morning chat → next night → ending.
     /// </summary>
     public class GameRoot : MonoBehaviour
     {
@@ -16,6 +18,13 @@ namespace AfterHours
         public CleaningController Cleaning { get; private set; }
         public ToolRig Rig { get; private set; }
         public PrototypeRoom Proto { get; private set; }
+        public OfficeBuilder Office { get; private set; }
+        public Interactor Interactor { get; private set; }
+        public Hands Hands { get; private set; }
+        public NightDirector Director { get; private set; }
+        public bool InNight => Director != null && Director.Running;
+
+        int blockers, cursorBlockers;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
@@ -24,29 +33,6 @@ namespace AfterHours
             var go = new GameObject("GameRoot");
             DontDestroyOnLoad(go);
             Instance = go.AddComponent<GameRoot>();
-        }
-
-        void Update()
-        {
-            var hud = Hud.Instance;
-            if (hud == null || Cleaning == null) return;
-            var t = Cleaning.Target;
-            if (t != null && Cleaning.InReach && !Cleaning.Suspended)
-            {
-                string verb = t.Tool switch
-                {
-                    ToolKind.Vacuum => "Vacuum",
-                    ToolKind.Squeegee => "Squeegee",
-                    ToolKind.Mop => "Mop",
-                    _ => t.HasGhost && t.Spec.GhostScrubbable ? (t.Done ? "Scrub the stain" : "Erase") : "Wipe",
-                };
-                if (t.Tool == ToolKind.Squeegee || t.Tool == ToolKind.Cloth && t.HasGhost && t.Done)
-                    hud.Prompt(("RMB", "Spray"), ("LMB", verb));
-                else if (t.Tool == ToolKind.Cloth)
-                    hud.Prompt(("LMB", verb), ("RMB", "Spray"));
-                else hud.Prompt(("LMB", verb));
-            }
-            else hud.Prompt();
         }
 
         public static string Arg(string name, int offset = 1)
@@ -65,16 +51,34 @@ namespace AfterHours
             Application.targetFrameRate = -1;
             gameObject.AddComponent<GameInput>();
             PostFx.Create();
+            AudioDirector.Create();
 
-            Proto = PrototypeRoom.Build();
-            Player = FirstPersonController.Create(Proto.Spawn, -20f);
+            bool proto = Arg("-ahScene") == "proto";
+            if (proto)
+            {
+                Proto = PrototypeRoom.Build();
+                Player = FirstPersonController.Create(Proto.Spawn, -20f);
+            }
+            else
+            {
+                Office = OfficeBuilder.Build();
+                var spawn = Office.Anchor("ANCHOR_spawn");
+                Player = FirstPersonController.Create(spawn ? spawn.position : Vector3.zero, spawn ? spawn.eulerAngles.y : 0f);
+                AudioDirector.Instance.AttachOfficeSources(Office);
+            }
             PostFx.ConfigureCamera(Player.Camera);
             Rig = ToolRig.Create(Player.Camera);
             Cleaning = Player.gameObject.AddComponent<CleaningController>();
             Cleaning.Player = Player;
             Cleaning.Rig = Rig;
+            Hands = Player.gameObject.AddComponent<Hands>();
+            Hands.Player = Player;
+            Hands.Cleaning = Cleaning;
+            Interactor = Player.gameObject.AddComponent<Interactor>();
+            Interactor.Player = Player;
+            Interactor.Cleaning = Cleaning;
             Player.Footstep += (kind, speed) =>
-                Sfx.Play(kind == FloorKind.Carpet ? "step_carpet" : "step_tile", Player.transform.position, 0.35f + speed * 0.25f, 1f, 0.08f);
+                Sfx.Play(kind == FloorKind.Carpet ? "step_carpet" : "step_tile", Player.transform.position, 0.3f + speed * 0.25f, kind == FloorKind.Vinyl ? 1.1f : 1f, 0.08f);
 
             var hud = Hud.Create(Cleaning);
             hud.SetClock("10:00", "PM   MON");
@@ -82,14 +86,138 @@ namespace AfterHours
             {
                 hud.Toast($"{srf.DisplayName}  ✓", "Spotless", ToolDefs.Accent(srf.Tool));
                 hud.PulseDot();
+                Events.Raise(GameEvent.SurfaceCleaned, srf.Id);
             };
-
-            if (HasArg("-ahCapture")) gameObject.AddComponent<CaptureDirector>();
-            else
+            Clipboard.Create();
+            if (!proto)
             {
-                Cursor.lockState = CursorLockMode.Locked;
-                Cursor.visible = false;
+                Director = NightDirector.Create(Office);
+                Director.transform.SetParent(transform, false);
             }
+        }
+
+        void Start()
+        {
+            if (HasArg("-ahCapture")) gameObject.AddComponent<CaptureDirector>();
+            if (HasArg("-ahAutopilot")) gameObject.AddComponent<AutoPilot>();
+            if (Proto != null) { LockCursor(true); return; }
+
+            int night = int.TryParse(Arg("-ahNight"), out var n) ? n : 0;
+            if (HasArg("-ahFresh")) Story.State = new StoryState();
+            else Story.State = StoryState.Load() ?? new StoryState();
+            if (night > 0)
+            {
+                var snap = HasArg("-ahFresh") ? null : StoryState.LoadSnapshot(night);
+                if (snap != null) Story.State = snap;
+                StartNight(night);
+            }
+            else StartNight(Mathf.Clamp(Story.State.Night, 1, NightDefs.Count));
+        }
+
+        // =========================================================================================
+        // Flow
+        // =========================================================================================
+
+        public void StartNight(int n)
+        {
+            Director.Begin(n);
+            Block(true, false);
+            Hud.Instance.SetVisible(false);
+            TitleCard.Show(Director.Def, () =>
+            {
+                Block(false, false);
+                Hud.Instance.SetVisible(true);
+                LockCursor(true);
+                if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption("Your shift sheet is on the clipboard  ·  Tab", 4f));
+            });
+        }
+
+        public void OnNightEnded(NightDef def, NightResult result)
+        {
+            Block(true, false);
+            Hud.Instance.SetVisible(false);
+            ShiftReport.Show(def, result, Director, () =>
+            {
+                var chat = def.Chat.Where(c => c.When == null || SafeWhen(c, Story.State)).ToList();
+                string day = def.Number < NightDefs.Count ? $"{NightDefs.Days[def.Number + 1]} morning" : "Monday morning";
+                ChatInterlude.Show(day, chat, () =>
+                {
+                    Block(false, false);
+                    if (def.Number < NightDefs.Count) StartNight(def.Number + 1);
+                    else EndingScreen.Show(Endings.Resolve(Story.State));
+                });
+            });
+        }
+
+        static bool SafeWhen(ChatLine c, StoryState s)
+        {
+            try { return c.When(s); }
+            catch (Exception e) { Debug.LogException(e); return false; }
+        }
+
+        // =========================================================================================
+        // Input gating
+        // =========================================================================================
+
+        /// <summary>Block gameplay input (stacked). cursor: free the mouse for UI.</summary>
+        public void SetGameplayBlocked(bool blocked, bool cursor) => Block(blocked, cursor);
+
+        void Block(bool on, bool cursor)
+        {
+            blockers = Mathf.Max(0, blockers + (on ? 1 : -1));
+            if (cursor) cursorBlockers = Mathf.Max(0, cursorBlockers + (on ? 1 : -1));
+            GameInput.GameplayEnabled = blockers == 0;
+            if (Player) { Player.LookLocked = blockers > 0; Player.MoveLocked = blockers > 0; }
+            if (Interactor) Interactor.Locked = blockers > 0;
+            LockCursor(cursorBlockers == 0);
+        }
+
+        static void LockCursor(bool locked)
+        {
+            if (HasArg("-ahCapture") || HasArg("-ahAutopilot")) return;
+            Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !locked;
+        }
+
+        // =========================================================================================
+        // Per-frame: prompts and global keys
+        // =========================================================================================
+
+        void Update()
+        {
+            var hud = Hud.Instance;
+            if (hud == null) return;
+            var f = GameInput.Frame;
+            if (blockers == 0 && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
+
+            if (Hands != null && Hands.Holding != null)
+            {
+                hud.Prompt(("LMB", "Throw (hold)"), ("E", Hands.PromptText()), ("Q", "Drop"));
+                return;
+            }
+            var t = Cleaning != null ? Cleaning.Target : null;
+            var focus = Interactor != null ? Interactor.Focus : null;
+            if (focus != null)
+            {
+                hud.Prompt(("E", focus.Prompt(Interactor)));
+                return;
+            }
+            if (t != null && Cleaning.InReach && !Cleaning.Suspended)
+            {
+                string verb = t.Tool switch
+                {
+                    ToolKind.Vacuum => "Vacuum",
+                    ToolKind.Squeegee => "Squeegee",
+                    ToolKind.Mop => "Mop",
+                    _ => t.HasGhost && t.Spec.GhostScrubbable ? (t.Done ? "Scrub the stain" : "Erase") : "Wipe",
+                };
+                if (t.Tool == ToolKind.Squeegee || t.Tool == ToolKind.Cloth && t.HasGhost && t.Done)
+                    hud.Prompt(("RMB", "Spray"), ("LMB", verb));
+                else if (t.Tool == ToolKind.Cloth)
+                    hud.Prompt(("LMB", verb), ("RMB", "Spray"));
+                else hud.Prompt(("LMB", verb));
+            }
+            else hud.Prompt();
         }
     }
 }

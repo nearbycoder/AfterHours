@@ -50,6 +50,11 @@ namespace AfterHours
             foreach (var s in GrimeSurface.All) Hook(s);
         }
 
+        public void HookAll()
+        {
+            foreach (var s in GrimeSurface.All) Hook(s);
+        }
+
         public void Hook(GrimeSurface s)
         {
             s.Completed -= OnSurfaceCompleted;
