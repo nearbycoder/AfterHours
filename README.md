@@ -81,6 +81,11 @@ and choices take <kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> or the arrow k
 <kbd>E</kbd>/<kbd>Enter</kbd> and <kbd>Esc</kbd>, or the d-pad, A and B. On-screen prompts switch
 between keys and pad buttons depending on what you touched last.
 
+**Keys and mouse buttons can be changed** in Settings → Keyboard and mouse controls: pick an
+action and press the new key. A key that's already in use swaps over. Esc, Enter and 1–4 stay
+fixed, and so do pad buttons. Prompts and hints show your keys by their names on your keyboard
+layout, so on AZERTY they read Z Q S D rather than W A S D.
+
 **A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
 clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
 to do with whatever you find. Lights off, clock out at the punch clock, and read the shift report
@@ -173,7 +178,8 @@ Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, 
 Settings, Restart this night, Quit to title) and settings in two columns: mouse and stick
 sensitivity, invert Y, controller vibration, field of view, head bob, four volume sliders, a
 graphics preset (Low, Medium, High), render scale, fullscreen, VSync, a frame-rate limit,
-captions, reduce flashing, and a highlight on whatever you're aiming at. Progress
+captions, reduce flashing, a highlight on whatever you're aiming at, and a page for keyboard and
+mouse bindings. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -275,10 +281,12 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   the world, on a high ledge and in a sealed crate (each must come back), leaves one on the open
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
   the unfinished things glint. It also checks the aim highlight goes on and off with the reticle
-  and the setting.
+  and the setting, and rebinds Interact to F through the real controls page by pressing F on a
+  virtual keyboard, then checks F uses a light switch and E no longer does.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
-  writes and that records only ever improve.
+  writes, that records only ever improve, and that key bindings swap, refuse reserved keys and
+  survive a save.
 - After the ending, the AutoPilot replays Night 2 from Night Select and checks that Night 7's best
   result and the ending found are still listed. Runs that share a profile (the optional fourth
   argument to `Tools/autopilot.sh`) carry records over, so two routes in one profile show
@@ -377,8 +385,8 @@ still rough or untested:
 - **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
   gamepad, through the same code path. Rumble (short pulses on throws, the vacuum's clunk, a
   surface coming clean and a made shot; off in Settings) is sent the same way but has never been
-  felt on real hardware, and Unity may ignore it for some pads on Linux. There's no button
-  remapping.
+  felt on real hardware, and Unity may ignore it for some pads on Linux. Keyboard and mouse
+  can be rebound; pad buttons can't.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,

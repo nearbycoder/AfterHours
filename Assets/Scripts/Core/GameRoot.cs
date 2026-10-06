@@ -153,7 +153,7 @@ namespace AfterHours
                 Hud.Instance.SetVisible(true);
                 Director.Pause(false);
                 LockCursor(true);
-                if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption($"Your shift sheet is on the clipboard  ·  {(GameInput.UsingPad ? "View" : "Tab")}", 4f));
+                if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption($"Your shift sheet is on the clipboard  ·  {(GameInput.UsingPad ? GameInput.PadGlyph("View") : Controls.Display(Act.Clipboard))}", 4f));
             });
             Tween.Delay(0.15f, () => { Director.Begin(n); Director.Pause(true); });
         }
@@ -173,7 +173,7 @@ namespace AfterHours
                     else EndingScreen.Show(Endings.Resolve(Story.State));
                 }
                 if (chat.Count == 0) next();
-                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : $"Press  {GameInput.Glyph("E")}  to continue");
+                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : $"Press {GameInput.KeyTag("E")} to continue");
             });
         }
 

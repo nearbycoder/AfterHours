@@ -170,7 +170,7 @@ namespace AfterHours
                 {
                     if (ctx.State.Has("has_uv_torch")) return;
                     ctx.State.Set("has_uv_torch");
-                    ctx.Delay(0.3f, () => ctx.Toast("Walt's UV torch", $"Press {GameInput.Glyph("F")} to switch it on. Missed spots glow.", new Color(0.6f, 0.45f, 1f), 4f));
+                    ctx.Delay(0.3f, () => ctx.Toast("Walt's UV torch", $"Press {GameInput.KeyTag("F")} to switch it on. Missed spots glow.", new Color(0.6f, 0.45f, 1f), 4f));
                 });
                 // The writing shows through the foam.
                 var win = ctx.Surface("win_break_2");

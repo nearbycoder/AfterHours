@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -26,6 +27,8 @@ namespace AfterHours
         public bool Captions = true;
         public bool ReduceFlashing;
         public bool AimHighlight = true;
+        /// <summary>Keyboard and mouse bindings that differ from the defaults (see <see cref="Controls"/>).</summary>
+        public List<Binding> Bindings = new();
 
         static Settings current;
         public static event Action Changed;

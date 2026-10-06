@@ -82,14 +82,16 @@ namespace AfterHours
             bool wasPad = UsingPad;
             if (kb != null)
             {
-                m.Up = kb.wKey.wasPressedThisFrame || kb.upArrowKey.wasPressedThisFrame;
-                m.Down = kb.sKey.wasPressedThisFrame || kb.downArrowKey.wasPressedThisFrame;
-                m.Left = kb.aKey.wasPressedThisFrame || kb.leftArrowKey.wasPressedThisFrame;
-                m.Right = kb.dKey.wasPressedThisFrame || kb.rightArrowKey.wasPressedThisFrame;
-                m.Confirm = kb.eKey.wasPressedThisFrame || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame;
+                // Menus follow the movement and interact bindings as well as the arrows and Enter.
+                bool Bound(Act a) => Controls.Control(a) is UnityEngine.InputSystem.Controls.KeyControl k && k.wasPressedThisFrame;
+                m.Up = Bound(Act.Forward) || kb.upArrowKey.wasPressedThisFrame;
+                m.Down = Bound(Act.Back) || kb.downArrowKey.wasPressedThisFrame;
+                m.Left = Bound(Act.Left) || kb.leftArrowKey.wasPressedThisFrame;
+                m.Right = Bound(Act.Right) || kb.rightArrowKey.wasPressedThisFrame;
+                m.Confirm = Bound(Act.Interact) || kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame;
                 m.Back = m.Pause = kb.escapeKey.wasPressedThisFrame;
-                m.Keep = m.Clipboard = kb.tabKey.wasPressedThisFrame;
-                m.Alt = kb.xKey.wasPressedThisFrame;
+                m.Keep = m.Clipboard = Bound(Act.Clipboard);
+                m.Alt = Bound(Act.Discard);
                 if (kb.anyKey.wasPressedThisFrame) UsingPad = false;
             }
             if (mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 9f || mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
@@ -132,8 +134,15 @@ namespace AfterHours
         /// </summary>
         public static string Glyph(string key)
         {
-            if (!UsingPad) return key;
-            return key.ToUpperInvariant() switch
+            if (!UsingPad)
+            {
+                // Callers name the default key; show whatever it's bound to now.
+                var act = ActFor(key);
+                if (act.HasValue) return Controls.Display(act.Value);
+                if (key.ToUpperInvariant() == "A / D") return $"{Controls.Display(Act.Left)} / {Controls.Display(Act.Right)}";
+                return key;
+            }
+            return PadGlyph(key.ToUpperInvariant() switch
             {
                 "E" or "ENTER" or "SPACE" => "A",
                 "Q" or "ESC" => "B",
@@ -145,12 +154,26 @@ namespace AfterHours
                 "SHIFT" => "RB",
                 "A / D" => "◀ ▶",
                 _ => key,
-            };
+            });
         }
+
+        /// <summary>A pad button, named the Xbox way ("A", "RT", "View"), as the active pad labels it.</summary>
+        public static string PadGlyph(string xbox) => xbox;
 
         // Never leave a pad buzzing when the window loses focus or the game quits.
         void OnApplicationFocus(bool focus) { if (!focus) Rumble.Stop(); }
         void OnApplicationQuit() => Rumble.Stop();
+
+        /// <summary>The action behind a default key name used in prompts ("E", "LMB", "TAB"...).</summary>
+        static Act? ActFor(string key) => key.ToUpperInvariant() switch
+        {
+            "E" => Act.Interact, "Q" => Act.Drop, "F" => Act.Torch, "TAB" => Act.Clipboard, "X" => Act.Discard,
+            "LMB" => Act.Use, "RMB" => Act.Spray, "SHIFT" => Act.Sprint, "C" => Act.Crouch,
+            _ => null,
+        };
+
+        /// <summary>A key cap inside running text ("Press [E] to…"), following bindings and the pad.</summary>
+        public static string KeyTag(string key) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{Glyph(key)}</b></mark>";
 
         static InputFrame ReadDevices()
         {
@@ -159,17 +182,20 @@ namespace AfterHours
             var mouse = Mouse.current;
             var pad = Gamepad.current;
             float sens = Settings.Current.MouseSensitivity;
+            // Bound actions (keys or mouse buttons; see Controls).
+            float x = (Controls.Held(Act.Right) ? 1 : 0) - (Controls.Held(Act.Left) ? 1 : 0);
+            float y = (Controls.Held(Act.Forward) ? 1 : 0) - (Controls.Held(Act.Back) ? 1 : 0);
+            f.Move = new Vector2(x, y);
+            f.Sprint = Controls.Held(Act.Sprint);
+            f.Crouch = Controls.Held(Act.Crouch) || (kb != null && Controls.CtrlCrouch && kb.leftCtrlKey.isPressed);
+            f.Interact = Controls.Pressed(Act.Interact);
+            f.Drop = Controls.Pressed(Act.Drop);
+            f.Torch = Controls.Pressed(Act.Torch);
+            f.Clipboard = Controls.Pressed(Act.Clipboard);
+            f.Use = Controls.Held(Act.Use);
+            f.Spray = Controls.Held(Act.Spray);
             if (kb != null)
             {
-                float x = (kb.dKey.isPressed ? 1 : 0) - (kb.aKey.isPressed ? 1 : 0);
-                float y = (kb.wKey.isPressed ? 1 : 0) - (kb.sKey.isPressed ? 1 : 0);
-                f.Move = new Vector2(x, y);
-                f.Sprint = kb.leftShiftKey.isPressed;
-                f.Crouch = kb.cKey.isPressed || kb.leftCtrlKey.isPressed;
-                f.Interact = kb.eKey.wasPressedThisFrame;
-                f.Drop = kb.qKey.wasPressedThisFrame;
-                f.Torch = kb.fKey.wasPressedThisFrame;
-                f.Clipboard = kb.tabKey.wasPressedThisFrame;
                 f.Pause = kb.escapeKey.wasPressedThisFrame;
                 f.Back = kb.escapeKey.wasPressedThisFrame;
                 f.Confirm = kb.enterKey.wasPressedThisFrame || kb.spaceKey.wasPressedThisFrame;
@@ -182,8 +208,6 @@ namespace AfterHours
             {
                 var d = mouse.delta.ReadValue();
                 f.Look = d * (0.06f * sens);
-                f.Use = mouse.leftButton.isPressed;
-                f.Spray = mouse.rightButton.isPressed;
                 f.Scroll = mouse.scroll.ReadValue().y;
                 f.Pointer = mouse.position.ReadValue();
                 f.Click = mouse.leftButton.wasPressedThisFrame;

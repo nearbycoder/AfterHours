@@ -256,6 +256,7 @@ namespace AfterHours
                     yield return RealInputNight1();
                     if (PadChecks) yield return ShiftHelperChecks();
                     if (PadChecks) yield return HighlightChecks();
+                    if (PadChecks) yield return RemapChecks();
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
@@ -642,6 +643,68 @@ namespace AfterHours
             yield return Wait(1.0f);
             if (key != null) key.GetComponent<KeyPickup>().Interact(null);
             Check(Story.State.Has("has_key_fc2"), "the FC-2 key goes on the key ring");
+        }
+
+        // ---- rebinding keys (night 1) -------------------------------------------------------------
+
+        IEnumerator RemapChecks()
+        {
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotKeyboard");
+            vkb.MakeCurrent();
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.3f);
+            }
+            // Through the real panel: Settings -> Keyboard and mouse -> Interact -> press F.
+            SettingsPanel.Show();
+            yield return Wait(0.5f);
+            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard and mouse"))?.onClick.Invoke();
+            yield return Wait(0.5f);
+            Check(ControlsPanel.IsOpen, "Settings opens the keyboard and mouse controls");
+            yield return Shot("controls");
+            GameObject.Find("Bind_Interact")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.2f);
+            Check(ControlsPanel.Listening == Act.Interact, "picking Interact waits for a key");
+            yield return Shot("controls_listening");
+            yield return Key(UnityEngine.InputSystem.Key.F);
+            Check(Controls.PathOf(Settings.Current, Act.Interact) == "<Keyboard>/f" && Controls.PathOf(Settings.Current, Act.Torch) == "<Keyboard>/e",
+                $"pressing F binds Interact to F and the torch swaps to E ({Controls.Display(Act.Interact)}, {Controls.Display(Act.Torch)})");
+            yield return Shot("controls_rebound");
+            FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            Check(SettingsPanel.IsOpen, "closing the controls leaves Settings open");
+            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+            yield return Wait(0.4f);
+            var file = System.IO.Path.Combine(StoryState.Dir, "settings.json");
+            Check(System.IO.File.Exists(file) && System.IO.File.ReadAllText(file).Contains("<Keyboard>/f"), "the new binding is saved");
+
+            // Play with the device itself: F uses a light switch, E no longer does.
+            var room = root.Office.Rooms["reception"];
+            var sw = root.Office.Switches["reception"];
+            var toRoom = room.Bounds.center - sw.transform.position; toRoom.y = 0;
+            var stand = sw.transform.position + toRoom.normalized * 0.9f; stand.y = 0;
+            root.Player.Teleport(stand, 0, 0);
+            yield return Aim(sw.transform.position, 0.3f);
+            yield return Wait(0.2f);
+            bool lit = room.LightsOn;
+            var scripted = GameInput.Override;
+            GameInput.Override = null;
+            yield return Key(UnityEngine.InputSystem.Key.E);
+            Check(room.LightsOn == lit, "after rebinding, E no longer uses the switch");
+            Check(GameObject.Find("Key_F") != null, "the prompt shows the new key (F)");
+            yield return Shot("n1_prompt_rebound");
+            yield return Key(UnityEngine.InputSystem.Key.F);
+            Check(room.LightsOn != lit, "F uses the switch");
+            GameInput.Override = scripted;
+            if (room.LightsOn != lit) sw.Toggle();
+            Controls.ResetAll(Settings.Current);
+            Settings.Save();
+            Check(Controls.PathOf(Settings.Current, Act.Interact) == "<Keyboard>/e", "reset brings back the default bindings");
+            InputSystem.RemoveDevice(vkb);
+            yield return Wait(0.2f);
         }
 
         // ---- the aim highlight (night 1) ---------------------------------------------------------

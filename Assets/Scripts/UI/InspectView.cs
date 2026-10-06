@@ -89,7 +89,7 @@ namespace AfterHours
             header.text = d.Header.ToUpperInvariant();
             Style(d);
             // Keyboard key or pad button (Y keep, A close, X throw away / switch off).
-            string key(string kb, string pad) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{(GameInput.UsingPad ? pad : kb)}</b></mark>";
+            string key(string kb, string pad) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{(GameInput.UsingPad ? GameInput.PadGlyph(pad) : GameInput.Glyph(kb))}</b></mark>";
             hints.text = m switch
             {
                 InspectMode.Evidence => $"{key("TAB", "Y")}  Keep it        {key("E", "A")}  Put it back        {key("X", "X")}  Throw it away",
@@ -165,7 +165,7 @@ namespace AfterHours
             bool esc = menu.Back || (mouse != null && mouse.rightButton.wasPressedThisFrame);
             bool tab = menu.Keep || f.Clipboard;
             bool x = menu.Alt;
-            bool q = (kb != null && kb.qKey.wasPressedThisFrame) || menu.Alt;
+            bool q = Controls.Pressed(Act.Drop) || menu.Alt;
             if (AutoChoice.HasValue) { var c = AutoChoice.Value; AutoChoice = null; Close(c); return; }
             if (mode == InspectMode.Evidence)
             {

@@ -256,6 +256,7 @@ namespace AfterHours
             Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
+            Widgets.Button(right, "Keyboard and mouse controls  ›", ControlsPanel.Show, ColW, 56, 26);
 
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));
@@ -272,7 +273,7 @@ namespace AfterHours
 
         void Update()
         {
-            if (GameInput.Menu.Back) Close();
+            if (GameInput.Menu.Back && !ControlsPanel.IsOpen && Time.frameCount != ControlsPanel.ClosedFrame) Close();
         }
     }
 
