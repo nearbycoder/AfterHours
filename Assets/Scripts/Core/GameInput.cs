@@ -37,6 +37,37 @@ namespace AfterHours
         public bool Start;      // pad Start only (Esc already means back)
     }
 
+    /// <summary>
+    /// A button that is either held, or pressed once to switch on and again to switch off
+    /// (crouch and brisk walk). Toggled brisk walk also ends when the player stops moving.
+    /// </summary>
+    public class ToggleLatch
+    {
+        public bool On { get; private set; }
+        bool was, moved;
+
+        /// <summary>One frame: the raw button, the mode, and whether gameplay takes input right now.</summary>
+        public bool Step(bool held, bool toggle, bool allowed = true)
+        {
+            bool pressed = held && !was;
+            was = held;
+            if (!toggle) { On = held; return On; }
+            if (pressed && allowed) { On = !On; moved = false; }
+            return On;
+        }
+
+        /// <summary>Brisk walk: once you've moved with it on, standing still switches it off.</summary>
+        public bool StopWhenIdle(bool moving)
+        {
+            if (!On) return false;
+            if (moving) moved = true;
+            else if (moved) On = false;
+            return On;
+        }
+
+        public void Reset() { On = false; moved = false; }
+    }
+
     public interface IInputProvider
     {
         InputFrame Read(InputFrame devices);
@@ -53,6 +84,10 @@ namespace AfterHours
         /// <summary>True when the gamepad was the last device touched; prompts show pad buttons.</summary>
         public static bool UsingPad;
         public static event System.Action DeviceChanged;
+        static readonly ToggleLatch crouchLatch = new(), sprintLatch = new();
+
+        /// <summary>A new night starts standing and walking, whatever was toggled before.</summary>
+        public static void ResetToggles() { crouchLatch.Reset(); sprintLatch.Reset(); }
 
         bool lastUse;
         Vector2 heldDir;
@@ -266,7 +301,11 @@ namespace AfterHours
                 f.Crouch |= pad.leftStickButton.isPressed;
                 f.Sprint |= pad.rightShoulder.isPressed;
             }
-            if (Settings.Current.InvertY) f.Look.y = -f.Look.y;
+            var st = Settings.Current;
+            f.Crouch = crouchLatch.Step(f.Crouch, st.ToggleCrouch, GameplayEnabled);
+            f.Sprint = sprintLatch.Step(f.Sprint, st.ToggleSprint, GameplayEnabled);
+            if (st.ToggleSprint && GameplayEnabled) f.Sprint = sprintLatch.StopWhenIdle(f.Move.sqrMagnitude > 0.04f);
+            if (st.InvertY) f.Look.y = -f.Look.y;
             return f;
         }
     }

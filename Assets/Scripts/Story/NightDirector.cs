@@ -138,6 +138,7 @@ namespace AfterHours
             ClockMinutes = 0;
             Elapsed = 0;
             Running = true;
+            GameInput.ResetToggles();
             AudioDirector.Instance?.SetNight(Def);
             if (RoomPhotos.Instance)
             {

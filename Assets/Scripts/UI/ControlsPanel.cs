@@ -55,6 +55,11 @@ namespace AfterHours
                 var (act, label) = Controls.Labels[i];
                 Row(i < 7 ? left : right, act, label, ColW);
             }
+            // Hold or toggle, for keys and pad alike.
+            var modes = new[] { "Hold", "Toggle" };
+            var st = Settings.Current;
+            Widgets.Choice(right, "Crouch mode", modes, st.ToggleCrouch ? 1 : 0, i => { st.ToggleCrouch = i == 1; GameInput.ResetToggles(); }, ColW);
+            Widgets.Choice(right, "Brisk walk mode", modes, st.ToggleSprint ? 1 : 0, i => { st.ToggleSprint = i == 1; GameInput.ResetToggles(); }, ColW);
             message = Ui.Label(panel.rectTransform, "", UiFont.Sans, 22, Ui.TextDim, TextAlignmentOptions.TopLeft);
             Ui.Place(message.rectTransform, new Vector2(0, 0), new Vector2(60, 110), new Vector2(1240, 60), new Vector2(0, 0));
             Note(null);
@@ -139,7 +144,7 @@ namespace AfterHours
             Note("Back to the defaults.");
         }
 
-        void Note(string text) => message.text = text ?? "Esc pauses, Enter confirms and 1–4 pick tools; those stay fixed, and so do pad buttons. A key that's already in use swaps over.";
+        void Note(string text) => message.text = text ?? "Esc pauses, Enter confirms and 1–4 pick tools; those stay fixed, and so do pad buttons. A key that's already in use swaps over. Toggle: press once to crouch or walk briskly, again to stop.";
 
         static string LabelOf(Act a) => Array.Find(Controls.Labels, x => x.act == a).label;
 

@@ -27,6 +27,9 @@ namespace AfterHours
         public bool Captions = true;
         public bool ReduceFlashing;
         public bool AimHighlight = true;
+        /// <summary>Crouch and brisk walk: false holds the button, true presses once to switch on and again to switch off.</summary>
+        public bool ToggleCrouch;
+        public bool ToggleSprint;
         /// <summary>Write a local playtest log (see PlaytestLog and docs/PLAYTEST.md).</summary>
         public bool PlaytestLog;
         /// <summary>Keyboard and mouse bindings that differ from the defaults (see <see cref="Controls"/>).</summary>

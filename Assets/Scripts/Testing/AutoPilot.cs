@@ -287,6 +287,7 @@ namespace AfterHours
                     if (PadChecks) yield return ShiftHelperChecks();
                     if (PadChecks) yield return HighlightChecks();
                     if (PadChecks) yield return RemapChecks();
+                    if (PadChecks && vpad != null) yield return ToggleChecks();
                     if (PadChecks && vpad != null) yield return PadToolChecks();
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
@@ -792,6 +793,87 @@ namespace AfterHours
             InputSystem.RemoveDevice(pad);
             GameInput.UsingPad = false;
             yield return WaitUnblocked(3f);
+        }
+
+        // ---- hold or toggle (night 1) -------------------------------------------------------------
+
+        IEnumerator ToggleChecks()
+        {
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotToggleKeyboard");
+            vkb.MakeCurrent();
+            IEnumerator Keys(params UnityEngine.InputSystem.Key[] keys)
+            {
+                var st = new KeyboardState();
+                foreach (var k in keys) st.Set(k, true);
+                InputSystem.QueueStateEvent(vkb, st);
+                yield return Wait(0.25f);
+            }
+            var player = root.Player;
+            var s = Settings.Current;
+            // Switch crouch to Toggle through the real page.
+            SettingsPanel.Show();
+            yield return Wait(0.4f);
+            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard and mouse"))?.onClick.Invoke();
+            yield return Wait(0.4f);
+            GameObject.Find("Choice_Crouch mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            GameObject.Find("Choice_Brisk walk mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.3f);
+            Check(s.ToggleCrouch && s.ToggleSprint, "the controls page switches crouch and brisk walk to Toggle");
+            yield return Shot("controls_toggle");
+            FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
+            yield return Wait(0.2f);
+            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+            yield return WaitUnblocked(3f);
+            root.Player.Teleport(new Vector3(12.2f, 0, 7.0f), 0f, 0f);
+            yield return Wait(0.3f);
+            var scripted = GameInput.Override;
+            GameInput.Override = null;
+
+            // Toggle: a tap crouches, the next tap stands.
+            yield return Keys(UnityEngine.InputSystem.Key.C);
+            yield return Keys();
+            yield return Wait(0.3f);
+            bool down = player.Crouching;
+            yield return Keys(UnityEngine.InputSystem.Key.C);
+            yield return Keys();
+            yield return Wait(0.3f);
+            Check(down && !player.Crouching, $"toggle crouch: one tap of C crouches, the next stands ({down}, {player.Crouching})");
+            // On the pad: the left stick click.
+            vpad.MakeCurrent();
+            InputSystem.QueueStateEvent(vpad, new GamepadState().WithButton(GamepadButton.LeftStick));
+            yield return Wait(0.2f);
+            InputSystem.QueueStateEvent(vpad, new GamepadState());
+            yield return Wait(0.4f);
+            Check(player.Crouching, "toggle crouch: a tap of the pad's stick click crouches");
+            InputSystem.QueueStateEvent(vpad, new GamepadState().WithButton(GamepadButton.LeftStick));
+            yield return Wait(0.2f);
+            InputSystem.QueueStateEvent(vpad, new GamepadState());
+            yield return Wait(0.4f);
+            Check(!player.Crouching, "toggle crouch: the next tap stands");
+            vkb.MakeCurrent();
+            // Toggle brisk walk: a tap of Shift while walking stays on until you stop.
+            yield return Keys(UnityEngine.InputSystem.Key.W, UnityEngine.InputSystem.Key.LeftShift);
+            yield return Keys(UnityEngine.InputSystem.Key.W);
+            yield return Wait(0.2f);
+            bool brisk = GameInput.Frame.Sprint;
+            yield return Keys();
+            yield return Wait(0.1f);
+            Check(brisk && !GameInput.Frame.Sprint, $"toggle brisk walk: stays on after letting go of Shift, ends when you stop ({brisk}, {GameInput.Frame.Sprint})");
+
+            // Hold (the default) again: crouch only while C is down.
+            s.ToggleCrouch = s.ToggleSprint = false;
+            yield return Keys(UnityEngine.InputSystem.Key.C);
+            yield return Wait(0.3f);
+            down = player.Crouching;
+            yield return Keys();
+            yield return Wait(0.4f);
+            Check(down && !player.Crouching, "hold crouch: crouched while C is held, up when it's let go");
+            Settings.Save();
+            GameInput.Override = scripted;
+            InputSystem.RemoveDevice(vkb);
+            vpad.MakeCurrent();
+            root.Player.Teleport(root.Player.transform.position, 0f, 0f);
+            yield return Wait(0.2f);
         }
 
         // ---- rebinding keys (night 1) -------------------------------------------------------------
