@@ -67,7 +67,8 @@ namespace AfterHours
 
             int endings = Records.Current.Endings.Count;
             string footText = "BrightStar Janitorial · Meridian Tower, Suite 1408 · Night shift"
-                              + (endings > 0 ? $"    <color=#FFD27Acc>Endings found {endings} / {Endings.Ids.Length}</color>" : "");
+                              + (endings > 0 ? $"    <color=#FFD27Acc>Endings found {endings} / {Endings.Ids.Length}</color>" : "")
+                              + (PlaytestLog.Enabled ? "    <color=#9FF5D8cc>● Playtest log on</color>" : "");
             var foot = Ui.Label(root, footText, UiFont.Sans, 18, new Color(1, 1, 1, 0.35f), TextAlignmentOptions.BottomLeft);
             Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(1200, 30), new Vector2(0, 0));
 
@@ -136,6 +137,7 @@ namespace AfterHours
         public static void Show()
         {
             if (Instance) return;
+            PlaytestLog.Log("pause");
             var rt = Ui.Layer("Pause", 55);
             Instance = rt.gameObject.AddComponent<PauseMenu>();
             Instance.root = rt;
@@ -168,6 +170,7 @@ namespace AfterHours
                 new("Restart", null, () =>
                 {
                     int n = NightDirector.Instance.Def.Number;
+                    PlaytestLog.Log("restart_night", ("open", PlaytestLog.OpenTasks()));
                     Close();
                     var snap = StoryState.LoadSnapshot(n);
                     if (snap != null) Story.State = snap;
@@ -220,7 +223,7 @@ namespace AfterHours
             Ui.Stretch(dim.rectTransform);
             dim.raycastTarget = true;
             // Two columns so everything fits from 4:3 up (the canvas is always 1080 units tall).
-            const float W = 1360, H = 900, ColW = 600;
+            const float W = 1360, H = 1000, ColW = 600;
             var panel = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
             Ui.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
             var title = Ui.Label(panel.rectTransform, "Settings", UiFont.SansBold, 44, Ui.Text, TextAlignmentOptions.TopLeft);
@@ -257,6 +260,8 @@ namespace AfterHours
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
             Widgets.Button(right, "Keyboard and mouse controls  ›", ControlsPanel.Show, ColW, 56, 26);
+            Widgets.Heading(right, "Feedback", ColW);
+            Widgets.Toggle(right, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
 
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));

@@ -101,6 +101,7 @@ namespace AfterHours
                 Director = NightDirector.Create(Office);
                 Director.transform.SetParent(transform, false);
                 ShiftHelper.Create(Director);
+                PlaytestLog.Create(Director).transform.SetParent(transform, false);
             }
         }
 
@@ -129,6 +130,7 @@ namespace AfterHours
         /// <summary>Back to the title: the current night's office becomes the backdrop.</summary>
         public void ToTitle()
         {
+            if (InNight && !Director.Paused) PlaytestLog.Log("quit_to_title", ("open", PlaytestLog.OpenTasks()));
             var saved = StoryState.Load();
             if (saved != null) Story.State = saved;
             int n = Mathf.Clamp(Story.State.Night, 1, NightDefs.Count);
@@ -153,6 +155,7 @@ namespace AfterHours
                 Hud.Instance.SetVisible(true);
                 Director.Pause(false);
                 LockCursor(true);
+                PlaytestLog.NightStart(NightDefs.Get(n));
                 if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption($"Your shift sheet is on the clipboard  ·  {(GameInput.UsingPad ? GameInput.PadGlyph("View") : Controls.Display(Act.Clipboard))}", 4f));
             });
             Tween.Delay(0.15f, () => { Director.Begin(n); Director.Pause(true); });
@@ -160,6 +163,7 @@ namespace AfterHours
 
         public void OnNightEnded(NightDef def, NightResult result)
         {
+            PlaytestLog.NightEnd(result, PlaytestLog.OpenTasks());
             Block(true, false);
             Hud.Instance.SetVisible(false);
             ShiftReport.Show(def, result, Director, () =>

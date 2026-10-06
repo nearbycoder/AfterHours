@@ -21,6 +21,7 @@ namespace AfterHours
             s.Build();
             Story.State.Save();
             Records.NoteEnding(e.Id);
+            PlaytestLog.Log("ending", ("id", e.Id));
             Debug.Log($"[Ending] {e.Id}: {e.Title}");
         }
 

@@ -67,6 +67,7 @@ namespace AfterHours
             if (NightDirector.Instance == null || NightDirector.Instance.Def == null) return;
             Open = true;
             Refresh();
+            PlaytestLog.Log("clipboard");
             GameRoot.Instance?.SetBlocked("clipboard", true);
             group.blocksRaycasts = true;
             Sfx.Play("ui_page", null, 0.5f, 1f, 0.1f, AudioBus.Ui);

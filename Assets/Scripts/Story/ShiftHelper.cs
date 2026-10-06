@@ -121,6 +121,7 @@ namespace AfterHours
             if (pts.Count == 0) return;
             GlintCount++;
             LastGlintIdle = idle;
+            PlaytestLog.Log("stuck_glint", ("points", pts.Count), ("idle", idle), ("open", PlaytestLog.OpenTasks()));
             bool calm = Settings.Current.ReduceFlashing;
             var player = GameRoot.Instance.Player.transform.position;
             var warm = new Color(1f, 0.86f, 0.55f);
@@ -229,6 +230,7 @@ namespace AfterHours
             h.transform.position = pos;
             h.InFlight = false;
             Recovered++;
+            PlaytestLog.Log("item_recovered", ("id", h.Id));
             Sfx.Play("drop_soft", pos, 0.5f);
             Fx.Burst(FxKind.Puff, pos, Vector3.up, 5, new Color(0.9f, 0.9f, 0.85f, 0.25f), 0.3f, 1f, 0.05f);
             Hud.Instance?.Caption($"The {h.DisplayName.ToLowerInvariant()} turns up at your feet", 2.5f);

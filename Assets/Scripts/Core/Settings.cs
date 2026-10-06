@@ -27,6 +27,8 @@ namespace AfterHours
         public bool Captions = true;
         public bool ReduceFlashing;
         public bool AimHighlight = true;
+        /// <summary>Write a local playtest log (see PlaytestLog and docs/PLAYTEST.md).</summary>
+        public bool PlaytestLog;
         /// <summary>Keyboard and mouse bindings that differ from the defaults (see <see cref="Controls"/>).</summary>
         public List<Binding> Bindings = new();
 

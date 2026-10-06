@@ -180,7 +180,7 @@ Settings, Restart this night, Quit to title) and settings in two columns: mouse 
 sensitivity, invert Y, controller vibration, field of view, head bob, four volume sliders, a
 graphics preset (Low, Medium, High), render scale, fullscreen, VSync, a frame-rate limit,
 captions, reduce flashing, a highlight on whatever you're aiming at, and a page for keyboard and
-mouse bindings. Progress
+mouse bindings, and an opt-in playtest log. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -244,6 +244,7 @@ Tools/unity.sh build-linux      # -> Builds/Linux/AfterHours.x86_64
 Tools/unity.sh build-mac        # -> Builds/macOS/After Hours.app (universal, unsigned)
 Tools/unity.sh build-windows    # -> Builds/Windows/AfterHours.exe (needs the Windows module)
 python3 Tools/package.py        # release zips of whatever is built -> Builds/release/
+python3 Tools/playtest_report.py <logs>   # per-night tables from playtest logs (docs/PLAYTEST.md)
 Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml
 Tools/unity.sh                  # open the project in the editor
 Tools/play.sh                   # run the build windowed at 1600x900
@@ -290,6 +291,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes, that records only ever improve, and that key bindings swap, refuse reserved keys and
   survive a save.
+- The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
+  then on for the run, and afterwards checks the log: every line is JSON, a night end for each
+  night in order, every secret, the ending, clipboard opens, pauses, glints and recovered items.
 - After the ending, the AutoPilot replays Night 2 from Night Select and checks that Night 7's best
   result and the ending found are still listed. Runs that share a profile (the optional fourth
   argument to `Tools/autopilot.sh`) carry records over, so two routes in one profile show
@@ -378,7 +382,10 @@ the macOS build and longer night music) are listed in
 still rough or untested:
 
 - **No one outside development has played it yet.** Pacing, difficulty, and whether the clues
-  are too obvious or too hidden are untested with real players. The automated runs cover five
+  are too obvious or too hidden are untested with real players. There's now a kit for the first
+  sessions: an opt-in local playtest log (Settings → Feedback, or `-playtest`),
+  `Tools/playtest_report.py` to read the logs, and [`docs/PLAYTEST.md`](docs/PLAYTEST.md) with
+  questions for testers. The automated runs cover five
   story routes; other mixes of choices are only covered by the ending-logic tests.
 - **The audio was tuned by numbers, not by ear.** Levels, loops and rhythm were checked
   numerically. That includes the longer night music: its length, loudness (within 0.2 LU of the

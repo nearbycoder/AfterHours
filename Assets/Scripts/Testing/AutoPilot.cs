@@ -59,6 +59,9 @@ namespace AfterHours
         {
             route = GameRoot.Arg("-ahRoute") ?? "audit";
             Debug.Log($"[AutoPilot] started, route {route}");
+            // The playtest log stays off through the title (nothing may be written), then records the run.
+            bool logWasOn = Settings.Current.PlaytestLog;
+            Settings.Current.PlaytestLog = false;
             // Test windows usually sit behind others, and Wayland throttles hidden windows' vsync
             // to a crawl (11-20 fps here). Run uncapped so timings measure the game, not the compositor.
             if (Time.captureFramerate == 0) { QualitySettings.vSyncCount = 0; Application.targetFrameRate = -1; }
@@ -68,6 +71,8 @@ namespace AfterHours
             if (PadChecks) yield return PadTitle();
             StoryState.DeleteAll();
             Story.State = new StoryState();
+            if (PadChecks) Check(PlaytestLog.CurrentFile == null, $"with the playtest log off nothing is written (it was {(logWasOn ? "on" : "off")} in this profile's settings)");
+            Settings.Current.PlaytestLog = true;
             TitleScreen.Instance?.Begin(1);
             int last = scenario.StartsWith("night") && int.TryParse(scenario.Substring(5), out var only) ? only : NightDefs.Count;
             for (int n = 1; n <= last; n++)
@@ -97,10 +102,32 @@ namespace AfterHours
             yield return Wait(2f);
             Check(TitleScreen.Instance != null, "ending returns to the title");
             yield return Shot("back_to_title");
+            int secretsFound = Story.State.Results.Sum(r => r.Secrets);
             if (PadChecks) yield return RecordsChecks(expected);
+            if (PadChecks) PlaytestChecks(expected, secretsFound);
             Debug.Log($"[AutoPilot] done: {passes} passed, {fails} failed");
             yield return Wait(0.5f);
             Application.Quit();
+        }
+
+        [Serializable] class LogLine { public float t; public int night; public float nt; public string type; public string id; public string grade; }
+
+        /// <summary>The playtest log of this run: valid lines, every night started and finished, the ending.</summary>
+        void PlaytestChecks(string ending, int secretsFound)
+        {
+            var file = PlaytestLog.CurrentFile;
+            Check(file != null && System.IO.File.Exists(file), $"the playtest log was written ({file})");
+            if (file == null || !System.IO.File.Exists(file)) return;
+            var lines = System.IO.File.ReadAllLines(file);
+            var parsed = lines.Select(l => { try { return JsonUtility.FromJson<LogLine>(l); } catch { return null; } }).ToList();
+            Check(parsed.All(p => p != null && !string.IsNullOrEmpty(p.type)), $"every playtest log line is JSON with a type ({lines.Length} lines)");
+            int Count(string type) => parsed.Count(p => p?.type == type);
+            var ends = parsed.Where(p => p?.type == "night_end").Select(p => p.night).ToList();
+            Check(string.Join(",", ends) == "1,2,3,4,5,6,7", $"the log has a night_end for each night in order ({string.Join(",", ends)})");
+            Check(Count("night_start") >= 7 && Count("task_done") >= 7 * 5 && Count("surface_done") > 0, $"the log has night starts ({Count("night_start")}), ticked tasks ({Count("task_done")}) and cleaned surfaces ({Count("surface_done")})");
+            Check(Count("secret") == secretsFound, $"the log has every secret found ({Count("secret")} of {secretsFound})");
+            Check(parsed.Any(p => p?.type == "ending" && p.id == ending) && Count("clipboard") > 0 && Count("pause") > 0 && Count("stuck_glint") > 0 && Count("item_recovered") > 0,
+                $"the log has the ending, clipboard opens ({Count("clipboard")}), pauses ({Count("pause")}), stuck glints ({Count("stuck_glint")}) and recovered items ({Count("item_recovered")})");
         }
 
         /// <summary>Records outlive Night Select replays: the ending and every night's best stay listed.</summary>
