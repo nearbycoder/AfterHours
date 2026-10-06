@@ -159,6 +159,29 @@ namespace AfterHours
             });
         }
 
+        /// <summary>The key or pad button for an action, as prompts show it ("Tab", "View", "□").</summary>
+        public static string ActGlyph(Act a)
+        {
+            if (!UsingPad) return Controls.Display(a);
+            return PadGlyph(a switch
+            {
+                Act.Interact => "A", Act.Drop => "B", Act.Discard => "X", Act.Torch => "D-PAD ↑", Act.Clipboard => "View",
+                Act.Use => "RT", Act.Spray => "LT", Act.Sprint => "RB", Act.Crouch => "LS",
+                _ => "L-STICK",
+            });
+        }
+
+        /// <summary>
+        /// Key tokens in document text, "{key:Clipboard}", become the bound key or pad button, so
+        /// a note that says "(Tab)" stays right after rebinding or on a pad.
+        /// </summary>
+        public static string ExpandKeys(string text)
+        {
+            if (string.IsNullOrEmpty(text) || !text.Contains("{key:")) return text;
+            return System.Text.RegularExpressions.Regex.Replace(text, @"\{key:(\w+)\}",
+                m => System.Enum.TryParse<Act>(m.Groups[1].Value, out var a) ? ActGlyph(a) : m.Value);
+        }
+
         /// <summary>A pad button, named the Xbox way ("A", "RT", "View"), as the active pad labels it.</summary>
         public static string PadGlyph(string xbox)
         {
@@ -167,7 +190,7 @@ namespace AfterHours
             return xbox switch
             {
                 "A" => "✕", "B" => "○", "X" => "□", "Y" => "△",
-                "RT" => "R2", "LT" => "L2", "RB" => "R1", "LB" => "L1",
+                "RT" => "R2", "LT" => "L2", "RB" => "R1", "LB" => "L1", "LS" => "L3", "RS" => "R3",
                 "View" => dualSense ? "Create" : "Share", "Menu" => "Options",
                 _ => xbox,
             };

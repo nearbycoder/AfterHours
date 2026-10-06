@@ -191,6 +191,8 @@ namespace AfterHours
                 Clipboard.Instance.Show();
                 yield return Wait(0.7f);
                 yield return Shot("clipboard");
+                yield return Wait(1.0f); // past the moment the "shift sheet is on the clipboard" caption is due
+                Check(!Hud.Instance.CaptionShowing, "no caption shows behind the open clipboard");
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
                 PauseMenu.Show();
@@ -759,6 +761,8 @@ namespace AfterHours
             yield return PadPress(GamepadButton.South);
             yield return Wait(0.3f);
             Check(InspectView.IsOpen && InspectView.CurrentDoc == first, $"pad A reads {first} again ({InspectView.CurrentDoc})");
+            string Body() => GameObject.Find("Inspect")?.transform.Find("Card/Body")?.GetComponent<TMPro.TextMeshProUGUI>()?.text ?? "";
+            Check(first != "dana_welcome" || Body().Contains("(View)"), $"on a pad, Dana's note names the View button for the clipboard ({(Body().Contains("(View)") ? "View" : "missing")})");
             yield return Shot("n2_case_file_read");
             yield return PadPress(GamepadButton.East);
             Check(!InspectView.IsOpen && cb.Open && cb.Page == Clipboard.CasePage, "pad B closes the document and leaves the case file open");
@@ -774,6 +778,12 @@ namespace AfterHours
             Check(InspectView.IsOpen && InspectView.CurrentDoc == cb.CaseEntries.ElementAtOrDefault(1), $"E reads it ({InspectView.CurrentDoc})");
             yield return Key(UnityEngine.InputSystem.Key.Escape);
             Check(!InspectView.IsOpen && cb.Open, "Esc closes the document but not the clipboard");
+            yield return Key(UnityEngine.InputSystem.Key.UpArrow);
+            yield return Key(UnityEngine.InputSystem.Key.Enter);
+            yield return Wait(0.3f);
+            Check(InspectView.CurrentDoc != "dana_welcome" || Body().Contains("(Tab)"), "with the keyboard, Dana's note names the clipboard key (Tab)");
+            yield return Shot("n2_case_file_dana_keys");
+            yield return Key(UnityEngine.InputSystem.Key.Escape);
             yield return Key(UnityEngine.InputSystem.Key.A);
             Check(cb.Page == Clipboard.SheetPage, "A turns back to the shift sheet");
             yield return Key(UnityEngine.InputSystem.Key.Escape);

@@ -156,7 +156,7 @@ namespace AfterHours
                 Director.Pause(false);
                 LockCursor(true);
                 PlaytestLog.NightStart(NightDefs.Get(n));
-                if (n == 1) Tween.Delay(1.2f, () => Hud.Instance.Caption($"Your shift sheet is on the clipboard  ·  {(GameInput.UsingPad ? GameInput.PadGlyph("View") : Controls.Display(Act.Clipboard))}", 4f));
+                if (n == 1) Tween.Delay(1.2f, () => { if (!(Clipboard.Instance && Clipboard.Instance.Open)) Hud.Instance.Caption($"Your shift sheet is on the clipboard  ·  {GameInput.ActGlyph(Act.Clipboard)}", 4f); });
             });
             Tween.Delay(0.15f, () => { Director.Begin(n); Director.Pause(true); });
         }

@@ -63,7 +63,7 @@ namespace AfterHours
             Add(new DocDef
             {
                 Id = "dana_welcome", Style = DocStyle.Note, Title = "Dana's welcome note", Header = "Note · pinned in the closet",
-                Body = "Welcome aboard!\n\nYour shift sheet is on the clipboard <size=80%>(Tab)</size>. Start with my desk and the bins, then the bullpen. Lights off on your way out!\n\nMarian's office is locked, don't worry about it.\n\n<align=right>— Dana ☺</align>\n<size=80%>p.s. the candy jar is for you</size>",
+                Body = "Welcome aboard!\n\nYour shift sheet is on the clipboard <size=80%>({key:Clipboard})</size>. Start with my desk and the bins, then the bullpen. Lights off on your way out!\n\nMarian's office is locked, don't worry about it.\n\n<align=right>— Dana ☺</align>\n<size=80%>p.s. the candy jar is for you</size>",
             });
             Add(new DocDef
             {

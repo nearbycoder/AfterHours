@@ -189,6 +189,17 @@ namespace AfterHours
             Tween.Run(0.6f, k => caption.alpha = 1 - k, Ease.InCubic, null, hold, caption.gameObject);
         }
 
+        public bool CaptionShowing => caption != null && caption.alpha > 0.01f;
+
+        /// <summary>Drop the current caption at once (a screen that covers the view is opening).</summary>
+        public void ClearCaption()
+        {
+            if (caption == null) return;
+            Tween.Cancel(caption);
+            Tween.Cancel(caption.gameObject);
+            caption.alpha = 0;
+        }
+
         void Update()
         {
             float dt = GameTime.UnscaledDelta;

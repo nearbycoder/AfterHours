@@ -87,6 +87,7 @@ namespace AfterHours
             if (NightDirector.Instance == null || NightDirector.Instance.Def == null) return;
             Open = true;
             Page = page;
+            Hud.Instance?.ClearCaption(); // e.g. Night 1's "shift sheet is on the clipboard", which would show at the edges
             Selected = 0;
             Refresh();
             PlaytestLog.Log("clipboard");

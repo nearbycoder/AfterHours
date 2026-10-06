@@ -160,7 +160,7 @@ namespace AfterHours
             body.font = Ui.Font(f);
             body.fontSize = fs;
             body.color = ink;
-            body.text = d.Body;
+            body.text = GameInput.ExpandKeys(d.Body);
             body.margin = d.Style == DocStyle.Sticky ? new Vector4(20, 20, 20, 20) : Vector4.zero;
         }
 
