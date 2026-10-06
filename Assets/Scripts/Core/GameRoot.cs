@@ -47,6 +47,15 @@ namespace AfterHours
 
         public static bool HasArg(string name) => Array.IndexOf(Args, name) >= 0;
 
+        /// <summary>Run by the AutoPilot, a capture, the showcase or the trailer recorder.</summary>
+        public static bool Automated => HasArg("-ahCapture") || HasArg("-ahAutopilot") || HasArg("-ahShowcase") || HasArg("-ahTrailer");
+
+        /// <summary>
+        /// Pause the night when the window loses focus or the pad in use goes away. Off for
+        /// automated runs, whose windows are rarely in front; the AutoPilot turns it on to test it.
+        /// </summary>
+        public static bool AutoPause = !Automated;
+
         void Awake()
         {
             Layers.ApplyCollisionMatrix();
@@ -103,6 +112,34 @@ namespace AfterHours
                 ShiftHelper.Create(Director);
                 PlaytestLog.Create(Director).transform.SetParent(transform, false);
             }
+        }
+
+        void OnEnable() => UnityEngine.InputSystem.InputSystem.onDeviceChange += OnDeviceChange;
+        void OnDisable() => UnityEngine.InputSystem.InputSystem.onDeviceChange -= OnDeviceChange;
+
+        void OnApplicationFocus(bool focus)
+        {
+            if (!focus) AutoPauseNow("focus");
+        }
+
+        void OnDeviceChange(UnityEngine.InputSystem.InputDevice device, UnityEngine.InputSystem.InputDeviceChange change)
+        {
+            if (device is not UnityEngine.InputSystem.Gamepad) return;
+            if (change is not (UnityEngine.InputSystem.InputDeviceChange.Removed or UnityEngine.InputSystem.InputDeviceChange.Disconnected)) return;
+            if (GameInput.UsingPad) AutoPauseNow("pad");
+        }
+
+        /// <summary>
+        /// Open the pause menu if a night is being played and nothing but the clipboard is up (it
+        /// closes). Documents, choices and menus stay as they are: they're already waiting.
+        /// </summary>
+        public void AutoPauseNow(string why)
+        {
+            if (!AutoPause || !InNight || Director.Paused || PauseMenu.IsOpen) return;
+            if (blockers.Count == 1 && blockers.Contains("clipboard") && Clipboard.Instance) Clipboard.Instance.Close();
+            if (blockers.Count > 0) return;
+            PlaytestLog.Log("auto_pause", ("why", why));
+            PauseMenu.Show();
         }
 
         void Start()
@@ -213,7 +250,7 @@ namespace AfterHours
 
         static void LockCursor(bool locked)
         {
-            if (HasArg("-ahCapture") || HasArg("-ahAutopilot") || HasArg("-ahShowcase") || HasArg("-ahTrailer")) return;
+            if (Automated) return;
             Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !locked;
         }

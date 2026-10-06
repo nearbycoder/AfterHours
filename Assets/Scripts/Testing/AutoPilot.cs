@@ -218,6 +218,7 @@ namespace AfterHours
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
                 if (n == 2) yield return CaseFileChecks();
+                if (n == 2) yield return AutoPauseChecks();
             }
             float start = Time.realtimeSinceStartup;
             frameTimes.Clear();
@@ -793,6 +794,62 @@ namespace AfterHours
             InputSystem.RemoveDevice(vkb);
             InputSystem.RemoveDevice(pad);
             GameInput.UsingPad = false;
+            yield return WaitUnblocked(3f);
+        }
+
+        // ---- pausing on focus loss and pad loss (night 2) -----------------------------------------
+
+        IEnumerator AutoPauseChecks()
+        {
+            GameRoot.AutoPause = true;
+            IEnumerator Unpause()
+            {
+                PauseMenu.Instance?.Close();
+                yield return WaitUnblocked(3f);
+            }
+            // Losing focus with nothing open pauses (called through the handler: the window
+            // manager can't be made to take focus away on cue).
+            root.SendMessage("OnApplicationFocus", false);
+            yield return Wait(0.3f);
+            Check(PauseMenu.IsOpen && Time.timeScale == 0f, "losing window focus mid-night opens the pause menu");
+            yield return Shot("n2_focus_pause");
+            yield return Unpause();
+            // With the clipboard up, it closes and the pause menu opens.
+            Clipboard.Instance.Show();
+            yield return Wait(0.4f);
+            root.SendMessage("OnApplicationFocus", false);
+            yield return Wait(0.3f);
+            Check(PauseMenu.IsOpen && !Clipboard.Instance.Open, "with the clipboard open, losing focus closes it and pauses");
+            yield return Unpause();
+            // A document waiting for an answer stays as it is.
+            InspectView.Show(Docs.Get("dana_welcome"), InspectMode.Read, null, reread: true);
+            yield return Wait(0.4f);
+            root.SendMessage("OnApplicationFocus", false);
+            yield return Wait(0.3f);
+            Check(!PauseMenu.IsOpen && InspectView.IsOpen, "with a document open, losing focus changes nothing");
+            InspectView.AutoChoice = InspectChoice.Close;
+            yield return WaitUnblocked(3f);
+            // The pad in use goes away: pause.
+            var pad = InputSystem.AddDevice<Gamepad>("AutoPilotUnplugPad");
+            pad.MakeCurrent();
+            InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.DpadDown));
+            yield return Wait(0.2f);
+            InputSystem.QueueStateEvent(pad, new GamepadState());
+            yield return Wait(0.2f);
+            Check(GameInput.UsingPad, "the pad is in use");
+            InputSystem.RemoveDevice(pad);
+            yield return Wait(0.3f);
+            Check(PauseMenu.IsOpen, "unplugging the pad in use mid-night opens the pause menu");
+            GameInput.UsingPad = false;
+            yield return Unpause();
+            // A pad that isn't being used (keyboard last) can go without a pause.
+            var idle = InputSystem.AddDevice<Gamepad>("AutoPilotIdlePad");
+            yield return Wait(0.2f);
+            GameInput.UsingPad = false;
+            InputSystem.RemoveDevice(idle);
+            yield return Wait(0.3f);
+            Check(!PauseMenu.IsOpen, "unplugging a pad nobody is using doesn't pause");
+            GameRoot.AutoPause = false;
             yield return WaitUnblocked(3f);
         }
 
