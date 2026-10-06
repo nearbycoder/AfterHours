@@ -719,6 +719,7 @@ namespace AfterHours
 
         IEnumerator RemapChecks()
         {
+            Log($"window focused: {Application.isFocused}, input background behaviour: {InputSystem.settings.backgroundBehavior}");
             var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotKeyboard");
             vkb.MakeCurrent();
             IEnumerator Key(UnityEngine.InputSystem.Key k)

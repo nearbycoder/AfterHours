@@ -26,6 +26,9 @@ namespace AfterHours
             scenario = GameRoot.Arg(ArgName, 2) ?? "proto";
             if (scenario.StartsWith("-")) scenario = "proto";
             Directory.CreateDirectory(dir);
+            // Unattended windows lose focus to whatever else is on the desktop, and by default the
+            // Input System then ignores devices (the virtual keyboard and pads the checks drive).
+            UnityEngine.InputSystem.InputSystem.settings.backgroundBehavior = UnityEngine.InputSystem.InputSettings.BackgroundBehavior.IgnoreFocus;
             input = new ScriptedInput();
             GameInput.Override = input;
             root = GameRoot.Instance;
