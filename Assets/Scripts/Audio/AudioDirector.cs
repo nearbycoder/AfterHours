@@ -59,7 +59,8 @@ namespace AfterHours
             hvac.TargetVolume = 0.32f;
             city.TargetVolume = def.Storm ? 0.12f : 0.22f;
             rain.TargetVolume = def.Storm ? 0.45f : 0f;
-            PlayMusic(def.MusicIntensity > 0 ? "music_night_tense" : "music_night");
+            // Calm for the first two nights, uneasy for the middle of the week, tense from the party on.
+            PlayMusic(def.MusicIntensity > 0 ? "music_night_tense" : def.Number >= 3 ? "music_night_mid" : "music_night");
         }
 
         public void PlayMusic(string track, float volume = 0.5f)

@@ -319,7 +319,9 @@ FBX and runs everything else.
   along five story routes, with about 200 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
-  noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops.
+  noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
+  night tracks (Nights 1–2, 3–4 and 5–7) are arranged in sections (intro, A, B, a drumless
+  breakdown) and run 160–169 s before they loop.
 - **Deterministic capture.** The trailer recorder runs the game on a fixed 30 fps clock and records
   the mixed game audio through Unity's `AudioRenderer`, so every shot is scripted and repeatable,
   whatever the machine's load.
@@ -348,7 +350,10 @@ mouse, and gamepad. It's a first release, and some things are still rough or unt
   are too obvious or too hidden are untested with real players. The automated runs cover five
   story routes; other mixes of choices are only covered by the ending-logic tests.
 - **The audio was tuned by numbers, not by ear.** Levels, loops and rhythm were checked
-  numerically.
+  numerically. That includes the longer night music: its length, loudness (within 0.2 LU of the
+  loops it replaced), loop seam and how much neighbouring four-bar blocks repeat
+  (`build_music.py --check`). Nobody has listened to it critically. The trailer still uses the
+  original loops; it hasn't been re-cut.
 - **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
   gamepad, through the same code path. Rumble (short pulses on throws, the vacuum's clunk, a
   surface coming clean and a made shot; off in Settings) is sent the same way but has never been
