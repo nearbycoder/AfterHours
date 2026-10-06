@@ -255,6 +255,7 @@ namespace AfterHours
             Widgets.Heading(right, "Accessibility", ColW);
             Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
+            Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
 
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));

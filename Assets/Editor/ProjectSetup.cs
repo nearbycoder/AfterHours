@@ -113,6 +113,7 @@ namespace AfterHours.EditorTools
             Template("AH_UvMark", Shader.Find("AfterHours/UvMark"));
             Template("AH_Skyline", Shader.Find("AfterHours/Skyline"));
             Template("AH_Fx", Shader.Find("AfterHours/FxParticle"));
+            Template("AH_Highlight", Shader.Find("AfterHours/Highlight"));
 
             var opaque = Template("AH_LitOpaque", lit);
             if (opaque != null) opaque.SetFloat("_Smoothness", 0.35f);

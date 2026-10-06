@@ -25,6 +25,7 @@ namespace AfterHours
         public int FrameCap;               // 0 = no cap, else frames per second
         public bool Captions = true;
         public bool ReduceFlashing;
+        public bool AimHighlight = true;
 
         static Settings current;
         public static event Action Changed;

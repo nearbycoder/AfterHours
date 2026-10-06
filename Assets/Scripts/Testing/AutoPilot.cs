@@ -255,6 +255,7 @@ namespace AfterHours
                     yield return ReadLocker("walt_note_1");
                     yield return RealInputNight1();
                     if (PadChecks) yield return ShiftHelperChecks();
+                    if (PadChecks) yield return HighlightChecks();
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
@@ -641,6 +642,57 @@ namespace AfterHours
             yield return Wait(1.0f);
             if (key != null) key.GetComponent<KeyPickup>().Interact(null);
             Check(Story.State.Has("has_key_fc2"), "the FC-2 key goes on the key ring");
+        }
+
+        // ---- the aim highlight (night 1) ---------------------------------------------------------
+
+        IEnumerator HighlightChecks()
+        {
+            var hl = AimHighlight.Instance;
+            Check(hl != null, "the aim highlight is running");
+            if (hl == null) yield break;
+            bool OnlyOn(Transform t) => hl.Target == t && hl.ShellCount > 0
+                && t.GetComponentsInChildren<MeshRenderer>().Count(r => r.name == "Highlight") == hl.ShellCount;
+            // Standing in front of something and looking at it: that thing, and nothing else, glows.
+            var cup = FindObjectsByType<TrashItem>(FindObjectsSortMode.None).Where(t => !t.Binned && t.gameObject.activeInHierarchy)
+                .OrderBy(t => (t.transform.position - new Vector3(12.5f, 0, 8f)).sqrMagnitude).FirstOrDefault();
+            if (cup != null)
+            {
+                var stand = cup.transform.position + new Vector3(0, 0, -1.0f); stand.y = 0;
+                root.Player.Teleport(stand, 0, 0);
+                yield return Aim(cup.transform.position, 0.3f);
+                yield return Wait(0.3f);
+                Check(OnlyOn(cup.transform), $"looking at the {cup.DisplayName.ToLowerInvariant()} highlights it ({hl.ShellCount} shells, target {hl.Target?.name})");
+                // The tool in hand would hide a thing on the floor; lower it for the picture.
+                root.Rig.Hidden = true;
+                yield return Wait(0.3f);
+                yield return Shot("n1_highlight_pickup");
+                root.Rig.Hidden = false;
+                yield return Aim(cup.transform.position + Vector3.up * 3f, 0.25f);
+                yield return Wait(0.1f);
+                Check(hl.Target == null && hl.ShellCount == 0, "looking away removes the highlight");
+                Settings.Current.AimHighlight = false;
+                yield return Aim(cup.transform.position, 0.25f);
+                yield return Wait(0.2f);
+                Check(hl.Target == null && hl.ShellCount == 0, "with the highlight off in Settings nothing glows");
+                Settings.Current.AimHighlight = true;
+            }
+            // A light switch in the dark closet.
+            var sw = root.Office.Switches["closet"];
+            if (sw != null)
+            {
+                var closet = root.Office.Rooms["closet"];
+                bool was = closet.LightsOn;
+                if (was) sw.Toggle();
+                var toRoom = closet.Bounds.center - sw.transform.position; toRoom.y = 0;
+                var p = sw.transform.position + toRoom.normalized * 0.9f; p.y = 0;
+                root.Player.Teleport(p, 0, 0);
+                yield return Aim(sw.transform.position, 0.3f);
+                yield return Wait(0.3f);
+                Check(OnlyOn(sw.transform), $"looking at a light switch highlights it ({hl.ShellCount} shells)");
+                yield return Shot("n1_highlight_switch");
+                if (was && !closet.LightsOn) sw.Toggle();
+            }
         }
 
         // ---- never stuck on the last item (night 1) ---------------------------------------------

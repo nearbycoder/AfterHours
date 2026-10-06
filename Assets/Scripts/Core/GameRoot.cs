@@ -81,6 +81,7 @@ namespace AfterHours
             Interactor = Player.gameObject.AddComponent<Interactor>();
             Interactor.Player = Player;
             Interactor.Cleaning = Cleaning;
+            Player.gameObject.AddComponent<AimHighlight>();
             Player.Footstep += (kind, speed) =>
                 Sfx.Play(kind == FloorKind.Carpet ? "step_carpet" : "step_tile", Player.transform.position, 0.3f + speed * 0.25f, kind == FloorKind.Vinyl ? 1.1f : 1f, 0.08f);
 

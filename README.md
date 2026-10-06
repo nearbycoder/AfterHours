@@ -102,6 +102,9 @@ and the next morning's chat.
 - **Rubbish and throwing.** Food and wrappers go in the black bins, cans and bottles in blue
   recycling, paper in either. Hold the button to charge a throw and follow the arc; long shots get
   a swish and a "Nice shot!". The wrong bin bounces the item back out, so nothing is ever lost.
+- **See what you can use.** Whatever the reticle is on (a paper ball, a light switch, a chair)
+  gets a soft warm outline, so small things in dark rooms read as usable. It can be turned off
+  in Settings.
 - **Putting things back.** Moved objects have home spots: a ghost shows where something belongs and
   it snaps into place. Chairs tuck in, monitors switch off, lights go out when you leave.
 - **Never stuck on the last can.** The shift sheet says which rooms still have work on each task.
@@ -170,7 +173,7 @@ Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, 
 Settings, Restart this night, Quit to title) and settings in two columns: mouse and stick
 sensitivity, invert Y, controller vibration, field of view, head bob, four volume sliders, a
 graphics preset (Low, Medium, High), render scale, fullscreen, VSync, a frame-rate limit,
-captions and reduce flashing. Progress
+captions, reduce flashing, and a highlight on whatever you're aiming at. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -271,7 +274,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   night for props overlapping, sunk into furniture or floating. On Night 1 it loses a can out of
   the world, on a high ledge and in a sealed crate (each must come back), leaves one on the open
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
-  the unfinished things glint.
+  the unfinished things glint. It also checks the aim highlight goes on and off with the reticle
+  and the setting.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes and that records only ever improve.
