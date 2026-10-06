@@ -215,6 +215,7 @@ namespace AfterHours
                 yield return Shot($"n{n}_clipboard");
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
+                if (n == 2) yield return CaseFileChecks();
             }
             float start = Time.realtimeSinceStartup;
             frameTimes.Clear();
@@ -713,6 +714,74 @@ namespace AfterHours
             vpad.MakeCurrent();
             GameInput.Override = scripted;
             yield return Wait(0.2f);
+        }
+
+        // ---- the case file (start of night 2) ----------------------------------------------------
+
+        IEnumerator CaseFileChecks()
+        {
+            var cb = Clipboard.Instance;
+            var pad = InputSystem.AddDevice<Gamepad>("AutoPilotCasePad");
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotCaseKeyboard");
+            IEnumerator PadPress(GamepadButton b)
+            {
+                InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(b));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(pad, new GamepadState());
+                yield return Wait(0.35f);
+            }
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.35f);
+            }
+            pad.MakeCurrent();
+            cb.Show();
+            yield return Wait(0.5f);
+            yield return PadPress(GamepadButton.DpadRight);
+            Check(cb.Open && cb.Page == Clipboard.CasePage, "d-pad right turns the clipboard to the case file");
+            var night1 = Story.State.Read.Where(r => r.Night == 1).Select(r => r.Id).ToList();
+            var expected = new[] { "dana_welcome", "walt_note_1", "theo_note", "screen_theo_email", "screen_remote" };
+            Check(expected.All(night1.Contains) && cb.CaseEntries.SequenceEqual(Story.State.Read.Select(r => r.Id)),
+                $"the case file lists what was read on night 1 ({string.Join(", ", cb.CaseEntries)})");
+            string theoFate = Story.State.FateLabel("theo_note", true);
+            string wantFate = HandsOut ? "left for Priya" : Keeps ? "kept" : "left where it was";
+            var text = GameObject.Find("CaseFile")?.GetComponent<TMPro.TextMeshProUGUI>()?.text ?? "";
+            Check(theoFate == wantFate && text.Contains(wantFate), $"Theo's note is listed as {wantFate} ({theoFate})");
+            yield return Shot("n2_case_file");
+
+            // Pad A reads the first entry again; nothing in the story changes.
+            string fate = JsonUtility.ToJson(Story.State.Evidence);
+            int phrases = Story.State.Phrases.Count, secrets = root.Director.SecretsFoundCount, reads = Story.State.Read.Count;
+            string first = cb.CaseEntries.FirstOrDefault();
+            yield return PadPress(GamepadButton.South);
+            yield return Wait(0.3f);
+            Check(InspectView.IsOpen && InspectView.CurrentDoc == first, $"pad A reads {first} again ({InspectView.CurrentDoc})");
+            yield return Shot("n2_case_file_read");
+            yield return PadPress(GamepadButton.East);
+            Check(!InspectView.IsOpen && cb.Open && cb.Page == Clipboard.CasePage, "pad B closes the document and leaves the case file open");
+            Check(JsonUtility.ToJson(Story.State.Evidence) == fate && Story.State.Phrases.Count == phrases && root.Director.SecretsFoundCount == secrets && Story.State.Read.Count == reads,
+                "reading again changes no fates, leads, secrets or the list");
+
+            // The keyboard: down, E reads the second entry, Esc closes it, Esc closes the clipboard.
+            vkb.MakeCurrent();
+            yield return Key(UnityEngine.InputSystem.Key.DownArrow);
+            Check(cb.Selected == 1, $"the down arrow moves to the next entry ({cb.Selected})");
+            yield return Key(UnityEngine.InputSystem.Key.E);
+            yield return Wait(0.3f);
+            Check(InspectView.IsOpen && InspectView.CurrentDoc == cb.CaseEntries.ElementAtOrDefault(1), $"E reads it ({InspectView.CurrentDoc})");
+            yield return Key(UnityEngine.InputSystem.Key.Escape);
+            Check(!InspectView.IsOpen && cb.Open, "Esc closes the document but not the clipboard");
+            yield return Key(UnityEngine.InputSystem.Key.A);
+            Check(cb.Page == Clipboard.SheetPage, "A turns back to the shift sheet");
+            yield return Key(UnityEngine.InputSystem.Key.Escape);
+            Check(!cb.Open && !PauseMenu.IsOpen, "Esc then closes the clipboard (and doesn't also pause)");
+            InputSystem.RemoveDevice(vkb);
+            InputSystem.RemoveDevice(pad);
+            GameInput.UsingPad = false;
+            yield return WaitUnblocked(3f);
         }
 
         // ---- rebinding keys (night 1) -------------------------------------------------------------

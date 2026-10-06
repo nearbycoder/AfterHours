@@ -23,7 +23,12 @@ namespace AfterHours
         InspectMode mode;
         float openedAt;
         public static bool IsOpen => instance != null && instance.open;
+        /// <summary>The document on screen, if any (automation checks this).</summary>
+        public static string CurrentDoc => IsOpen ? instance.doc : null;
+        /// <summary>Frame the reader closed on, so the same key doesn't also reach whatever is underneath.</summary>
+        public static int ClosedFrame = -1;
         bool open;
+        string doc;
 
         static InspectView Instance
         {
@@ -74,15 +79,21 @@ namespace AfterHours
             Ui.Place(hints.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 46), new Vector2(1400, 40), new Vector2(0.5f, 0f));
         }
 
-        public static void Show(DocDef d, InspectMode mode, Action<InspectChoice> done)
+        /// <summary>
+        /// Open a document. Everything shown goes into the case file, except when the case file
+        /// itself is showing it again (<paramref name="reread"/>).
+        /// </summary>
+        public static void Show(DocDef d, InspectMode mode, Action<InspectChoice> done, bool reread = false)
         {
             if (d == null) return;
+            if (!reread) Story.State.NoteRead(d.Id);
             Instance.Open(d, mode, done);
         }
 
         void Open(DocDef d, InspectMode m, Action<InspectChoice> done)
         {
             open = true;
+            doc = d.Id;
             mode = m;
             callback = done;
             openedAt = GameTime.Unscaled;
@@ -183,6 +194,7 @@ namespace AfterHours
         void Close(InspectChoice c)
         {
             open = false;
+            ClosedFrame = Time.frameCount;
             group.blocksRaycasts = false;
             PostFx.Instance?.SetInspect(false);
             Sfx.Duck = 1f;

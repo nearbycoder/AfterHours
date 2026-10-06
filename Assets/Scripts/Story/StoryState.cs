@@ -26,6 +26,13 @@ namespace AfterHours
     }
 
     [Serializable]
+    public class ReadRecord
+    {
+        public string Id;
+        public int Night;
+    }
+
+    [Serializable]
     public class NightResult
     {
         public int Night;
@@ -52,6 +59,7 @@ namespace AfterHours
         public List<NoteRecord> Notes = new();
         public List<string> Inventory = new();     // kept doc ids (in your pocket / locker)
         public List<string> SecretsFound = new();
+        public List<ReadRecord> Read = new();       // every document read, in order (the case file)
         public int Suspicion;
         public List<NightResult> Results = new();
         public string Ending;
@@ -77,6 +85,43 @@ namespace AfterHours
             r.Night = Night;
             if (f == Fate.Kept) { if (!Inventory.Contains(id)) Inventory.Add(id); }
             else Inventory.Remove(id);
+        }
+
+        // ---- the case file ------------------------------------------------------------------------
+
+        /// <summary>Remember that a document was read tonight (once; the first night counts).</summary>
+        public void NoteRead(string id)
+        {
+            if (string.IsNullOrEmpty(id)) return;
+            Read ??= new List<ReadRecord>();
+            if (Read.Any(r => r.Id == id)) return;
+            Read.Add(new ReadRecord { Id = id, Night = Night });
+        }
+
+        public bool HasRead(string id) => Read != null && Read.Any(r => r.Id == id);
+
+        /// <summary>
+        /// Saves from before the case file have no reading list; every document with an evidence
+        /// record was read, on the night of that record.
+        /// </summary>
+        public void SeedReadFromEvidence()
+        {
+            Read ??= new List<ReadRecord>();
+            foreach (var e in Evidence.Where(e => e.Fate != Fate.Untouched).OrderBy(e => e.Night))
+                if (!Read.Any(r => r.Id == e.Id)) Read.Add(new ReadRecord { Id = e.Id, Night = Mathf.Max(1, e.Night) });
+        }
+
+        /// <summary>What became of a document, for the case file ("in your pocket", "left for Dana").</summary>
+        public string FateLabel(string id, bool evidence)
+        {
+            switch (FateOf(id))
+            {
+                case Fate.Kept: return "kept";
+                case Fate.Delivered: return "left for " + (DeliveredTo(id) is string to && People.Short.TryGetValue(to, out var who) ? who : "someone");
+                case Fate.Shredded: return "shredded";
+                case Fate.Trashed: return "thrown away";
+                default: return evidence ? "left where it was" : null;
+            }
         }
 
         // ---- flags & phrases ---------------------------------------------------------------------
@@ -131,9 +176,16 @@ namespace AfterHours
             catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
         }
 
-        public static StoryState Load() => SaveIO.Load<StoryState>(SavePath);
+        public static StoryState Load() => Upgrade(SaveIO.Load<StoryState>(SavePath));
 
-        public static StoryState LoadSnapshot(int night) => SaveIO.Load<StoryState>(SnapPath(night));
+        public static StoryState LoadSnapshot(int night) => Upgrade(SaveIO.Load<StoryState>(SnapPath(night)));
+
+        /// <summary>Fill in what older saves lack (the case file).</summary>
+        public static StoryState Upgrade(StoryState s)
+        {
+            if (s != null && (s.Read == null || s.Read.Count == 0)) s.SeedReadFromEvidence();
+            return s;
+        }
 
         public static bool HasSnapshot(int night) => SaveIO.Exists(SnapPath(night));
 

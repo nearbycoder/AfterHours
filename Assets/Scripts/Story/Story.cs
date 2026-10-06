@@ -11,6 +11,7 @@ namespace AfterHours
         public static void OnDocRead(DocDef d)
         {
             if (d == null) return;
+            State.NoteRead(d.Id);
             Events.Raise(GameEvent.EvidenceFound, d.Id);
             NightDirector.Instance?.FindSecret(d.Id);
             if (State.Learn(d.Phrase))

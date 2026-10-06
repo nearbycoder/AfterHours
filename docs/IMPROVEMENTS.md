@@ -351,14 +351,14 @@ a decision lives only in the player's memory. The clipboard gets a second page, 
 file**: every document you've read this playthrough, grouped by night, with what became of it
 (in your pocket, put back, left for Dana, shredded, thrown away, read on a screen or a wall).
 Pick one to read it again in the inspect view, which only offers Close and changes nothing:
-no secrets, leads or choices. A/D, the arrows, the d-pad or the mouse wheel flip between the
-shift sheet and the case file; W/S or the d-pad move through the list; E, Enter, pad A or a click
-reads. The story save keeps the list, so Night Select replays show what you had read by then.
+no secrets, leads or choices. A/D, the arrows or the d-pad flip between the shift sheet and the
+case file; W/S, the arrows, the d-pad or the mouse wheel move through the list; E, Enter or pad
+A reads. (The clipboard keeps the mouse captured, as it does today, so there's no pointer.) The story save keeps the list, so Night Select replays show what you had read by then.
 Saves from before this round build the list from their evidence records.
 
 **Acceptance:** after Night 1 the case file lists exactly the documents read, with the right fate
 for each; opening one shows that document read-only, and closing it returns to the list with the
-fate, secrets and leads unchanged; it works with keys, pad and mouse; Tab or Esc close the clipboard
+fate, secrets and leads unchanged; it works with keys and pad; Tab or Esc close the clipboard
 from either page, and closing a document doesn't also close the clipboard. **Verify:** EditMode
 tests (recording reads, fate labels, building the list for an old save); AutoPilot checks on
 Night 2 that open the case file and read a document with pad A and with E; screenshots.

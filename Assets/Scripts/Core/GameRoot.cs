@@ -195,12 +195,19 @@ namespace AfterHours
         public void SetBlocked(string who, bool blocked, bool cursor = false)
         {
             if (blocked) { blockers.Add(who); if (cursor) cursorBlockers.Add(who); }
-            else { blockers.Remove(who); cursorBlockers.Remove(who); }
+            else
+            {
+                // The key that closed the last overlay (Esc, Tab) mustn't also pause or reopen the clipboard.
+                if (blockers.Remove(who) && blockers.Count == 0) unblockedFrame = Time.frameCount;
+                cursorBlockers.Remove(who);
+            }
             GameInput.GameplayEnabled = blockers.Count == 0;
             if (Player) { Player.LookLocked = blockers.Count > 0; Player.MoveLocked = blockers.Count > 0; }
             if (Interactor) Interactor.Locked = blockers.Count > 0;
             LockCursor(cursorBlockers.Count == 0);
         }
+
+        int unblockedFrame = -1;
 
         void Block(bool on, bool cursor) => SetBlocked("flow", on, cursor);
 
@@ -220,8 +227,9 @@ namespace AfterHours
             var hud = Hud.Instance;
             if (hud == null) return;
             var f = GameInput.Frame;
-            if (GameInput.Menu.Pause && blockers.Count == 0 && InNight && !PauseMenu.IsOpen) PauseMenu.Show();
-            if (blockers.Count == 0 && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
+            bool fresh = Time.frameCount != unblockedFrame;
+            if (GameInput.Menu.Pause && blockers.Count == 0 && fresh && InNight && !PauseMenu.IsOpen) PauseMenu.Show();
+            if (blockers.Count == 0 && fresh && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
 
             if (Hands != null && Hands.Holding != null)
             {
