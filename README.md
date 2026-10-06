@@ -376,8 +376,9 @@ The design plan is in [`docs/PLAN.md`](docs/PLAN.md) and the original brief in
 ## Status and known issues
 
 **v0.1.0: complete and playable.** All seven nights, four endings, menus, saves, keyboard and
-mouse, and gamepad. Changes made since that release (the leftover helper, Settings v2, records,
-the macOS build and longer night music) are listed in
+mouse, and gamepad. Changes made since that release (round 1: the leftover helper, Settings v2,
+records, the macOS build and longer night music; round 2: the aim highlight, key remapping, pad
+tool cycling and PlayStation glyphs, and a playtest kit) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 

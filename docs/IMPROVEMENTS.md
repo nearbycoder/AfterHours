@@ -286,6 +286,38 @@ their tasks and secrets; the report script reads it and prints a sensible table;
 off, nothing is written. **Verify:** the AutoPilot runs one route with `-playtest` and checks
 the file; the report script runs on it; EditMode test for the event format.
 
+## Round 2 results (6 October 2026)
+
+All four items shipped on `improvements-2`, one commit each. Screenshots and a sample report are in
+[`docs/media/improvements/round2/`](media/improvements/round2/). Final build: **all five routes
+pass, 0 failed, no crashes** (audit 269 checks, spotless 240, loose 265, cleanbooks 265, marian
+260); EditMode tests 30/30. The intermediate commits were also compiled and tested on their own
+(R2-1: 21/21, R2-2: 27/27).
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R2-1 | Aim highlight | Done | AutoPilot: looking at a paper ball highlights exactly that object; looking away and turning the setting off remove it; a switch in the dark closet lights up. Screenshots. |
+| R2-2 | Keyboard and mouse remapping | Done | 6 EditMode tests (defaults, swap on conflict, reserved keys, stored changes and reset, save round trip, a round-1 settings file). AutoPilot rebinds Interact through the real page by pressing F on a virtual keyboard; then, reading the device itself, E no longer uses a light switch, the prompt shows F and F uses it; the binding is saved; reset restores E. Screenshots of the page, the rebind and the prompt. **Not verified:** a real AZERTY keyboard (names come from Unity's layout-aware key names). |
+| R2-3 | Pad tool cycling and glyphs | Done (virtual pads) | AutoPilot with a virtual pad: d-pad right steps Cloth, Vacuum, Squeegee, Mop, automatic; left steps back. A generic pad shows A; a virtual DualShock 4 shows ✕, △ and R2, and the switch prompt shows a ✕ cap. **Not verified:** a physical pad. |
+| R2-4 | Playtest kit | Done | 3 EditMode tests for the line format. AutoPilot: the log stays empty while off, then the run's file has valid JSON lines, a night end for each night in order, all 28 secrets found, the ending, clipboard opens, pauses, glints and recovered items. `Tools/playtest_report.py` read it ([sample](media/improvements/round2/r2-4-report-autopilot.md)). The Settings layout check passes at five window sizes with the new row. **Not verified:** use by a real tester. |
+
+Things noticed along the way:
+
+- The glyph and remapping changes also fixed the in-text hints round 1 noticed: "Press E to…",
+  the UV torch toast and the Night 1 clipboard caption are now key caps that follow the bindings
+  and the pad.
+- The mouse wheel now uses the same cycle as the d-pad, so it can also step back to the
+  automatic tool. Before, once you pinned a tool with the wheel, only pressing its number key
+  again unpinned it.
+- Tool keys and the wheel are ignored while a menu has the screen. Before, pressing 1–4 with
+  the clipboard or a document open could pin a tool, since those don't stop time the way the
+  pause menu does.
+- A first `/tmp` check found 14 GB of `/tmp/ah*` scratch from the original build sessions; it
+  was removed. This round kept everything under `Recordings/` and `Logs/`.
+
+Still open from the ranked list: Windows (blocked on the module), WebGL, and art. Remapping pad
+buttons is still not possible.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -301,3 +333,5 @@ published; no web build; licence, releases, tags and signing left to the owner. 
    rebuilding and running `Tools/package.py`, then publishing (and maybe re-cutting the trailer
    with the new music).
 4. **Licence**: none has been chosen yet.
+5. **Playtests**: the kit is ready (`docs/PLAYTEST.md`). Choosing testers, and handing them a build
+   (an unreleased one, or a new release), is the owner's call.
