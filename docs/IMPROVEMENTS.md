@@ -332,7 +332,7 @@ virtual keyboard, the pad's d-pad tool cycling, pad Y and A on documents) about 
 after the 60-second idle, although device input had worked earlier in the same run. The
 likeliest cause is that the unattended window lost focus to another session's window. The
 Input System then ignores device input, and on this shared desktop that can happen at any
-time. Round 2's runs passed because the window happened to keep focus. Item R3-0 fixes the test
+time. Round 2's runs presumably passed because the window kept focus. Item R3-0 fixes the test
 setup before anything else.
 
 ### R3-0. AutoPilot input that doesn't depend on window focus
@@ -420,6 +420,47 @@ Out of scope this round: saving mid-night (quitting mid-night restarts that nigh
 minutes at most; saving grime masks and every prop's state is a large change), larger text
 (needs a layout pass over every screen), and everything left with the owner.
 
+## Round 3 results (6 October 2026)
+
+All six items shipped on `improvements-3`, one commit each after the scope commit. Screenshots
+are in [`docs/media/improvements/round3/`](media/improvements/round3/). Final build: **all five
+routes pass, 0 failed, no crashes** (audit 305 checks, loose 301, cleanbooks 301, spotless 276,
+marian 296; round 2 ended at 269, 265, 265, 240 and 260). EditMode tests 43/43. Every item was
+also built and run on its own (through Night 1 or Night 2) before its commit. The Settings
+layout check still finds 0 overlaps and nothing off screen at 1280×720 and 1440×1080. The real
+save and settings files under `~/.config/unity3d` were checksummed before and after the session
+and are unchanged (all automated runs use `-ahProfile` folders).
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R3-0 | Focus-independent test input | Done | The baseline `audit` run had 8 failures (261 passed). With the fix, the run logs `window focused: False` and every real-input check passes; all five final routes ran while other sessions' windows were in front. This confirms the cause. |
+| R3-1 | Case file | Done | 4 EditMode tests (reads recorded once with their night, fate labels, an old save seeded from evidence, a new save not re-seeded). AutoPilot on Night 2, every route: d-pad right turns the page; the list matches what was read on Night 1, with Theo's note shown as the route left it (left for Priya, kept, or left where it was); pad A reads the first entry, pad B closes it with the case file still open; fates, leads, secrets and the list are unchanged; the down arrow and E read the next one; Esc closes the document, then the clipboard, without also pausing. Screenshots. |
+| R3-2 | Hold or toggle | Done | 5 EditMode tests (hold, toggle, presses ignored in menus, brisk walk ends when you stop, an old settings file). AutoPilot sets both to Toggle through the real page, then: a tap of C crouches and the next stands; the same with the pad's stick click; a tap of Shift while walking stays on and ends when movement stops; back on Hold, crouching lasts only while C is down. |
+| R3-3 | Controller remapping | Done (virtual pads) | 4 EditMode tests (defaults and labels, swapping, fixed buttons refused, save, reset and a round-2 file). AutoPilot: the Controller tab lists the pad actions; picking Interact and pressing X binds it; Start cancels and can't be bound; the binding is saved; then, reading the pad itself, A no longer uses a light switch, the prompt shows X, X uses it, a DualShock shows □, and reset restores A. **Not verified:** a physical pad. |
+| R3-4 | Pause on focus or pad loss | Done | AutoPilot on Night 2: the focus handler opens the pause menu with nothing open; with the clipboard open it closes and pauses; with a document open nothing changes; removing the virtual pad in use pauses; removing one nobody is using doesn't. The pause is logged in the playtest log as `auto_pause` (the report script ignores it). **Not verified:** focus taken by a real window manager, or a real wireless pad dropping out. |
+| R3-5 | Small polish | Done | AutoPilot: no caption shows behind the open clipboard (the Night 1 "…iew" peeking out is gone, before and after in the screenshots); Dana's note reads "(Tab)" on the keyboard and "(View)" on a pad. |
+
+Things fixed along the way:
+
+- Closing the last overlay with Esc or Tab could also open the pause menu or reopen the
+  clipboard on the same frame, depending on update order. Now the closing key goes no further.
+- The clipboard's pocket said "Empty." while also listing the FC-2 key.
+- Menu hints ("Press E to continue", the shred puzzle) keep showing the fixed menu buttons on a
+  pad, while in-game prompts follow the pad bindings.
+
+Known limits:
+
+- With pad remapping, the clipboard can be put on d-pad down, which also moves the case file's
+  selection; scrolling down then closes the clipboard. It's an odd choice of button, so it's
+  allowed rather than refused.
+- The case file has no pointer: the clipboard keeps the mouse captured, as before, so the wheel
+  moves the selection and E reads.
+- Reading a document again only shows it; the game doesn't comment on it.
+
+Deferred: saving mid-night (a large change to grime masks and every prop's state; nights are five
+to eight minutes), larger text (a layout pass over every screen), and still WebGL, Windows and
+the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -437,3 +478,6 @@ published; no web build; licence, releases, tags and signing left to the owner. 
 4. **Licence**: none has been chosen yet.
 5. **Playtests**: the kit is ready (`docs/PLAYTEST.md`). Choosing testers, and handing them a build
    (an unreleased one, or a new release), is the owner's call.
+6. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
+   dropping out have only met virtual devices. Ten minutes with a real Xbox and DualSense pad
+   would settle it.

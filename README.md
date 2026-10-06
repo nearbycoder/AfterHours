@@ -71,7 +71,7 @@ chat reacts, the next night has changed, and on the seventh night you decide wha
 | <kbd>E</kbd> | A | interact: pick up, put back, tuck a chair, light switch, door, monitor, inbox tray, read |
 | <kbd>Q</kbd> | B | drop what you're holding |
 | <kbd>F</kbd> | d-pad up | UV torch (from Night 2) |
-| <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket |
+| <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket; <kbd>A</kbd>/<kbd>D</kbd> (d-pad ◀ ▶) turns to the case file |
 | <kbd>1</kbd>–<kbd>4</kbd>, mouse wheel | d-pad left / right | pin a tool (otherwise the right tool comes up for the surface); the wheel and d-pad also step back to automatic |
 | <kbd>Esc</kbd> | Start / Menu | pause |
 
@@ -82,10 +82,15 @@ and choices take <kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> or the arrow k
 between keys and pad buttons depending on what you touched last, and show PlayStation symbols
 (✕ ○ □ △, R2, L2) on a DualShock or DualSense pad and Xbox letters on other pads.
 
-**Keys and mouse buttons can be changed** in Settings → Keyboard and mouse controls: pick an
-action and press the new key. A key that's already in use swaps over. Esc, Enter and 1–4 stay
-fixed, and so do pad buttons. Prompts and hints show your keys by their names on your keyboard
-layout, so on AZERTY they read Z Q S D rather than W A S D.
+**Keys, mouse buttons and pad buttons can be changed** in Settings → Keyboard, mouse and
+controller, which has a page for each: pick an action and press the new key or button. One that's
+already in use swaps over. Esc, Enter and 1–4 stay fixed; on a pad, Start, the d-pad's left and
+right, and A, B, X and Y inside menus and documents. Crouch and brisk walk can be set to
+**toggle** instead of hold. Prompts and hints show your keys by their names on your keyboard
+layout, so on AZERTY they read Z Q S D rather than W A S D, and your pad buttons as bound.
+
+The game pauses itself if its window loses focus or the controller you're using disconnects
+mid-night.
 
 **A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
 clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
@@ -136,7 +141,9 @@ a UV torch shows invisible-ink marks left by the cleaner before you, and any gri
 <img src="docs/media/screenshots/08-evidence.jpg" width="100%" alt="Reading a crumpled note in the inspect view: keep it, put it back or throw it away">
 
 - **Evidence.** Notes, emails, ledgers and printouts open in an inspect view. Keep them in your
-  pocket, put them back, or throw them away.
+  pocket, put them back, or throw them away. The clipboard's second page, the **case file**,
+  lists everything you've read, night by night, with what became of it, so you can read any of
+  it again before you decide.
 - **Deliveries.** Leave a document in someone's inbox tray and they find it in the morning. Feed it
   to a shredder. Or write an anonymous sticky note from the leads you've pieced together.
 - **Suspicion.** One office belongs to someone who notices when things move. Anything you take or
@@ -179,8 +186,9 @@ Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, 
 Settings, Restart this night, Quit to title) and settings in two columns: mouse and stick
 sensitivity, invert Y, controller vibration, field of view, head bob, four volume sliders, a
 graphics preset (Low, Medium, High), render scale, fullscreen, VSync, a frame-rate limit,
-captions, reduce flashing, a highlight on whatever you're aiming at, and a page for keyboard and
-mouse bindings, and an opt-in playtest log. Progress
+captions, reduce flashing, a highlight on whatever you're aiming at, an opt-in playtest log, and
+pages for keyboard and mouse and for controller bindings, with hold or toggle for crouch and brisk
+walk. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -284,13 +292,18 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
   the unfinished things glint. It also checks the aim highlight goes on and off with the reticle
   and the setting, and rebinds Interact to F through the real controls page by pressing F on a
-  virtual keyboard, then checks F uses a light switch and E no longer does. With a virtual pad it
-  steps through the tools on the d-pad, and with a virtual DualShock 4 it checks the prompts
-  switch to ✕.
+  virtual keyboard, then checks F uses a light switch and E no longer does, and does the same for
+  the pad (Interact on X, then □ on a DualShock). With a virtual pad it steps through the tools on
+  the d-pad, and with a virtual DualShock 4 it checks the prompts switch to ✕. It taps crouch and
+  brisk walk in toggle and hold mode. On Night 2 it opens the case file, reads documents again
+  with the pad and the keyboard and checks nothing in the story changed, and checks the pause on
+  focus loss (through the game's focus handler) and on unplugging the pad in use. Automated runs
+  keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
-  writes, that records only ever improve, and that key bindings swap, refuse reserved keys and
-  survive a save.
+  writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
+  buttons and survive a save, the hold-or-toggle logic, and the case file's reading list
+  (including saves from before it existed).
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
   then on for the run, and afterwards checks the log: every line is JSON, a night end for each
   night in order, every secret, the ending, clipboard opens, pauses, glints and recovered items.
@@ -348,7 +361,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with about 200 checks per route.
+  along five story routes, with about 300 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -378,7 +391,8 @@ The design plan is in [`docs/PLAN.md`](docs/PLAN.md) and the original brief in
 **v0.1.0: complete and playable.** All seven nights, four endings, menus, saves, keyboard and
 mouse, and gamepad. Changes made since that release (round 1: the leftover helper, Settings v2,
 records, the macOS build and longer night music; round 2: the aim highlight, key remapping, pad
-tool cycling and PlayStation glyphs, and a playtest kit) are listed in
+tool cycling and PlayStation glyphs, and a playtest kit; round 3: the case file, controller
+remapping, hold or toggle for crouch and brisk walk, and pausing on focus or pad loss) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -397,8 +411,9 @@ still rough or untested:
   gamepad, through the same code path. Rumble (short pulses on throws, the vacuum's clunk, a
   surface coming clean and a made shot; off in Settings) is sent the same way but has never been
   felt on real hardware, and Unity may ignore it for some pads on Linux. The PlayStation
-  symbols were checked with a virtual DualShock 4 only. Keyboard and mouse
-  can be rebound; pad buttons can't.
+  symbols were checked with a virtual DualShock 4 only. Pad buttons can be rebound, which was
+  also only checked with virtual pads. The pause when a pad disconnects was tested by removing a
+  virtual pad; a real wireless pad dropping out may report differently.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,
