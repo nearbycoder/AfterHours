@@ -34,6 +34,8 @@ namespace AfterHours
         public bool PlaytestLog;
         /// <summary>Keyboard and mouse bindings that differ from the defaults (see <see cref="Controls"/>).</summary>
         public List<Binding> Bindings = new();
+        /// <summary>Gamepad bindings that differ from the defaults (see <see cref="Controls.PadDefaults"/>).</summary>
+        public List<Binding> PadBindings = new();
 
         static Settings current;
         public static event Action Changed;

@@ -154,11 +154,13 @@ namespace AfterHours
                 m.Alt |= pad.buttonWest.wasPressedThisFrame;
                 m.Pause |= pad.startButton.wasPressedThisFrame;
                 m.Start = pad.startButton.wasPressedThisFrame;
-                m.Clipboard |= pad.selectButton.wasPressedThisFrame;
+                m.Clipboard |= Controls.PadPressed(Act.Clipboard);
                 bool padActive = fire || pad.buttonSouth.wasPressedThisFrame || pad.buttonEast.wasPressedThisFrame || pad.buttonNorth.wasPressedThisFrame
                                  || pad.buttonWest.wasPressedThisFrame || pad.startButton.wasPressedThisFrame || pad.selectButton.wasPressedThisFrame
                                  || pad.rightStick.ReadValue().sqrMagnitude > 0.1f || pad.leftStick.ReadValue().sqrMagnitude > 0.1f
-                                 || pad.rightTrigger.wasPressedThisFrame || pad.leftTrigger.wasPressedThisFrame;
+                                 || pad.rightTrigger.wasPressedThisFrame || pad.leftTrigger.wasPressedThisFrame
+                                 || pad.leftShoulder.wasPressedThisFrame || pad.rightShoulder.wasPressedThisFrame
+                                 || pad.leftStickButton.wasPressedThisFrame || pad.rightStickButton.wasPressedThisFrame;
                 if (padActive) UsingPad = true;
             }
             if (UsingPad != wasPad) DeviceChanged?.Invoke();
@@ -179,6 +181,25 @@ namespace AfterHours
                 if (key.ToUpperInvariant() == "A / D") return $"{Controls.Display(Act.Left)} / {Controls.Display(Act.Right)}";
                 return key;
             }
+            // In play, actions follow the pad bindings; TAB and X name the reader's fixed Keep and Throw away.
+            var padAct = ActFor(key);
+            if (padAct.HasValue && Controls.IsPadAct(padAct.Value) && padAct.Value != Act.Clipboard) return ActGlyph(padAct.Value);
+            return MenuGlyph(key);
+        }
+
+        /// <summary>
+        /// A key in a menu or a document, where pad buttons are fixed: E and Enter are A, Esc is B,
+        /// Tab is Y (keep), X is X. On the keyboard, the same as <see cref="Glyph"/>.
+        /// </summary>
+        public static string MenuGlyph(string key)
+        {
+            if (!UsingPad)
+            {
+                var act = ActFor(key);
+                if (act.HasValue) return Controls.Display(act.Value);
+                if (key.ToUpperInvariant() == "A / D") return $"{Controls.Display(Act.Left)} / {Controls.Display(Act.Right)}";
+                return key;
+            }
             return PadGlyph(key.ToUpperInvariant() switch
             {
                 "E" or "ENTER" or "SPACE" => "A",
@@ -194,16 +215,14 @@ namespace AfterHours
             });
         }
 
+        public static string MenuKeyTag(string key) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{MenuGlyph(key)}</b></mark>";
+
         /// <summary>The key or pad button for an action, as prompts show it ("Tab", "View", "□").</summary>
         public static string ActGlyph(Act a)
         {
             if (!UsingPad) return Controls.Display(a);
-            return PadGlyph(a switch
-            {
-                Act.Interact => "A", Act.Drop => "B", Act.Discard => "X", Act.Torch => "D-PAD ↑", Act.Clipboard => "View",
-                Act.Use => "RT", Act.Spray => "LT", Act.Sprint => "RB", Act.Crouch => "LS",
-                _ => "L-STICK",
-            });
+            if (Controls.IsPadAct(a)) return PadGlyph(Controls.PadName(Controls.PadPathOf(Settings.Current, a)));
+            return PadGlyph(a == Act.Discard ? "X" : "L-STICK");
         }
 
         /// <summary>
@@ -289,17 +308,18 @@ namespace AfterHours
                 if (m.sqrMagnitude > 0.02f) f.Move = m;
                 var l = pad.rightStick.ReadValue();
                 if (l.sqrMagnitude > 0.01f) f.Look += l * (160f * Settings.Current.StickSensitivity * GameTime.UnscaledDelta);
-                f.Use |= pad.rightTrigger.isPressed;
-                f.Spray |= pad.leftTrigger.isPressed;
-                f.Interact |= pad.buttonSouth.wasPressedThisFrame;
-                f.Drop |= pad.buttonEast.wasPressedThisFrame;
-                f.Torch |= pad.dpad.up.wasPressedThisFrame;
+                // Bound actions (Controls.PadDefaults); the tools and pause stay fixed.
+                f.Use |= Controls.PadHeld(Act.Use);
+                f.Spray |= Controls.PadHeld(Act.Spray);
+                f.Interact |= Controls.PadPressed(Act.Interact);
+                f.Drop |= Controls.PadPressed(Act.Drop);
+                f.Torch |= Controls.PadPressed(Act.Torch);
+                f.Clipboard |= Controls.PadPressed(Act.Clipboard);
+                f.Crouch |= Controls.PadHeld(Act.Crouch);
+                f.Sprint |= Controls.PadHeld(Act.Sprint);
                 if (pad.dpad.right.wasPressedThisFrame) f.ToolCycle = 1;
                 if (pad.dpad.left.wasPressedThisFrame) f.ToolCycle = -1;
-                f.Clipboard |= pad.selectButton.wasPressedThisFrame;
                 f.Pause |= pad.startButton.wasPressedThisFrame;
-                f.Crouch |= pad.leftStickButton.isPressed;
-                f.Sprint |= pad.rightShoulder.isPressed;
             }
             var st = Settings.Current;
             f.Crouch = crouchLatch.Step(f.Crouch, st.ToggleCrouch, GameplayEnabled);

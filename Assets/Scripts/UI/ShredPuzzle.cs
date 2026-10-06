@@ -81,7 +81,7 @@ namespace AfterHours
             }
             var title = Ui.Label(root, "Tape the strips back together", UiFont.SansBold, 34, Ui.Text, TextAlignmentOptions.Center);
             Ui.Place(title.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1200, 50), new Vector2(0.5f, 1));
-            hint = Ui.Label(root, $"{GameInput.Glyph("A / D")}  choose   ·   {GameInput.Glyph("E")}  pick up / swap   ·   {GameInput.Glyph("Esc")}  give up for now", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
+            hint = Ui.Label(root, $"{GameInput.MenuGlyph("A / D")}  choose   ·   {GameInput.MenuGlyph("E")}  pick up / swap   ·   {GameInput.MenuGlyph("Esc")}  give up for now", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
             Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1200, 40), new Vector2(0.5f, 0));
             Layout(true);
             GameRoot.Instance?.SetBlocked("puzzle", true, true);

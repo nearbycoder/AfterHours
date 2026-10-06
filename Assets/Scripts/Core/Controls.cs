@@ -18,8 +18,10 @@ namespace AfterHours
     }
 
     /// <summary>
-    /// Keyboard and mouse bindings, stored in <see cref="Settings.Bindings"/> (only the ones that
-    /// differ from the defaults). Esc, Enter, the arrow keys and 1-4 stay fixed; pad buttons too.
+    /// Keyboard and mouse bindings, stored in <see cref="Settings.Bindings"/>, and gamepad bindings,
+    /// in <see cref="Settings.PadBindings"/> (only the ones that differ from the defaults). Esc,
+    /// Enter, the arrow keys and 1-4 stay fixed; on the pad, Start, the d-pad's left and right, the
+    /// sticks, and A/B/X/Y inside menus and documents.
     /// </summary>
     public static class Controls
     {
@@ -83,6 +85,79 @@ namespace AfterHours
 
         public static void ResetAll(Settings s) => s.Bindings?.Clear();
 
+        // ---- gamepad (pure; tested in EditMode) --------------------------------------------------
+
+        /// <summary>The actions a pad button can be given. Moving is the left stick; throwing documents away is X in the reader.</summary>
+        public static readonly Dictionary<Act, string> PadDefaults = new()
+        {
+            { Act.Interact, "<Gamepad>/buttonSouth" }, { Act.Drop, "<Gamepad>/buttonEast" },
+            { Act.Use, "<Gamepad>/rightTrigger" }, { Act.Spray, "<Gamepad>/leftTrigger" },
+            { Act.Sprint, "<Gamepad>/rightShoulder" }, { Act.Crouch, "<Gamepad>/leftStickPress" },
+            { Act.Torch, "<Gamepad>/dpad/up" }, { Act.Clipboard, "<Gamepad>/select" },
+        };
+
+        public static readonly (Act act, string label)[] PadLabels =
+        {
+            (Act.Interact, "Interact · pick up"), (Act.Drop, "Drop · monitor off"), (Act.Use, "Clean · throw (hold)"),
+            (Act.Spray, "Spray"), (Act.Sprint, "Brisk walk"), (Act.Crouch, "Crouch"), (Act.Torch, "UV torch"), (Act.Clipboard, "Clipboard"),
+        };
+
+        /// <summary>Buttons an action can go on. Start pauses and the d-pad's left and right pick tools.</summary>
+        public static readonly string[] PadButtons =
+        {
+            "<Gamepad>/buttonSouth", "<Gamepad>/buttonEast", "<Gamepad>/buttonWest", "<Gamepad>/buttonNorth",
+            "<Gamepad>/leftShoulder", "<Gamepad>/rightShoulder", "<Gamepad>/leftTrigger", "<Gamepad>/rightTrigger",
+            "<Gamepad>/leftStickPress", "<Gamepad>/rightStickPress", "<Gamepad>/dpad/up", "<Gamepad>/dpad/down", "<Gamepad>/select",
+        };
+
+        public static bool IsPadAct(Act a) => PadDefaults.ContainsKey(a);
+
+        public static string PadPathOf(Settings s, Act a)
+        {
+            if (!IsPadAct(a)) return null;
+            var b = s.PadBindings?.FirstOrDefault(x => x.Action == a.ToString());
+            return b != null && !string.IsNullOrEmpty(b.Path) ? b.Path : PadDefaults[a];
+        }
+
+        public static Act? PadActionOn(Settings s, string path)
+        {
+            foreach (var a in PadDefaults.Keys)
+                if (string.Equals(PadPathOf(s, a), path, StringComparison.OrdinalIgnoreCase)) return a;
+            return null;
+        }
+
+        /// <summary>Put <paramref name="a"/> on a pad button; an action already there swaps. False for fixed buttons.</summary>
+        public static bool SetPad(Settings s, Act a, string path)
+        {
+            if (!IsPadAct(a) || !PadButtons.Any(p => string.Equals(p, path, StringComparison.OrdinalIgnoreCase))) return false;
+            string old = PadPathOf(s, a);
+            var other = PadActionOn(s, path);
+            PutPad(s, a, path);
+            if (other.HasValue && other.Value != a) PutPad(s, other.Value, old);
+            return true;
+        }
+
+        static void PutPad(Settings s, Act a, string path)
+        {
+            s.PadBindings ??= new List<Binding>();
+            s.PadBindings.RemoveAll(x => x.Action == a.ToString());
+            if (!string.Equals(path, PadDefaults[a], StringComparison.OrdinalIgnoreCase))
+                s.PadBindings.Add(new Binding { Action = a.ToString(), Path = path });
+        }
+
+        public static void ResetPad(Settings s) => s.PadBindings?.Clear();
+
+        /// <summary>A pad button's name the Xbox way ("A", "RT", "View"); <see cref="GameInput.PadGlyph"/> turns it PlayStation.</summary>
+        public static string PadName(string path) => path?.Replace("<Gamepad>/", "") switch
+        {
+            "buttonSouth" => "A", "buttonEast" => "B", "buttonWest" => "X", "buttonNorth" => "Y",
+            "leftShoulder" => "LB", "rightShoulder" => "RB", "leftTrigger" => "LT", "rightTrigger" => "RT",
+            "leftStickPress" => "LS", "rightStickPress" => "RS", "dpad/up" => "D-PAD ↑", "dpad/down" => "D-PAD ↓",
+            "select" => "View", "start" => "Menu", "dpad/left" => "D-PAD ←", "dpad/right" => "D-PAD →",
+            null => "?",
+            var other => other,
+        };
+
         // ---- devices -------------------------------------------------------------------------------
 
         static ButtonControl Control(string path)
@@ -93,6 +168,14 @@ namespace AfterHours
         }
 
         public static ButtonControl Control(Act a) => Control(PathOf(Settings.Current, a));
+
+        public static ButtonControl PadControl(Act a)
+        {
+            var path = PadPathOf(Settings.Current, a);
+            return path == null ? null : Gamepad.current?.TryGetChildControl<ButtonControl>(path.Substring("<Gamepad>/".Length));
+        }
+        public static bool PadHeld(Act a) => PadControl(a)?.isPressed ?? false;
+        public static bool PadPressed(Act a) => PadControl(a)?.wasPressedThisFrame ?? false;
         public static bool Held(Act a) => Control(a)?.isPressed ?? false;
         public static bool Pressed(Act a) => Control(a)?.wasPressedThisFrame ?? false;
 

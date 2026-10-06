@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -78,6 +79,67 @@ namespace AfterHours.Tests
             var old = JsonUtility.FromJson<Settings>("{\"MouseSensitivity\":1.5,\"Quality\":1}");
             foreach (Act a in Enum.GetValues(typeof(Act)))
                 Assert.AreEqual(Controls.Defaults[a], Controls.PathOf(old, a));
+        }
+    
+        // ---- the controller page ------------------------------------------------------------------
+
+        [Test]
+        public void EveryPadActionHasADefaultALabelAndAnAllowedButton()
+        {
+            var s = new Settings();
+            foreach (var (act, label) in Controls.PadLabels)
+            {
+                Assert.IsTrue(Controls.PadDefaults.ContainsKey(act), act.ToString());
+                Assert.IsFalse(string.IsNullOrEmpty(label));
+                CollectionAssert.Contains(Controls.PadButtons, Controls.PadPathOf(s, act));
+                Assert.AreNotEqual("?", Controls.PadName(Controls.PadPathOf(s, act)));
+            }
+            Assert.AreEqual(Controls.PadDefaults.Count, Controls.PadDefaults.Values.Distinct().Count(), "no two defaults share a button");
+            Assert.AreEqual("A", Controls.PadName(Controls.PadPathOf(s, Act.Interact)));
+            Assert.IsNull(Controls.PadPathOf(s, Act.Forward), "moving is the stick, not a button");
+        }
+
+        [Test]
+        public void TakingAPadButtonInUseSwaps()
+        {
+            var s = new Settings();
+            Assert.IsTrue(Controls.SetPad(s, Act.Interact, "<Gamepad>/buttonEast"));
+            Assert.AreEqual("<Gamepad>/buttonEast", Controls.PadPathOf(s, Act.Interact));
+            Assert.AreEqual("<Gamepad>/buttonSouth", Controls.PadPathOf(s, Act.Drop), "drop swaps onto A");
+            // A free button: nothing else moves.
+            Assert.IsTrue(Controls.SetPad(s, Act.Torch, "<Gamepad>/buttonWest"));
+            Assert.AreEqual("X", Controls.PadName(Controls.PadPathOf(s, Act.Torch)));
+            Assert.AreEqual(Act.Torch, Controls.PadActionOn(s, "<Gamepad>/buttonWest"));
+            Assert.IsNull(Controls.PadActionOn(s, "<Gamepad>/dpad/up"), "d-pad up is free now");
+        }
+
+        [Test]
+        public void FixedPadButtonsAreRefused()
+        {
+            var s = new Settings();
+            foreach (var path in new[] { "<Gamepad>/start", "<Gamepad>/dpad/left", "<Gamepad>/dpad/right", "<Gamepad>/leftStick/up", "<Keyboard>/e" })
+                Assert.IsFalse(Controls.SetPad(s, Act.Interact, path), path);
+            Assert.IsFalse(Controls.SetPad(s, Act.Forward, "<Gamepad>/buttonWest"), "moving can't go on a button");
+            Assert.AreEqual(0, s.PadBindings.Count);
+        }
+
+        [Test]
+        public void PadBindingsSurviveASaveResetAndAnOldFileGetsDefaults()
+        {
+            var s = new Settings();
+            Controls.SetPad(s, Act.Interact, "<Gamepad>/buttonWest");
+            Controls.Set(s, Act.Interact, "<Keyboard>/f");
+            Assert.AreEqual(1, s.PadBindings.Count, "only changes are stored");
+            var back = JsonUtility.FromJson<Settings>(JsonUtility.ToJson(s));
+            Assert.AreEqual("<Gamepad>/buttonWest", Controls.PadPathOf(back, Act.Interact));
+            Assert.AreEqual("<Keyboard>/f", Controls.PathOf(back, Act.Interact), "keys and pad are separate");
+            Controls.ResetPad(back);
+            Assert.AreEqual("<Gamepad>/buttonSouth", Controls.PadPathOf(back, Act.Interact));
+            Assert.AreEqual("<Keyboard>/f", Controls.PathOf(back, Act.Interact), "resetting the pad leaves the keys");
+            // A round-2 settings file has keyboard bindings but no pad bindings.
+            var old = JsonUtility.FromJson<Settings>("{\"Bindings\":[{\"Action\":\"Torch\",\"Path\":\"<Keyboard>/g\"}]}");
+            foreach (var a in Controls.PadDefaults.Keys)
+                Assert.AreEqual(Controls.PadDefaults[a], Controls.PadPathOf(old, a));
         }
     }
 }

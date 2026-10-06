@@ -177,7 +177,7 @@ namespace AfterHours
                     else EndingScreen.Show(Endings.Resolve(Story.State));
                 }
                 if (chat.Count == 0) next();
-                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : $"Press {GameInput.KeyTag("E")} to continue");
+                else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : $"Press {GameInput.MenuKeyTag("E")} to continue");
             });
         }
 

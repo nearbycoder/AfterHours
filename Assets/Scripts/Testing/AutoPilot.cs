@@ -289,6 +289,7 @@ namespace AfterHours
                     if (PadChecks) yield return RemapChecks();
                     if (PadChecks && vpad != null) yield return ToggleChecks();
                     if (PadChecks && vpad != null) yield return PadToolChecks();
+                    if (PadChecks && vpad != null) yield return PadRemapChecks();
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
@@ -795,6 +796,75 @@ namespace AfterHours
             yield return WaitUnblocked(3f);
         }
 
+        // ---- rebinding pad buttons (night 1) ------------------------------------------------------
+
+        IEnumerator PadRemapChecks()
+        {
+            vpad.MakeCurrent();
+            yield return Press(GamepadButton.DpadDown);   // the pad is in use
+            UnityEngine.UI.Button Btn(string prefix) => FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith(prefix));
+            SettingsPanel.Show();
+            yield return Wait(0.4f);
+            Btn("Btn_Keyboard")?.onClick.Invoke();
+            yield return Wait(0.4f);
+            Btn("Tab_Controller")?.onClick.Invoke();
+            yield return Wait(0.5f);
+            Check(ControlsPanel.IsOpen && ControlsPanel.Page == ControlsPanel.PadPage && GameObject.Find("Bind_Interact") != null, "the controls page has a Controller tab with the pad's actions");
+            yield return Shot("controls_pad");
+            GameObject.Find("Bind_Interact")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.2f);
+            Check(ControlsPanel.Listening == Act.Interact, "picking Interact waits for a pad button");
+            yield return Press(GamepadButton.West);
+            yield return Wait(0.4f);
+            Check(Controls.PadPathOf(Settings.Current, Act.Interact) == "<Gamepad>/buttonWest" && ControlsPanel.Listening == null,
+                $"pressing X binds Interact to X ({Controls.PadName(Controls.PadPathOf(Settings.Current, Act.Interact))})");
+            yield return Shot("controls_pad_rebound");
+            // Start stays fixed: it cancels.
+            GameObject.Find("Bind_Drop")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.2f);
+            yield return Press(GamepadButton.Start);
+            yield return Wait(0.4f);
+            Check(ControlsPanel.Listening == null && Controls.PadPathOf(Settings.Current, Act.Drop) == "<Gamepad>/buttonEast", "Start cancels and can't be bound");
+            FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+            yield return WaitUnblocked(3f);
+            var file = System.IO.Path.Combine(StoryState.Dir, "settings.json");
+            Check(System.IO.File.Exists(file) && System.IO.File.ReadAllText(file).Contains("<Gamepad>/buttonWest"), "the pad binding is saved");
+
+            // Play with the pad itself: X uses a light switch, A no longer does.
+            var room = root.Office.Rooms["reception"];
+            var sw = root.Office.Switches["reception"];
+            var toRoom = room.Bounds.center - sw.transform.position; toRoom.y = 0;
+            var stand = sw.transform.position + toRoom.normalized * 0.9f; stand.y = 0;
+            root.Player.Teleport(stand, 0, 0);
+            yield return Aim(sw.transform.position, 0.3f);
+            yield return Wait(0.2f);
+            bool lit = room.LightsOn;
+            var scripted = GameInput.Override;
+            GameInput.Override = null;
+            yield return Press(GamepadButton.South);
+            yield return Wait(0.3f);
+            Check(room.LightsOn == lit, "after rebinding, pad A no longer uses the switch");
+            Check(GameObject.Find("Key_X") != null && GameInput.Glyph("E") == "X", $"the prompt shows the X button ({GameInput.Glyph("E")})");
+            yield return Shot("n1_pad_prompt_rebound");
+            yield return Press(GamepadButton.West);
+            yield return Wait(0.3f);
+            Check(room.LightsOn != lit, "pad X uses the switch");
+            var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotDS4Remap");
+            ds.MakeCurrent();
+            yield return Wait(0.2f);
+            Check(GameInput.Glyph("E") == "□", $"on a DualShock the rebound prompt shows □ ({GameInput.Glyph("E")})");
+            InputSystem.RemoveDevice(ds);
+            vpad.MakeCurrent();
+            GameInput.Override = scripted;
+            if (room.LightsOn != lit) sw.Toggle();
+            Controls.ResetPad(Settings.Current);
+            Settings.Save();
+            Check(Controls.PadPathOf(Settings.Current, Act.Interact) == "<Gamepad>/buttonSouth" && GameInput.Glyph("E") == "A", "reset brings back the pad's defaults");
+            yield return Wait(0.2f);
+        }
+
         // ---- hold or toggle (night 1) -------------------------------------------------------------
 
         IEnumerator ToggleChecks()
@@ -813,7 +883,7 @@ namespace AfterHours
             // Switch crouch to Toggle through the real page.
             SettingsPanel.Show();
             yield return Wait(0.4f);
-            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard and mouse"))?.onClick.Invoke();
+            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard"))?.onClick.Invoke();
             yield return Wait(0.4f);
             GameObject.Find("Choice_Crouch mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
             GameObject.Find("Choice_Brisk walk mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
@@ -893,7 +963,7 @@ namespace AfterHours
             // Through the real panel: Settings -> Keyboard and mouse -> Interact -> press F.
             SettingsPanel.Show();
             yield return Wait(0.5f);
-            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard and mouse"))?.onClick.Invoke();
+            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard"))?.onClick.Invoke();
             yield return Wait(0.5f);
             Check(ControlsPanel.IsOpen, "Settings opens the keyboard and mouse controls");
             yield return Shot("controls");

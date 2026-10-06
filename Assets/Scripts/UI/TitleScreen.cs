@@ -259,7 +259,7 @@ namespace AfterHours
             Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
-            Widgets.Button(right, "Keyboard and mouse controls  ›", ControlsPanel.Show, ColW, 56, 26);
+            Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
             Widgets.Heading(right, "Feedback", ColW);
             Widgets.Toggle(right, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
 

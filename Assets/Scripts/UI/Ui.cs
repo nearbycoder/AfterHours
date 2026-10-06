@@ -257,10 +257,10 @@ namespace AfterHours
         }
 
         /// <summary>A key glyph like [E] or [LMB] drawn as a small keycap.</summary>
-        public static RectTransform KeyCap(Transform parent, string key, float height = 34f, bool keyboard = false)
+        public static RectTransform KeyCap(Transform parent, string key, float height = 34f, bool keyboard = false, bool pad = false)
         {
             // Pad face buttons are round and coloured like the controller; everything else is a key cap.
-            Color? face = keyboard || !GameInput.UsingPad ? null : key switch
+            Color? face = !pad && (keyboard || !GameInput.UsingPad) ? null : key switch
             {
                 "A" => new Color(0.36f, 0.72f, 0.33f), "B" => new Color(0.86f, 0.3f, 0.27f),
                 "X" => new Color(0.27f, 0.52f, 0.9f), "Y" => new Color(0.95f, 0.76f, 0.2f),
