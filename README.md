@@ -161,12 +161,15 @@ the cleaning closet) over seven nights. Spoiler-light:
 
 There are four endings, **The Audit**, **Clean Books**, **Loose Threads** and a secret one, each with
 personal epilogue variations. **Night Select** replays any night you've reached from the state you
-started it in, so you can try another road.
+started it in, so you can try another road. Your records are kept apart from the story save: the
+best grade and most secrets for each night, and the endings you've found (shown on the title
+screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
 Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
 Settings, Restart this night, Quit to title) and settings (mouse sensitivity, field of view, four
 volume sliders, render scale, invert Y, head bob, fullscreen, captions, reduce flashing). Progress
-and settings save automatically.
+and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
+previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
 ## Screenshots
 
@@ -256,7 +259,12 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
   the unfinished things glint.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
-  choices that proves all four endings are reachable.
+  choices that proves all four endings are reachable, and tests that saves survive interrupted
+  writes and that records only ever improve.
+- After the ending, the AutoPilot replays Night 2 from Night Select and checks that Night 7's best
+  result and the ending found are still listed. Runs that share a profile (the optional fourth
+  argument to `Tools/autopilot.sh`) carry records over, so two routes in one profile show
+  "Endings 2 / 4".
 
 **Trailer and README media.** The trailer is filmed by the game itself and cut by a script:
 

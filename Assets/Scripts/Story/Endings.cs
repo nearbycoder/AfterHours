@@ -56,15 +56,25 @@ namespace AfterHours
             return "loose";
         }
 
+        /// <summary>Every ending, in the order the records list them ("spotless" is the secret one).</summary>
+        public static readonly string[] Ids = { "audit", "loose", "cleanbooks", "spotless" };
+
+        public static string TitleOf(string id) => id switch
+        {
+            "audit" => "The Audit",
+            "cleanbooks" => "Clean Books",
+            "spotless" => "Spotless",
+            _ => "Loose Threads",
+        };
+
         public static EndingDef Resolve(StoryState s)
         {
             string id = ResolveId(s);
             s.Ending = id;
-            var e = new EndingDef { Id = id };
+            var e = new EndingDef { Id = id, Title = TitleOf(id) };
             switch (id)
             {
                 case "audit":
-                    e.Title = "The Audit";
                     e.Headline = "FREIGHT FIRM FINANCE CHIEF ESCORTED FROM OFFICE AS AUDITORS UNCOVER SHELL VENDOR";
                     e.Lines.Add("Tuesday, 9:04 AM. Erin Sato opened the tray on the conference table, read for eleven minutes and made one phone call.");
                     e.Lines.Add("Marian Cole left the building at 10:40 with two officers and her orchid.");
@@ -72,14 +82,12 @@ namespace AfterHours
                     if (PriyaForwards(s)) e.Lines.Add("Priya was named Head of Systems. She changed every password before lunch.");
                     break;
                 case "cleanbooks":
-                    e.Title = "Clean Books";
                     e.Headline = "HALVORSEN FREIGHT PASSES ANNUAL AUDIT; JUNIOR ACCOUNTANT DISMISSED OVER 'IRREGULAR APPROVALS'";
                     e.Lines.Add("Tuesday, 9:04 AM. The auditors found what Marian wanted them to find: Theo's initials on every invoice.");
                     e.Lines.Add("Theo cleared his desk by noon. Nobody said goodbye properly.");
                     e.Lines.Add("Marian left an envelope in your locker. \"Senior Night Custodian\" pin, and a card: Thank you for your discretion.");
                     break;
                 case "spotless":
-                    e.Title = "Spotless";
                     e.Headline = "LOCAL FREIGHT FIRM: NOTHING TO REPORT";
                     e.Lines.Add("Tuesday, 9:04 AM. The auditors complimented the conference room. It had never looked better.");
                     e.Lines.Add("Whatever was in the red folder went out with the morning pickup.");
@@ -88,7 +96,6 @@ namespace AfterHours
                         : "You never read a single page that wasn't yours. Some people would call that professional.");
                     break;
                 default:
-                    e.Title = "Loose Threads";
                     e.Headline = "FINANCE DIRECTOR RESIGNS 'TO PURSUE OTHER OPPORTUNITIES'";
                     e.Lines.Add("Tuesday, 9:04 AM. The auditors asked a lot of questions. Nobody could quite answer them.");
                     e.Lines.Add("Marian resigned on Wednesday. No charges, no explanation, a very nice farewell lunch.");

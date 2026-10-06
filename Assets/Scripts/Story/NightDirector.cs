@@ -443,6 +443,7 @@ namespace AfterHours
             var prev = Story.State.ResultFor(Def.Number);
             if (prev != null) Story.State.Results.Remove(prev);
             Story.State.Results.Add(result);
+            Records.Note(result);
 
             // Night-specific consequences (suspicion etc.)
             Def.End?.Invoke(Ctx);

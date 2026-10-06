@@ -32,22 +32,14 @@ namespace AfterHours
             get
             {
                 if (current != null) return current;
-                try
-                {
-                    current = File.Exists(FilePath) ? JsonUtility.FromJson<Settings>(File.ReadAllText(FilePath)) : new Settings();
-                }
-                catch (Exception e)
-                {
-                    Debug.LogWarning($"[Settings] could not read settings: {e.Message}");
-                    current = new Settings();
-                }
-                return current ??= new Settings();
+                current = SaveIO.Load<Settings>(FilePath) ?? new Settings();
+                return current;
             }
         }
 
         public static void Save()
         {
-            try { File.WriteAllText(FilePath, JsonUtility.ToJson(Current, true)); }
+            try { SaveIO.WriteAtomic(FilePath, JsonUtility.ToJson(Current, true)); }
             catch (Exception e) { Debug.LogWarning($"[Settings] could not save: {e.Message}"); }
             Changed?.Invoke();
         }

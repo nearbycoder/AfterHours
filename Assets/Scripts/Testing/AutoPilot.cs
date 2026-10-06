@@ -97,9 +97,40 @@ namespace AfterHours
             yield return Wait(2f);
             Check(TitleScreen.Instance != null, "ending returns to the title");
             yield return Shot("back_to_title");
+            if (PadChecks) yield return RecordsChecks(expected);
             Debug.Log($"[AutoPilot] done: {passes} passed, {fails} failed");
             yield return Wait(0.5f);
             Application.Quit();
+        }
+
+        /// <summary>Records outlive Night Select replays: the ending and every night's best stay listed.</summary>
+        IEnumerator RecordsChecks(string ending)
+        {
+            var rec = Records.Current;
+            Check(rec.HasEnding(ending), $"the {ending} ending is recorded (endings in this profile: {string.Join(", ", rec.Endings)})");
+            Check(Enumerable.Range(1, NightDefs.Count).All(n => rec.Best(n) != null), "every night has a best result on record");
+            // Cards are looked up inside Night Select: the running night's root is also called "Night<n>".
+            Transform Card(int n) => FindAnyObjectByType<NightSelect>()?.transform.Find("Night" + n);
+            string StatsOf(int n) => Card(n)?.GetComponentsInChildren<TMPro.TextMeshProUGUI>().Select(t => t.text).FirstOrDefault(t => t.Contains("secrets"));
+            NightSelect.Show();
+            yield return Wait(0.8f);
+            var card = FindAnyObjectByType<NightSelect>()?.transform.Find("Endings")?.GetComponentInChildren<TMPro.TextMeshProUGUI>()?.text ?? "";
+            Check(card.Contains($"{rec.Endings.Count} / {Endings.Ids.Length}"), $"Night Select counts the endings found ({rec.Endings.Count} / {Endings.Ids.Length})");
+            Check(StatsOf(7) != null, $"Night Select shows night 7's best ({StatsOf(7)})");
+            yield return Shot("night_select_records");
+            // Replay night 2: the live save rolls back to that night's start...
+            Card(2)?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return WaitUnblocked(40f);
+            Check(root.Director.Def?.Number == 2 && Story.State.ResultFor(7) == null, "replaying night 2 rolls the save back to its start");
+            root.ToTitle();
+            yield return Wait(1.5f);
+            // ...but the records don't.
+            NightSelect.Show();
+            yield return Wait(0.8f);
+            Check(StatsOf(7) != null && Records.Current.HasEnding(ending), "after a replay, Night Select still shows night 7's best and the ending");
+            yield return Shot("night_select_after_replay");
+            FindAnyObjectByType<NightSelect>()?.SendMessage("Close");
+            yield return Wait(0.4f);
         }
 
         // =========================================================================================

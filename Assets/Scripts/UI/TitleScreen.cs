@@ -65,7 +65,10 @@ namespace AfterHours
             Widgets.Button(menu, "Quit", Application.Quit, 460, 64);
             MenuFocus.AttachAll(menu.gameObject);
 
-            var foot = Ui.Label(root, "BrightStar Janitorial · Meridian Tower, Suite 1408 · Night shift", UiFont.Sans, 18, new Color(1, 1, 1, 0.35f), TextAlignmentOptions.BottomLeft);
+            int endings = Records.Current.Endings.Count;
+            string footText = "BrightStar Janitorial · Meridian Tower, Suite 1408 · Night shift"
+                              + (endings > 0 ? $"    <color=#FFD27Acc>Endings found {endings} / {Endings.Ids.Length}</color>" : "");
+            var foot = Ui.Label(root, footText, UiFont.Sans, 18, new Color(1, 1, 1, 0.35f), TextAlignmentOptions.BottomLeft);
             Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(1200, 30), new Vector2(0, 0));
 
             group.alpha = 0;
@@ -274,7 +277,7 @@ namespace AfterHours
         void Build()
         {
             GameRoot.Instance.SetBlocked("nightselect", true, true);
-            var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.9f));
+            var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.97f));
             Ui.Stretch(dim.rectTransform);
             dim.raycastTarget = true;
             var title = Ui.Label(root, "Night Select", UiFont.Type, 60, Ui.Text, TextAlignmentOptions.Center);
@@ -286,7 +289,11 @@ namespace AfterHours
             {
                 int night = n;
                 bool unlocked = n == 1 || StoryState.HasSnapshot(n);
-                var res = saved?.ResultFor(n);
+                // Best ever, not just this run's: replays from a snapshot roll the save back.
+                var best = Records.Current.Best(n);
+                var cur = saved?.ResultFor(n);
+                var res = best != null ? new NightResult { Grade = best.Grade, Secrets = best.Secrets, SecretsTotal = best.SecretsTotal }
+                    : cur;
                 int col = (n - 1) % 4, row = (n - 1) / 4;
                 var card = Ui.Panel(root, "Night" + n, unlocked ? Palette.Hex("F2EEE2") : new Color(1, 1, 1, 0.08f), 8);
                 var rt = card.rectTransform;
@@ -301,7 +308,7 @@ namespace AfterHours
                 // Day and title sit between the photo and the stats line.
                 Ui.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 46), new Vector2(260, 76), new Vector2(0.5f, 0));
                 label.lineSpacing = -12;
-                if (res != null)
+                if (res != null && unlocked)
                 {
                     var stats = Ui.Label(rt, $"<b>{res.Grade}</b>   secrets {res.Secrets}/{res.SecretsTotal}", UiFont.SansMedium, 19, Palette.Hex("6A3FA0"), TextAlignmentOptions.Center);
                     Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 12), new Vector2(260, 28), new Vector2(0.5f, 0));
@@ -323,9 +330,29 @@ namespace AfterHours
                     hv.Init(card, label, true); // opaque warm highlight; the paper never turns see-through
                 }
             }
+            EndingsCard();
             var back = Widgets.Button(root, "Back", Close, 200, 60);
             Ui.Place(back, new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(200, 60), new Vector2(0.5f, 0));
             MenuFocus.AttachAll(root.gameObject);
+        }
+
+        /// <summary>The endings you've seen, in the free slot at the end of the second row. Unseen ones stay unnamed.</summary>
+        void EndingsCard()
+        {
+            var rec = Records.Current;
+            var card = Ui.Panel(root, "Endings", new Color(0.1f, 0.12f, 0.17f, 1f), 8);
+            var rt = card.rectTransform;
+            Ui.Place(rt, new Vector2(0.5f, 0.5f), new Vector2(640, -260), new Vector2(280, 340));
+            rt.localRotation = Quaternion.Euler(0, 0, 1.2f);
+            card.raycastTarget = false;
+            var head = Ui.Label(rt, $"ENDINGS\n<size=150%>{rec.Endings.Count} / {Endings.Ids.Length}</size>", UiFont.Type, 26, Palette.Hex("F2EEE2"), TextAlignmentOptions.Top);
+            Ui.Place(head.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -22), new Vector2(250, 100), new Vector2(0.5f, 1));
+            var sb = new System.Text.StringBuilder();
+            foreach (var id in Endings.Ids)
+                sb.Append(rec.HasEnding(id) ? $"<color=#FFD27A>✓ {Endings.TitleOf(id)}</color>\n" : "<color=#FFFFFF55>· · ·</color>\n");
+            var list = Ui.Label(rt, sb.ToString(), UiFont.Hand, 30, Ui.Text, TextAlignmentOptions.Top);
+            Ui.Place(list.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -140), new Vector2(250, 180), new Vector2(0.5f, 1));
+            list.lineSpacing = -6;
         }
 
         void Close()

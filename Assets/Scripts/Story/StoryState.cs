@@ -120,39 +120,29 @@ namespace AfterHours
 
         public void Save()
         {
-            try { File.WriteAllText(SavePath, JsonUtility.ToJson(this, true)); }
+            try { SaveIO.WriteAtomic(SavePath, JsonUtility.ToJson(this, true)); }
             catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
         }
 
         /// <summary>Snapshot taken when a night starts, so Night Select can replay from there.</summary>
         public void SaveSnapshot()
         {
-            try { File.WriteAllText(SnapPath(Night), JsonUtility.ToJson(this, true)); }
+            try { SaveIO.WriteAtomic(SnapPath(Night), JsonUtility.ToJson(this, true)); }
             catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
         }
 
-        public static StoryState Load()
-        {
-            try { if (File.Exists(SavePath)) return JsonUtility.FromJson<StoryState>(File.ReadAllText(SavePath)); }
-            catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
-            return null;
-        }
+        public static StoryState Load() => SaveIO.Load<StoryState>(SavePath);
 
-        public static StoryState LoadSnapshot(int night)
-        {
-            try { if (File.Exists(SnapPath(night))) return JsonUtility.FromJson<StoryState>(File.ReadAllText(SnapPath(night))); }
-            catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
-            return null;
-        }
+        public static StoryState LoadSnapshot(int night) => SaveIO.Load<StoryState>(SnapPath(night));
 
-        public static bool HasSnapshot(int night) => File.Exists(SnapPath(night));
+        public static bool HasSnapshot(int night) => SaveIO.Exists(SnapPath(night));
 
         public static void DeleteAll()
         {
             try
             {
-                if (File.Exists(SavePath)) File.Delete(SavePath);
-                for (int n = 1; n <= 7; n++) if (File.Exists(SnapPath(n))) File.Delete(SnapPath(n));
+                SaveIO.Delete(SavePath);
+                for (int n = 1; n <= 7; n++) SaveIO.Delete(SnapPath(n));
             }
             catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
         }

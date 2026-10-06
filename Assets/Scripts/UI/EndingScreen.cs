@@ -20,6 +20,7 @@ namespace AfterHours
             s.ending = e;
             s.Build();
             Story.State.Save();
+            Records.NoteEnding(e.Id);
             Debug.Log($"[Ending] {e.Id}: {e.Title}");
         }
 
