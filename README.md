@@ -357,7 +357,10 @@ The design plan is in [`docs/PLAN.md`](docs/PLAN.md) and the original brief in
 ## Status and known issues
 
 **v0.1.0: complete and playable.** All seven nights, four endings, menus, saves, keyboard and
-mouse, and gamepad. It's a first release, and some things are still rough or untested:
+mouse, and gamepad. Changes made since that release (the leftover helper, Settings v2, records,
+the macOS build and longer night music) are listed in
+[`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
+still rough or untested:
 
 - **No one outside development has played it yet.** Pacing, difficulty, and whether the clues
   are too obvious or too hidden are untested with real players. The automated runs cover five

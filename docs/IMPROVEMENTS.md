@@ -187,13 +187,50 @@ verified here:** whether it sounds good. Listening is still needed, as for all t
 - **Windows (11)** needs the owner to install Windows Build Support in Unity Hub. After that it's
   about an hour, using the packaging from item 3.
 
+## Round 1 outcome (6 October 2026)
+
+All five items shipped on `improvements`, one commit each, plus this update. Verification is
+listed per item. Screenshots are in [`docs/media/improvements/`](media/improvements/).
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| 1 | Never stuck on the last item | Done | New Night 1 AutoPilot checks: a can lost out of the world, on a 2.4 m ledge and in a sealed crate comes back each time; a can on the open floor and one under a desk stay put; after 60 s idle the glint marks exactly the 35 unfinished things. All five routes pass. Screenshots of the glint and the per-room lines, and of Night 2's longer sheet still fitting the paper. |
+| 2 | Settings v2 | Done | The `menus` capture finds 18 controls, 0 overlaps and 0 off screen at 1280×720, 1600×900, 1920×1080, 1680×1050 and 1440×1080. Pad checks walk from the left column into the right, step the preset with the d-pad and send a rumble pulse to the virtual pad. Perf probe (Night 2, 1600×900, VSync off, load average about 33): High 4.9 ms, Medium 2.9 ms, Low 2.7 ms median. High and Low screenshots compared. An EditMode test loads an old settings file with the new fields missing. |
+| 3 | macOS build and packaging | Done, but the Mac app hasn't been run | `Tools/unity.sh build-mac` succeeds; `file` reports a universal Mach-O (x86_64 + arm64); Info.plist has `com.nearbycoder.afterhours` and the games category; the `.icns` holds the generated icon. `build-windows` stops with a clear message (module missing). `Tools/package.py` zips keep exec bits and leave out do-not-ship folders; the unpacked Linux zip starts through `AfterHours.sh` on the Wayland backend. **Not verified:** launching on a Mac. |
+| 4 | Records that survive replays | Done | 8 new EditMode tests (atomic write and backup, a half-written temp file, a truncated save falling back to the backup, best-of merging, endings counted once, seeding from an old save, old settings files). The AutoPilot replays Night 2 after the ending and checks Night 7's best and the ending are still listed; `audit` then `spotless` in one profile show "Endings 2 / 4". |
+| 5 | Longer night music | Done (numbers only) | `build_music.py --check`: night tracks are 160 s, 169 s (new Nights 3–4 track) and 165 s, against 53 s and 60 s before. Mean correlation between neighbouring 4-bar blocks is 0.20, 0.25 and 0.42 (0.37 and 0.72 before), with no near-repeats (max 0.70). Loop seams match the old ones; loudness is −18.3, −19.0 and −19.6 LUFS (old −18.3 and −19.8). The other tracks render bit-identical. **Not verified:** whether it sounds good. |
+
+Final run on the last build: all five routes, 0 failed and no crashes (audit 243 checks, spotless 214, loose 239, cleanbooks 239, marian 234); EditMode tests 21/21.
+
+What came up along the way:
+
+- One unattended AutoPilot run crashed inside Unity's Wayland event dispatch
+  (`wl_display_dispatch_queue_pending` in `UnityPlayer.so`, from the core dump), during the
+  60-second idle. It's the same family as the known Wayland crash in the README. A re-run of the
+  same build passed, and it wasn't seen again.
+- The VSync question from the baseline is still open. The AutoPilot's own comments already put
+  the 11 fps down to KDE throttling a window that isn't in front. Players can now turn VSync off
+  or set a frame-rate limit, but whether a visible window holds 60 fps with VSync on wasn't
+  checked.
+- The trailer was not re-cut, so it still uses the old 53 s and 60 s music loops.
+- The version is still 0.1.0 in ProjectSettings, so packaged zips are named v0.1.0. Bumping it
+  is part of a release, which is the owner's call.
+
+Still open from the ranked list: the playtest kit (6), focus highlight (7), pad tool cycling and
+keyboard-layout glyphs (8), remapping (10), Windows (11, blocked on the module), WebGL (12).
+
 ## Decisions needed from the owner
 
-1. **Windows Build Support**: install it in Unity Hub (6000.6.2f1 → Add modules) if you want a
-   Windows build. Until then only the build method and packaging are prepared.
-2. **macOS distribution**: an unsigned, unnotarised `.app` is fine for a GitHub release, but players
-   have to bypass Gatekeeper. Signing and notarisation need an Apple Developer account
-   ($99/year). Ship unsigned with instructions, or skip macOS?
-3. **Bundle ID**: `com.nearbycoder.afterhours` unless you prefer another.
-4. **Licence**: the README says none has been chosen. That's outside this round, but it matters for
-   a wider release.
+Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
+point ready); macOS built locally, unsigned, bundle id `com.nearbycoder.afterhours`, not
+published; no web build; licence, releases, tags and signing left to the owner. Still open:
+
+1. **Windows Build Support**: install it in Unity Hub (6000.6.2f1 → Add modules), then
+   `Tools/unity.sh build-windows && python3 Tools/package.py windows`.
+2. **macOS distribution**: whether to publish the unsigned universal zip with the Gatekeeper
+   steps from its README, or pay for an Apple Developer account to sign and notarise it. Either
+   way, someone should launch it on a real Mac first.
+3. **Version and release**: ProjectSettings still says 0.1.0. A new release means bumping it,
+   rebuilding and running `Tools/package.py`, then publishing (and maybe re-cutting the trailer
+   with the new music).
+4. **Licence**: none has been chosen yet.
