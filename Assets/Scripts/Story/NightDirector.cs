@@ -144,6 +144,7 @@ namespace AfterHours
                 RoomPhotos.Instance.Clear();
                 RoomPhotos.Instance.Snap(Def.Rooms, true);
             }
+            GraphicsQuality.ApplyLights(); // tonight's lamps follow the graphics preset
             NightStarted?.Invoke(night);
             Debug.Log($"[Night] began night {night}: {Def.Dirt.Count} surfaces, {Def.Spawns.Count} spawns, {Def.Tasks.Count} tasks ({timer.ElapsedMilliseconds} ms)");
         }

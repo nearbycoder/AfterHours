@@ -31,7 +31,7 @@ namespace AfterHours
             return rt;
         }
 
-        public static RectTransform Slider(Transform parent, string label, float value, Action<float> onChange, Func<float, string> format = null, float width = 760)
+        public static RectTransform Slider(Transform parent, string label, float value, Action<float> onChange, Func<float, string> format = null, float width = 760, float labelWidth = 300)
         {
             var row = Ui.Rect(parent, "Slider_" + label);
             row.sizeDelta = new Vector2(width, 56);
@@ -39,9 +39,9 @@ namespace AfterHours
             Ui.Stretch(glow.rectTransform, -8);
             glow.raycastTarget = false;
             var l = Ui.Label(row, label, UiFont.Sans, 26, Ui.Text, TextAlignmentOptions.MidlineLeft);
-            Ui.Place(l.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(300, 50), new Vector2(0, 0.5f));
+            Ui.Place(l.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(labelWidth, 50), new Vector2(0, 0.5f));
             var track = Ui.Panel(row, "Track", new Color(1, 1, 1, 0.12f), 6);
-            Ui.Place(track.rectTransform, new Vector2(0, 0.5f), new Vector2(320, 0), new Vector2(width - 440, 12), new Vector2(0, 0.5f));
+            Ui.Place(track.rectTransform, new Vector2(0, 0.5f), new Vector2(labelWidth + 20, 0), new Vector2(width - labelWidth - 140, 12), new Vector2(0, 0.5f));
             track.raycastTarget = true;
             var fill = Ui.Panel(track.rectTransform, "Fill", Ui.Accent, 6);
             fill.rectTransform.anchorMin = new Vector2(0, 0);
@@ -104,6 +104,56 @@ namespace AfterHours
                 onChange(state);
             });
             return rt;
+        }
+
+        /// <summary>
+        /// A row that steps through named options: ◀ value ▶. Click (or A) steps forward; the
+        /// arrows, d-pad or arrow keys step either way.
+        /// </summary>
+        public static RectTransform Choice(Transform parent, string label, string[] options, int index, Action<int> onChange, float width = 760)
+        {
+            var row = Ui.Panel(parent, "Choice_" + label, new Color(1, 1, 1, 0f), 10);
+            row.raycastTarget = true;
+            var rt = row.rectTransform;
+            rt.sizeDelta = new Vector2(width, 56);
+            var l = Ui.Label(rt, label, UiFont.Sans, 26, Ui.Text, TextAlignmentOptions.MidlineLeft);
+            Ui.Place(l.rectTransform, new Vector2(0, 0.5f), Vector2.zero, new Vector2(width - 260, 50), new Vector2(0, 0.5f));
+            var val = Ui.Label(rt, "", UiFont.SansMedium, 25, Ui.Accent, TextAlignmentOptions.Center);
+            Ui.Place(val.rectTransform, new Vector2(1, 0.5f), new Vector2(-40, 0), new Vector2(170, 50), new Vector2(1, 0.5f));
+            int current = Mathf.Clamp(index, 0, options.Length - 1);
+            val.text = options[current];
+            void Step(int d)
+            {
+                current = (current + d + options.Length) % options.Length;
+                val.text = options[current];
+                Sfx.Play("ui_click", null, 0.4f, d > 0 ? 1.08f : 0.94f, 0f, AudioBus.Ui);
+                var from = d > 0 ? 14f : -14f;
+                Tween.Run(0.16f, k => { if (val) val.rectTransform.anchoredPosition = new Vector2(-40 + from * (1 - k), 0); }, Ease.OutCubic);
+                onChange(current);
+            }
+            foreach (var (glyph, x, d) in new[] { ("◀", -232f, -1), ("▶", -6f, 1) })
+            {
+                var a = Ui.Label(rt, glyph, UiFont.Sans, 22, Ui.TextDim, TextAlignmentOptions.Center);
+                Ui.Place(a.rectTransform, new Vector2(1, 0.5f), new Vector2(x, 0), new Vector2(34, 50), new Vector2(1, 0.5f));
+                a.raycastTarget = true;
+                a.gameObject.AddComponent<ClickArea>().OnClick = () => Step(d);
+            }
+            row.gameObject.AddComponent<SelectGlow>().Target = row;
+            var b = row.gameObject.AddComponent<UnityEngine.UI.Button>();
+            b.transition = Selectable.Transition.None;
+            b.onClick.AddListener(() => Step(1));
+            var nav = row.gameObject.AddComponent<ChoiceNav>();
+            nav.Step = Step;
+            return rt;
+        }
+
+        /// <summary>A small caps heading above a group of rows.</summary>
+        public static RectTransform Heading(Transform parent, string text, float width = 760)
+        {
+            var t = Ui.Label(parent, text.ToUpperInvariant(), UiFont.SansMedium, 18, new Color(1f, 0.82f, 0.5f, 0.75f), TextAlignmentOptions.BottomLeft);
+            t.rectTransform.sizeDelta = new Vector2(width, 40);
+            t.characterSpacing = 6;
+            return t.rectTransform;
         }
 
         public static RectTransform Column(Transform parent, string name, float spacing = 12)
@@ -180,5 +230,12 @@ namespace AfterHours
                 Sfx.Play("ui_hover", null, 0.18f, 0.8f + v * 0.6f, 0f, AudioBus.Ui);
             }
         }
+    }
+
+    /// <summary>A plain click target that isn't a Selectable (so menu navigation skips it).</summary>
+    public class ClickArea : MonoBehaviour, IPointerClickHandler
+    {
+        public Action OnClick;
+        public void OnPointerClick(PointerEventData e) => OnClick?.Invoke();
     }
 }

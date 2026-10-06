@@ -43,12 +43,51 @@ namespace AfterHours
                 case "tour": yield return NightTour(); break;
                 case "perf": yield return PerfProbe(); break;
                 case "monitors": yield return Monitors(); break;
+                case "menus": yield return Menus(); break;
                 case var s when s.StartsWith("look:"): yield return LookAt(s.Substring(5)); break;
                 default: yield return OfficeTour(); break;
             }
             Log("done");
             yield return Wait(0.3f);
             Application.Quit();
+        }
+
+        /// <summary>
+        /// Title, Settings and Night Select at whatever window size the player was started with
+        /// (<c>AH_W</c>/<c>AH_H</c> in Tools/play.sh), plus a layout check on Settings: no row
+        /// overlaps another or the Done button, and nothing leaves the screen.
+        /// </summary>
+        IEnumerator Menus()
+        {
+            yield return Wait(2f);
+            string size = $"{Screen.width}x{Screen.height}";
+            yield return Shot($"title_{size}");
+            SettingsPanel.Show();
+            yield return Wait(0.8f);
+            var panel = GameObject.Find("Settings")?.transform;
+            var rows = panel ? panel.GetComponentsInChildren<UnityEngine.UI.Selectable>().Select(x => (RectTransform)x.transform).ToList() : new System.Collections.Generic.List<RectTransform>();
+            Rect ScreenRect(RectTransform rt)
+            {
+                var c = new Vector3[4];
+                rt.GetWorldCorners(c);
+                return Rect.MinMaxRect(c[0].x, c[0].y, c[2].x, c[2].y);
+            }
+            var rects = rows.Select(r => (r.name, rect: ScreenRect(r))).ToList();
+            int overlaps = 0, off = 0;
+            for (int i = 0; i < rects.Count; i++)
+            {
+                var a = rects[i].rect;
+                if (a.xMin < 0 || a.yMin < 0 || a.xMax > Screen.width || a.yMax > Screen.height) { off++; Log($"layout: {rects[i].name} leaves the screen ({a})"); }
+                for (int j = i + 1; j < rects.Count; j++)
+                    if (a.Overlaps(rects[j].rect)) { overlaps++; Log($"layout: {rects[i].name} overlaps {rects[j].name}"); }
+            }
+            Log($"layout {size}: settings has {rects.Count} rows, {overlaps} overlaps, {off} off screen -> {(overlaps == 0 && off == 0 && rects.Count > 0 ? "OK" : "BAD")}");
+            yield return Shot($"settings_{size}");
+            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+            yield return Wait(0.5f);
+            NightSelect.Show();
+            yield return Wait(0.8f);
+            yield return Shot($"night_select_{size}");
         }
 
         IEnumerator Proto()

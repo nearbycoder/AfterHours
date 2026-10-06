@@ -166,8 +166,10 @@ best grade and most secrets for each night, and the endings you've found (shown 
 screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
 Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
-Settings, Restart this night, Quit to title) and settings (mouse sensitivity, field of view, four
-volume sliders, render scale, invert Y, head bob, fullscreen, captions, reduce flashing). Progress
+Settings, Restart this night, Quit to title) and settings in two columns: mouse and stick
+sensitivity, invert Y, controller vibration, field of view, head bob, four volume sliders, a
+graphics preset (Low, Medium, High), render scale, fullscreen, VSync, a frame-rate limit,
+captions and reduce flashing. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -348,9 +350,17 @@ mouse, and gamepad. It's a first release, and some things are still rough or unt
 - **The audio was tuned by numbers, not by ear.** Levels, loops and rhythm were checked
   numerically.
 - **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
-  gamepad, through the same code path. There's no rumble or button remapping.
-- **Performance was measured on one machine** (AMD Strix Halo integrated GPU: about 3 ms a frame
-  at 1600x900). Lower-end hardware is untested, and the only graphics option is render scale.
+  gamepad, through the same code path. Rumble (short pulses on throws, the vacuum's clunk, a
+  surface coming clean and a made shot; off in Settings) is sent the same way but has never been
+  felt on real hardware, and Unity may ignore it for some pads on Linux. There's no button
+  remapping.
+- **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
+  1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
+  and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,
+  uses smaller shadow maps and FXAA instead of MSAA; Medium keeps SSAO with hard shadows and 2x
+  MSAA. With VSync on, the perf probe measured 11 fps in a window that wasn't in front, which
+  looks like the Wayland compositor throttling hidden windows (the AutoPilot runs uncapped for
+  that reason); whether a visible window holds the refresh rate wasn't checked.
 - **Wayland.** On the development machine the player hung at start-up under XWayland, so
   `Tools/play.sh` passes `-force-wayland`. A monitor powering off or reconnecting under KDE once
   crashed the player inside Unity's Wayland code.

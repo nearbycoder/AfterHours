@@ -482,6 +482,20 @@ namespace AfterHours
             yield return Press(GamepadButton.DpadLeft);
             yield return Wait(0.3f);
             yield return Shot("settings");
+            // Down off the bottom of the left column carries on at the top of the right one.
+            for (int i = 0; i < 14 && Selected != "Choice_Graphics quality"; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.12f); }
+            Check(Selected == "Choice_Graphics quality", $"the d-pad walks from the left column of Settings into the right ({Selected})");
+            int quality = Settings.Current.Quality;
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.3f);
+            Check(Settings.Current.Quality != quality, $"d-pad right steps the graphics preset ({GraphicsQuality.Names[quality]} → {GraphicsQuality.Names[GraphicsQuality.Level]})");
+            yield return Shot("settings_quality");
+            yield return Press(GamepadButton.DpadLeft);
+            yield return Wait(0.3f);
+            Check(Settings.Current.Quality == quality && Selected == "Choice_Graphics quality", "d-pad left steps it back without leaving the row");
+            int sent = Rumble.Sent;
+            Rumble.Pulse(0.2f, 0.3f, 0.1f);
+            Check(Rumble.Sent == sent + 1, "a rumble pulse goes to the (virtual) pad while it's in use");
             yield return Press(GamepadButton.East);
             yield return Wait(0.4f);
             Check(!SettingsPanel.IsOpen, "pad B closes Settings");

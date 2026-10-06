@@ -90,6 +90,7 @@ namespace AfterHours
             {
                 hud.Toast($"{srf.DisplayName}  ✓", "Spotless", ToolDefs.Accent(srf.Tool));
                 hud.PulseDot();
+                Rumble.Pulse(0.04f, 0.22f, 0.09f);
                 Events.Raise(GameEvent.SurfaceCleaned, srf.Id);
             };
             Clipboard.Create();
@@ -110,6 +111,7 @@ namespace AfterHours
             if (HasArg("-ahTrailer")) gameObject.AddComponent<Trailer>();
             if (Proto != null) { LockCursor(true); return; }
 
+            if (int.TryParse(Arg("-ahQuality"), out var quality)) Settings.Current.Quality = quality; // automation: measure a preset
             Settings.ApplyGraphics();
             int night = int.TryParse(Arg("-ahNight"), out var n) ? n : 0;
             if (HasArg("-ahFresh")) Story.State = new StoryState();

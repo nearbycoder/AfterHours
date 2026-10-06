@@ -54,12 +54,33 @@ namespace AfterHours
             foreach (var a in live)
             {
                 var nav = new Navigation { mode = Navigation.Mode.Explicit };
-                nav.selectOnUp = Nearest(a, live, Vector2.up);
-                nav.selectOnDown = Nearest(a, live, Vector2.down);
-                nav.selectOnLeft = Nearest(a, live, Vector2.left);
-                nav.selectOnRight = Nearest(a, live, Vector2.right);
+                nav.selectOnUp = Nearest(a, live, Vector2.up) ?? Wrap(a, live, -1);
+                nav.selectOnDown = Nearest(a, live, Vector2.down) ?? Wrap(a, live, +1);
+                // Left and right adjust a slider or choice row, so they don't also move focus.
+                bool adjusts = a.GetComponent<SliderNav>() || a.GetComponent<ChoiceNav>();
+                nav.selectOnLeft = adjusts ? null : Nearest(a, live, Vector2.left);
+                nav.selectOnRight = adjusts ? null : Nearest(a, live, Vector2.right);
                 a.navigation = nav;
             }
+        }
+
+        /// <summary>
+        /// In a menu laid out in columns: down off the bottom of one column goes to the top of the
+        /// next one to the right, and up off the top goes to the bottom of the one to the left.
+        /// </summary>
+        static Selectable Wrap(Selectable from, List<Selectable> all, int dir)
+        {
+            Vector2 p = ((RectTransform)from.transform).position;
+            float w = ((RectTransform)from.transform).rect.width * from.transform.lossyScale.x;
+            var col = all.Where(s => s != from)
+                .Select(s => (s, pos: (Vector2)((RectTransform)s.transform).position))
+                .Where(x => dir > 0 ? x.pos.x > p.x + w * 0.5f : x.pos.x < p.x - w * 0.5f)
+                .ToList();
+            if (col.Count == 0) return null;
+            // The nearest column in that direction, then its top (or bottom) item.
+            float colX = dir > 0 ? col.Min(x => x.pos.x) : col.Max(x => x.pos.x);
+            var inCol = col.Where(x => Mathf.Abs(x.pos.x - colX) < w * 0.5f).ToList();
+            return (dir > 0 ? inCol.OrderByDescending(x => x.pos.y) : inCol.OrderBy(x => x.pos.y)).First().s;
         }
 
         static Selectable Nearest(Selectable from, List<Selectable> all, Vector2 dir)
@@ -94,6 +115,18 @@ namespace AfterHours
             float v = Mathf.Clamp01(Get() + (e.moveDir == MoveDirection.Right ? 0.05f : -0.05f));
             Set(v);
             Sfx.Play("ui_hover", null, 0.18f, 0.8f + v * 0.6f, 0f, AudioBus.Ui);
+        }
+    }
+
+    /// <summary>Lets d-pad / arrow left and right step a choice row while it is selected.</summary>
+    public class ChoiceNav : MonoBehaviour, IMoveHandler
+    {
+        public System.Action<int> Step;
+
+        public void OnMove(AxisEventData e)
+        {
+            if (e.moveDir == MoveDirection.Left) Step(-1);
+            else if (e.moveDir == MoveDirection.Right) Step(1);
         }
     }
 

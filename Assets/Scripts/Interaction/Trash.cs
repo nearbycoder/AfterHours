@@ -85,6 +85,7 @@ namespace AfterHours
             t.Locked = true;
             t.MarkBinned();
             bool longShot = t.InFlight && (t.ThrownFrom - transform.position).magnitude > 3.2f;
+            Rumble.Pulse(0.05f, longShot ? 0.35f : 0.18f, longShot ? 0.16f : 0.07f);
             t.Body.isKinematic = true;
             foreach (var c in t.GetComponentsInChildren<Collider>()) c.enabled = false;
             var start = t.transform.position;

@@ -97,8 +97,11 @@ namespace AfterHours
             exposure = exposureTarget = 0.6f;
         }
 
+        static readonly System.Collections.Generic.List<Camera> cameras = new();
+
         public static void ConfigureCamera(Camera cam)
         {
+            if (!cameras.Contains(cam)) cameras.Add(cam);
             var data = cam.GetUniversalAdditionalCameraData();
             data.renderPostProcessing = true;
             data.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
@@ -108,6 +111,19 @@ namespace AfterHours
             cam.allowMSAA = true;
             cam.backgroundColor = new Color(0.02f, 0.03f, 0.05f);
             cam.clearFlags = CameraClearFlags.SolidColor;
+        }
+
+        /// <summary>Graphics preset (0 low … 2 high): bloom filtering and the camera's anti-aliasing.</summary>
+        public void SetQuality(int q)
+        {
+            bloom.highQualityFiltering.Override(q == 2);
+            cameras.RemoveAll(c => !c);
+            foreach (var cam in cameras)
+            {
+                var data = cam.GetUniversalAdditionalCameraData();
+                data.antialiasing = q == 0 ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+                data.antialiasingQuality = q == 2 ? AntialiasingQuality.High : AntialiasingQuality.Medium;
+            }
         }
 
         /// <summary>Blur the background (inspect mode).</summary>

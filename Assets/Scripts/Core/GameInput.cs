@@ -148,6 +148,10 @@ namespace AfterHours
             };
         }
 
+        // Never leave a pad buzzing when the window loses focus or the game quits.
+        void OnApplicationFocus(bool focus) { if (!focus) Rumble.Stop(); }
+        void OnApplicationQuit() => Rumble.Stop();
+
         static InputFrame ReadDevices()
         {
             var f = new InputFrame();
@@ -189,7 +193,7 @@ namespace AfterHours
                 var m = pad.leftStick.ReadValue();
                 if (m.sqrMagnitude > 0.02f) f.Move = m;
                 var l = pad.rightStick.ReadValue();
-                if (l.sqrMagnitude > 0.01f) f.Look += l * (160f * sens * GameTime.UnscaledDelta);
+                if (l.sqrMagnitude > 0.01f) f.Look += l * (160f * Settings.Current.StickSensitivity * GameTime.UnscaledDelta);
                 f.Use |= pad.rightTrigger.isPressed;
                 f.Spray |= pad.leftTrigger.isPressed;
                 f.Interact |= pad.buttonSouth.wasPressedThisFrame;

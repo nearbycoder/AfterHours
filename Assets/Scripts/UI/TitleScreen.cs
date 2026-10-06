@@ -216,30 +216,48 @@ namespace AfterHours
         void Build()
         {
             GameRoot.Instance.SetBlocked("settings", true, true);
-            var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.85f));
+            var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.93f));
             Ui.Stretch(dim.rectTransform);
             dim.raycastTarget = true;
-            var panel = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 0.98f), 22);
-            Ui.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(900, 940));
+            // Two columns so everything fits from 4:3 up (the canvas is always 1080 units tall).
+            const float W = 1360, H = 900, ColW = 600;
+            var panel = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
+            Ui.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
             var title = Ui.Label(panel.rectTransform, "Settings", UiFont.SansBold, 44, Ui.Text, TextAlignmentOptions.TopLeft);
-            Ui.Place(title.rectTransform, new Vector2(0, 1), new Vector2(60, -40), new Vector2(700, 60), new Vector2(0, 1));
-            var col = Widgets.Column(panel.rectTransform, "Rows", 6);
-            Ui.Place(col, new Vector2(0, 1), new Vector2(70, -120), new Vector2(760, 760), new Vector2(0, 1));
+            Ui.Place(title.rectTransform, new Vector2(0, 1), new Vector2(60, -36), new Vector2(700, 60), new Vector2(0, 1));
+            var left = Widgets.Column(panel.rectTransform, "Left", 6);
+            Ui.Place(left, new Vector2(0, 1), new Vector2(60, -100), new Vector2(ColW, 680), new Vector2(0, 1));
+            var right = Widgets.Column(panel.rectTransform, "Right", 6);
+            Ui.Place(right, new Vector2(0, 1), new Vector2(60 + ColW + 80, -100), new Vector2(ColW, 680), new Vector2(0, 1));
             var s = Settings.Current;
-            Widgets.Slider(col, "Mouse sensitivity", Mathf.InverseLerp(0.2f, 3f, s.MouseSensitivity), v => s.MouseSensitivity = Mathf.Lerp(0.2f, 3f, v), v => Mathf.Lerp(0.2f, 3f, v).ToString("0.0") + "×");
-            Widgets.Slider(col, "Field of view", Mathf.InverseLerp(60f, 95f, s.Fov), v => s.Fov = Mathf.Round(Mathf.Lerp(60f, 95f, v)), v => Mathf.Round(Mathf.Lerp(60f, 95f, v)) + "°");
-            Widgets.Slider(col, "Master volume", s.MasterVolume, v => s.MasterVolume = v);
-            Widgets.Slider(col, "Music", s.MusicVolume, v => s.MusicVolume = v);
-            Widgets.Slider(col, "Effects", s.SfxVolume, v => s.SfxVolume = v);
-            Widgets.Slider(col, "Ambience", s.AmbienceVolume, v => s.AmbienceVolume = v);
-            Widgets.Slider(col, "Render scale", Mathf.InverseLerp(0.5f, 1f, s.RenderScale), v => { s.RenderScale = Mathf.Lerp(0.5f, 1f, v); Settings.ApplyGraphics(); }, v => Mathf.RoundToInt(Mathf.Lerp(50, 100, v)) + "%");
-            Widgets.Toggle(col, "Invert mouse Y", s.InvertY, v => s.InvertY = v);
-            Widgets.Toggle(col, "Head bob", s.HeadBob, v => s.HeadBob = v);
-            Widgets.Toggle(col, "Fullscreen", s.Fullscreen, v => { s.Fullscreen = v; Settings.ApplyGraphics(); });
-            Widgets.Toggle(col, "Captions", s.Captions, v => s.Captions = v);
-            Widgets.Toggle(col, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v);
+            string Times(float v) => v.ToString("0.0") + "×";
+
+            Widgets.Heading(left, "Controls", ColW);
+            Widgets.Slider(left, "Mouse sensitivity", Mathf.InverseLerp(0.2f, 3f, s.MouseSensitivity), v => s.MouseSensitivity = Mathf.Lerp(0.2f, 3f, v), v => Times(Mathf.Lerp(0.2f, 3f, v)), ColW, 250);
+            Widgets.Slider(left, "Stick sensitivity", Mathf.InverseLerp(0.3f, 3f, s.StickSensitivity), v => s.StickSensitivity = Mathf.Lerp(0.3f, 3f, v), v => Times(Mathf.Lerp(0.3f, 3f, v)), ColW, 250);
+            Widgets.Toggle(left, "Invert look Y", s.InvertY, v => s.InvertY = v, ColW);
+            Widgets.Toggle(left, "Controller vibration", s.Vibration, v => { s.Vibration = v; if (!v) Rumble.Stop(); else Rumble.Pulse(0.2f, 0.4f, 0.15f); }, ColW);
+            Widgets.Slider(left, "Field of view", Mathf.InverseLerp(60f, 95f, s.Fov), v => s.Fov = Mathf.Round(Mathf.Lerp(60f, 95f, v)), v => Mathf.Round(Mathf.Lerp(60f, 95f, v)) + "°", ColW, 250);
+            Widgets.Toggle(left, "Head bob", s.HeadBob, v => s.HeadBob = v, ColW);
+            Widgets.Heading(left, "Sound", ColW);
+            Widgets.Slider(left, "Master volume", s.MasterVolume, v => s.MasterVolume = v, null, ColW, 250);
+            Widgets.Slider(left, "Music", s.MusicVolume, v => s.MusicVolume = v, null, ColW, 250);
+            Widgets.Slider(left, "Effects", s.SfxVolume, v => s.SfxVolume = v, null, ColW, 250);
+            Widgets.Slider(left, "Ambience", s.AmbienceVolume, v => s.AmbienceVolume = v, null, ColW, 250);
+
+            Widgets.Heading(right, "Display", ColW);
+            Widgets.Choice(right, "Graphics quality", GraphicsQuality.Names, GraphicsQuality.Level, i => { s.Quality = i; Settings.ApplyGraphics(); }, ColW);
+            Widgets.Slider(right, "Render scale", Mathf.InverseLerp(0.5f, 1f, s.RenderScale), v => { s.RenderScale = Mathf.Lerp(0.5f, 1f, v); Settings.ApplyGraphics(); }, v => Mathf.RoundToInt(Mathf.Lerp(50, 100, v)) + "%", ColW, 250);
+            Widgets.Toggle(right, "Fullscreen", s.Fullscreen, v => { s.Fullscreen = v; Settings.ApplyGraphics(); }, ColW);
+            Widgets.Toggle(right, "VSync", s.VSync, v => { s.VSync = v; Settings.ApplyGraphics(); }, ColW);
+            var caps = Settings.FrameCaps.Select(c => c == 0 ? "No limit" : c + " fps").ToArray();
+            Widgets.Choice(right, "Frame rate limit", caps, Mathf.Max(0, System.Array.IndexOf(Settings.FrameCaps, s.FrameCap)), i => { s.FrameCap = Settings.FrameCaps[i]; Settings.ApplyGraphics(); }, ColW);
+            Widgets.Heading(right, "Accessibility", ColW);
+            Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
+            Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
+
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
-            Ui.Place(done, new Vector2(1, 0), new Vector2(-50, 40), new Vector2(220, 60), new Vector2(1, 0));
+            Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));
             MenuFocus.AttachAll(panel.gameObject);
         }
 

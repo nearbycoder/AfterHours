@@ -9,7 +9,9 @@ namespace AfterHours
     public class Settings
     {
         public float MouseSensitivity = 1f;
+        public float StickSensitivity = 1f;
         public bool InvertY;
+        public bool Vibration = true;
         public float Fov = 72f;
         public bool HeadBob = true;
         public float MasterVolume = 0.9f;
@@ -17,8 +19,10 @@ namespace AfterHours
         public float SfxVolume = 0.9f;
         public float AmbienceVolume = 0.8f;
         public bool Fullscreen = true;
-        public int Quality = 2;            // 0 low, 1 medium, 2 high
+        public int Quality = 2;            // 0 low, 1 medium, 2 high (GraphicsQuality)
         public float RenderScale = 1f;
+        public bool VSync = true;
+        public int FrameCap;               // 0 = no cap, else frames per second
         public bool Captions = true;
         public bool ReduceFlashing;
 
@@ -46,7 +50,9 @@ namespace AfterHours
 
         public static void NotifyChanged() => Changed?.Invoke();
 
-        /// <summary>Fullscreen and render scale.</summary>
+        public static readonly int[] FrameCaps = { 0, 30, 60, 120, 144 };
+
+        /// <summary>Fullscreen, VSync and frame cap, quality preset and render scale.</summary>
         public static void ApplyGraphics()
         {
             var s = Current;
@@ -55,9 +61,13 @@ namespace AfterHours
             bool automated = Array.IndexOf(args, "-ahCapture") >= 0 || Array.IndexOf(args, "-ahAutopilot") >= 0 || Array.IndexOf(args, "-ahShowcase") >= 0 || Array.IndexOf(args, "-ahTrailer") >= 0;
             if (!automated)
             {
+                // Automation runs uncapped (or on a fixed clock) and keeps its own timing.
                 var mode = s.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
                 if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
+                QualitySettings.vSyncCount = s.VSync ? 1 : 0;
+                Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : -1;
             }
+            GraphicsQuality.Apply();
             if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline is UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset urp)
                 urp.renderScale = Mathf.Clamp(s.RenderScale, 0.5f, 1f);
         }

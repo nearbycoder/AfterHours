@@ -90,7 +90,11 @@ namespace AfterHours
         }
 
         /// <summary>Small camera kick (throws, impacts, discoveries).</summary>
-        public void Kick(float degrees) => kickVel -= degrees * 18f;
+        public void Kick(float degrees)
+        {
+            kickVel -= degrees * 18f;
+            Rumble.Pulse(0.12f * degrees, 0.25f * degrees, 0.08f + 0.05f * degrees);
+        }
 
         /// <summary>Raised with the jump distance whenever the player is moved instantly.</summary>
         public static event System.Action<float> Teleported;
