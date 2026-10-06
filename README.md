@@ -72,14 +72,15 @@ chat reacts, the next night has changed, and on the seventh night you decide wha
 | <kbd>Q</kbd> | B | drop what you're holding |
 | <kbd>F</kbd> | d-pad up | UV torch (from Night 2) |
 | <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket |
-| <kbd>1</kbd>–<kbd>4</kbd>, mouse wheel | | pin a tool (otherwise the right tool comes up for the surface) |
+| <kbd>1</kbd>–<kbd>4</kbd>, mouse wheel | d-pad left / right | pin a tool (otherwise the right tool comes up for the surface); the wheel and d-pad also step back to automatic |
 | <kbd>Esc</kbd> | Start / Menu | pause |
 
 When a document is open: <kbd>Tab</kbd> (pad Y) keeps it, <kbd>E</kbd> (pad A) puts it back,
 <kbd>X</kbd> (pad X) throws it away. On a monitor, <kbd>Q</kbd> (pad X) switches it off. Menus
 and choices take <kbd>W</kbd><kbd>S</kbd><kbd>A</kbd><kbd>D</kbd> or the arrow keys,
 <kbd>E</kbd>/<kbd>Enter</kbd> and <kbd>Esc</kbd>, or the d-pad, A and B. On-screen prompts switch
-between keys and pad buttons depending on what you touched last.
+between keys and pad buttons depending on what you touched last, and show PlayStation symbols
+(✕ ○ □ △, R2, L2) on a DualShock or DualSense pad and Xbox letters on other pads.
 
 **Keys and mouse buttons can be changed** in Settings → Keyboard and mouse controls: pick an
 action and press the new key. A key that's already in use swaps over. Esc, Enter and 1–4 stay
@@ -282,7 +283,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
   the unfinished things glint. It also checks the aim highlight goes on and off with the reticle
   and the setting, and rebinds Interact to F through the real controls page by pressing F on a
-  virtual keyboard, then checks F uses a light switch and E no longer does.
+  virtual keyboard, then checks F uses a light switch and E no longer does. With a virtual pad it
+  steps through the tools on the d-pad, and with a virtual DualShock 4 it checks the prompts
+  switch to ✕.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes, that records only ever improve, and that key bindings swap, refuse reserved keys and
@@ -385,7 +388,8 @@ still rough or untested:
 - **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
   gamepad, through the same code path. Rumble (short pulses on throws, the vacuum's clunk, a
   surface coming clean and a made shot; off in Settings) is sent the same way but has never been
-  felt on real hardware, and Unity may ignore it for some pads on Linux. Keyboard and mouse
+  felt on real hardware, and Unity may ignore it for some pads on Linux. The PlayStation
+  symbols were checked with a virtual DualShock 4 only. Keyboard and mouse
   can be rebound; pad buttons can't.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium

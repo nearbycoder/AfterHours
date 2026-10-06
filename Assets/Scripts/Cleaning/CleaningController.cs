@@ -67,6 +67,22 @@ namespace AfterHours
             if (Pinned != ToolKind.None) Equip(Pinned);
         }
 
+        static readonly ToolKind[] CycleOrder = { ToolKind.None, ToolKind.Cloth, ToolKind.Vacuum, ToolKind.Squeegee, ToolKind.Mop };
+
+        /// <summary>
+        /// Wheel or pad d-pad: step the pinned tool through automatic, cloth, vacuum, squeegee and
+        /// mop (automatic lets the tool follow the surface again).
+        /// </summary>
+        public void Cycle(int dir)
+        {
+            int i = System.Array.IndexOf(CycleOrder, Pinned);
+            var next = CycleOrder[((i < 0 ? 0 : i) + (dir > 0 ? 1 : CycleOrder.Length - 1)) % CycleOrder.Length];
+            Pinned = next;
+            if (next != ToolKind.None) Equip(next);
+            else Sfx.Play("tool_swap", null, 0.35f, 1.2f);
+            Hud.Instance?.ToolNote(next == ToolKind.None ? "Automatic tool" : ToolDefs.Name(next) + "  ·  pinned");
+        }
+
         void Equip(ToolKind k)
         {
             if (Equipped == k) return;
@@ -84,12 +100,8 @@ namespace AfterHours
 
             if (input.ToolSlot > 0)
                 Pin(input.ToolSlot switch { 1 => ToolKind.Cloth, 2 => ToolKind.Vacuum, 3 => ToolKind.Squeegee, _ => ToolKind.Mop });
-            if (Mathf.Abs(input.Scroll) > 0.1f && !Suspended)
-            {
-                int cur = Mathf.Max(1, (int)Equipped);
-                int nxt = (cur - 1 + (input.Scroll > 0 ? 3 : 1)) % 4 + 1;
-                Pin((ToolKind)nxt);
-            }
+            if (!Suspended && (Mathf.Abs(input.Scroll) > 0.1f || input.ToolCycle != 0))
+                Cycle(input.ToolCycle != 0 ? input.ToolCycle : input.Scroll > 0 ? -1 : 1);
 
             Aim();
 

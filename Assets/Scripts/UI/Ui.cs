@@ -263,7 +263,10 @@ namespace AfterHours
             Color? face = keyboard || !GameInput.UsingPad ? null : key switch
             {
                 "A" => new Color(0.36f, 0.72f, 0.33f), "B" => new Color(0.86f, 0.3f, 0.27f),
-                "X" => new Color(0.27f, 0.52f, 0.9f), "Y" => new Color(0.95f, 0.76f, 0.2f), _ => null,
+                "X" => new Color(0.27f, 0.52f, 0.9f), "Y" => new Color(0.95f, 0.76f, 0.2f),
+                // PlayStation face buttons.
+                "✕" => new Color(0.42f, 0.58f, 0.95f), "○" => new Color(0.9f, 0.36f, 0.38f),
+                "□" => new Color(0.86f, 0.48f, 0.78f), "△" => new Color(0.3f, 0.78f, 0.62f), _ => null,
             };
             var bg = Panel(parent, "Key_" + key, face ?? new Color(1, 1, 1, 0.92f), face.HasValue ? (int)(height / 2) : 8);
             var t = Label(bg.transform, key, UiFont.SansBold, height * 0.5f, face.HasValue ? Color.white : Ink, TextAlignmentOptions.Center);

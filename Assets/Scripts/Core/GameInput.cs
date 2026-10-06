@@ -15,6 +15,7 @@ namespace AfterHours
         public bool Sprint, Crouch;
         public bool Torch, Clipboard, Pause, Confirm, Back;
         public int ToolSlot;        // 0 = none, 1..4
+        public int ToolCycle;       // pad d-pad: -1 previous, +1 next pinned tool
         public float Scroll;
         public Vector2 Pointer;     // screen position for menus
         public bool Click;
@@ -68,6 +69,7 @@ namespace AfterHours
             {
                 f.Move = Vector2.zero; f.Look = Vector2.zero;
                 f.Use = f.UseDown = f.Spray = f.Interact = f.Drop = f.Torch = false;
+                f.ToolCycle = 0; f.ToolSlot = 0; f.Scroll = 0;
             }
             Frame = f;
             Menu = ReadMenu();
@@ -158,7 +160,18 @@ namespace AfterHours
         }
 
         /// <summary>A pad button, named the Xbox way ("A", "RT", "View"), as the active pad labels it.</summary>
-        public static string PadGlyph(string xbox) => xbox;
+        public static string PadGlyph(string xbox)
+        {
+            if (Gamepad.current is not UnityEngine.InputSystem.DualShock.DualShockGamepad) return xbox;
+            bool dualSense = Gamepad.current is UnityEngine.InputSystem.DualShock.DualSenseGamepadHID;
+            return xbox switch
+            {
+                "A" => "✕", "B" => "○", "X" => "□", "Y" => "△",
+                "RT" => "R2", "LT" => "L2", "RB" => "R1", "LB" => "L1",
+                "View" => dualSense ? "Create" : "Share", "Menu" => "Options",
+                _ => xbox,
+            };
+        }
 
         // Never leave a pad buzzing when the window loses focus or the game quits.
         void OnApplicationFocus(bool focus) { if (!focus) Rumble.Stop(); }
@@ -223,6 +236,8 @@ namespace AfterHours
                 f.Interact |= pad.buttonSouth.wasPressedThisFrame;
                 f.Drop |= pad.buttonEast.wasPressedThisFrame;
                 f.Torch |= pad.dpad.up.wasPressedThisFrame;
+                if (pad.dpad.right.wasPressedThisFrame) f.ToolCycle = 1;
+                if (pad.dpad.left.wasPressedThisFrame) f.ToolCycle = -1;
                 f.Clipboard |= pad.selectButton.wasPressedThisFrame;
                 f.Pause |= pad.startButton.wasPressedThisFrame;
                 f.Crouch |= pad.leftStickButton.isPressed;

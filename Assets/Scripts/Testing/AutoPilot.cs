@@ -257,6 +257,7 @@ namespace AfterHours
                     if (PadChecks) yield return ShiftHelperChecks();
                     if (PadChecks) yield return HighlightChecks();
                     if (PadChecks) yield return RemapChecks();
+                    if (PadChecks && vpad != null) yield return PadToolChecks();
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
@@ -643,6 +644,48 @@ namespace AfterHours
             yield return Wait(1.0f);
             if (key != null) key.GetComponent<KeyPickup>().Interact(null);
             Check(Story.State.Has("has_key_fc2"), "the FC-2 key goes on the key ring");
+        }
+
+        // ---- pad tool cycling and controller glyphs (night 1) ------------------------------------
+
+        IEnumerator PadToolChecks()
+        {
+            var cc = root.Cleaning;
+            var scripted = GameInput.Override;
+            GameInput.Override = null; // read the pad itself
+            vpad.MakeCurrent();
+            root.Player.Teleport(new Vector3(12.2f, 0, 7.0f), 0f, 35f);
+            yield return Wait(0.2f);
+            var seen = new System.Collections.Generic.List<ToolKind>();
+            for (int i = 0; i < 5; i++) { yield return Press(GamepadButton.DpadRight); yield return Wait(0.15f); seen.Add(cc.Pinned); if (i == 1) yield return Shot("n1_pad_tool_cycle"); }
+            Check(string.Join(",", seen) == "Cloth,Vacuum,Squeegee,Mop,None", $"d-pad right steps through the tools and back to automatic ({string.Join(", ", seen)})");
+            yield return Press(GamepadButton.DpadLeft);
+            yield return Wait(0.15f);
+            Check(cc.Pinned == ToolKind.Mop, $"d-pad left steps back ({cc.Pinned})");
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.15f);
+            Check(GameInput.UsingPad && GameInput.Glyph("E") == "A", $"a generic pad shows Xbox letters (interact: {GameInput.Glyph("E")})");
+
+            // A DualShock 4: PlayStation symbols.
+            var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotDS4");
+            ds.MakeCurrent();
+            // UsingPad is already on from the generic pad; the glyphs follow whichever pad is current.
+            yield return Wait(0.2f);
+            Check(Gamepad.current == ds && GameInput.Glyph("E") == "✕" && GameInput.Glyph("TAB") == "△" && GameInput.Glyph("LMB") == "R2",
+                $"a DualShock shows PlayStation symbols (interact {GameInput.Glyph("E")}, keep {GameInput.Glyph("TAB")}, clean {GameInput.Glyph("LMB")})");
+            var sw = root.Office.Switches["reception"];
+            var room = root.Office.Rooms["reception"];
+            var toRoom = room.Bounds.center - sw.transform.position; toRoom.y = 0;
+            var stand = sw.transform.position + toRoom.normalized * 0.9f; stand.y = 0;
+            root.Player.Teleport(stand, 0, 0);
+            yield return Aim(sw.transform.position, 0.3f);
+            yield return Wait(0.3f);
+            Check(GameObject.Find("Key_✕") != null, "the prompt shows the ✕ button");
+            yield return Shot("n1_playstation_prompt");
+            InputSystem.RemoveDevice(ds);
+            vpad.MakeCurrent();
+            GameInput.Override = scripted;
+            yield return Wait(0.2f);
         }
 
         // ---- rebinding keys (night 1) -------------------------------------------------------------

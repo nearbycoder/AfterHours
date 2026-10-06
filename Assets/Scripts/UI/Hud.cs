@@ -153,6 +153,24 @@ namespace AfterHours
 
         public void PulseDot() => dotPulse = 1f;
 
+        TextMeshProUGUI toolNote;
+
+        /// <summary>A brief line under the reticle when the pinned tool changes ("Vacuum · pinned").</summary>
+        public void ToolNote(string text)
+        {
+            if (toolNote == null)
+            {
+                toolNote = Ui.Label(root, "", UiFont.SansMedium, 22, Ui.Accent, TextAlignmentOptions.Center, "ToolNote");
+                Ui.Place(toolNote.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -100), new Vector2(600, 30));
+                toolNote.characterSpacing = 2f;
+                toolNote.fontMaterial.EnableKeyword("UNDERLAY_ON");
+            }
+            toolNote.text = text.ToUpperInvariant();
+            toolNote.alpha = 0;
+            Tween.Run(0.15f, k => toolNote.alpha = k, Ease.OutCubic, owner: toolNote);
+            Tween.Run(0.4f, k => toolNote.alpha = 1 - k, Ease.InCubic, null, 1.1f, toolNote.gameObject);
+        }
+
         TextMeshProUGUI caption;
 
         /// <summary>A subtitle line at the bottom of the screen (sounds, voices, inner thoughts).</summary>
