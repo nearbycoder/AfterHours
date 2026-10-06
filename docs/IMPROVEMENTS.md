@@ -219,6 +219,73 @@ What came up along the way:
 Still open from the ranked list: the playtest kit (6), focus highlight (7), pad tool cycling and
 keyboard-layout glyphs (8), remapping (10), Windows (11, blocked on the module), WebGL (12).
 
+## Round 2 scope (6 October 2026)
+
+Round 1 is merged. This round takes the next items from the ranked list that change how the game
+feels to a real player and that can be checked here: focus highlight (7), remapping (10), pad
+tool cycling and layout-aware glyphs (8), and the playtest kit (6). It also picks up the
+in-text hints round 1 noticed ("Press E to…" as a plain letter). Windows, signing, releases and
+the trailer stay with the owner.
+
+### R2-1. Highlight what you're aiming at
+
+Today the only sign that something can be used is the prompt at the bottom of the screen, and in
+dark rooms a small switch or a paper ball is easy to miss. The interactable under the reticle
+(and anything held near its home spot) gets a soft warm rim that pulses gently: a second
+renderer sharing the object's meshes with an additive fresnel shader. It's on by default, with a
+toggle under Accessibility.
+
+**Acceptance:** looking at a pickup, a light switch, a chair or a door highlights exactly that
+object; looking away or picking it up removes the highlight within a frame; the toggle turns it
+off. **Verify:** AutoPilot checks on Night 1 (aim at a cup and a switch, check a highlight
+exists on that object only, look away, check it's gone, toggle off, check none); screenshots in
+a dark room; all five routes.
+
+### R2-2. Remappable keyboard and mouse controls
+
+The input layer reads fixed keys (`GameInput.ReadDevices`). Bindings become data: each action
+(move ×4, brisk walk, crouch, clean, spray, interact, drop, UV torch, clipboard, throw away
+document) maps to a keyboard key or mouse button, saved in settings. A **Controls** panel (from
+Settings) lists them; pick one and press the new key. A key already in use swaps with the
+other action, Esc cancels, and there's a "Reset to defaults" button. Prompts, keycaps and in-text
+hints ("Press E to see what happened in the morning") show the bound key by its name on the
+current keyboard layout, so AZERTY players see the right letters too. Menus follow the movement
+and interact keys as well as the arrows and Enter. Pad buttons stay fixed (see R2-3).
+
+**Acceptance:** rebinding Interact to F through the panel makes F use things and E do nothing
+(E now runs the torch, swapped); prompts show "F"; the binding survives a restart; reset brings
+back the defaults; an old settings file without bindings gets the defaults. **Verify:** EditMode
+tests (defaults, swap on conflict, save round trip, old file); an AutoPilot sequence that
+rebinds through the real panel by sending a key press to a virtual keyboard, then presses F on a
+light switch with device input live; screenshots of the panel and a prompt; all five routes.
+
+### R2-3. Gamepad tool cycling and controller glyphs
+
+On a pad there's no way to pin a tool (keyboard has 1–4 and the wheel). D-pad left and right
+cycle the pinned tool, like the wheel. Prompts show PlayStation symbols (✕ ○ △ □, L2/R2) when
+the active pad is a DualShock or DualSense, and Xbox letters otherwise.
+
+**Acceptance:** with a virtual pad, d-pad right pins the next tool and left the previous one;
+with a virtual DualShock 4 the interact prompt shows ✕ and with a generic pad it shows A.
+**Verify:** AutoPilot checks with virtual `Gamepad` and `DualShock4GamepadHID` devices; a
+screenshot of a PlayStation prompt. Still no physical pad, so this is virtual devices only.
+
+### R2-4. Playtest kit
+
+The biggest open question is pacing and clue difficulty with real players. An opt-in **playtest
+log** (a Settings toggle, or `-playtest` on the command line) writes one JSON-lines file per
+session, locally only: nights started and finished with times, each task ticked and secret
+found with timestamps, evidence choices, glints (stuck moments), recovered items, clipboard
+opens, pauses, and quitting mid-night with what was left. `Tools/playtest_report.py` turns a
+folder of logs into a per-night table (time to finish, stuck moments, secrets found, the task
+that finished last). `docs/PLAYTEST.md` is a short script for the owner's first testers: what to
+send, what to watch for, and the questions to ask afterwards.
+
+**Acceptance:** with the log on, a full AutoPilot route writes a log with all seven nights,
+their tasks and secrets; the report script reads it and prints a sensible table; with the log
+off, nothing is written. **Verify:** the AutoPilot runs one route with `-playtest` and checks
+the file; the report script runs on it; EditMode test for the event format.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
