@@ -103,6 +103,10 @@ and the next morning's chat.
   a swish and a "Nice shot!". The wrong bin bounces the item back out, so nothing is ever lost.
 - **Putting things back.** Moved objects have home spots: a ghost shows where something belongs and
   it snaps into place. Chairs tuck in, monitors switch off, lights go out when you leave.
+- **Never stuck on the last can.** The shift sheet says which rooms still have work on each task.
+  After a minute with no progress, whatever's left glints and the nearest few chime, so you can
+  find them by ear. Anything thrown out of reach (on top of something tall, wedged out of sight or
+  out of the building) turns up at your feet.
 
 <img src="docs/media/screenshots/04-throw.jpg" width="49%" alt="A charged throw into the reception bin: Nice shot!"> <img src="docs/media/screenshots/05-vacuum.jpg" width="49%" alt="Vacuum stripes in the bullpen carpet">
 
@@ -247,7 +251,10 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up, a charged throw
   and the vacuum, a virtual gamepad for the menus), then checks the chosen route reaches its
   ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`. It also checks every
-  night for props overlapping, sunk into furniture or floating.
+  night for props overlapping, sunk into furniture or floating. On Night 1 it loses a can out of
+  the world, on a high ledge and in a sealed crate (each must come back), leaves one on the open
+  floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
+  the unfinished things glint.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable.
 

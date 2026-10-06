@@ -3,7 +3,7 @@ using UnityEngine;
 
 namespace AfterHours
 {
-    public enum FxKind { Foam, Dust, Sparkle, Drops, Splash, Confetti, Bubbles, Puff, Paper, Glint }
+    public enum FxKind { Foam, Dust, Sparkle, Drops, Splash, Confetti, Bubbles, Puff, Paper, Glint, Beacon }
 
     /// <summary>Pooled particle systems for every kind of feedback burst.</summary>
     public class Fx : MonoBehaviour
@@ -45,6 +45,8 @@ namespace AfterHours
             Make(FxKind.Puff, Mat(0, false), size: (0.05f, 0.12f), life: (0.4f, 0.8f), gravity: -0.02f, drag: 4f, max: 200, grow: 1.8f);
             Make(FxKind.Paper, Mat(2, false), size: (0.012f, 0.028f), life: (0.5f, 1.0f), gravity: 0.9f, drag: 1.5f, max: 200, spin: true);
             Make(FxKind.Glint, Mat(1, true, 3f), size: (0.05f, 0.12f), life: (0.25f, 0.45f), gravity: 0f, drag: 0f, max: 100, twinkle: true);
+            // "Something's still here": a slow, larger twinkle that rises a little (leftover hints).
+            Make(FxKind.Beacon, Mat(1, true, 3.2f), size: (0.09f, 0.18f), life: (0.7f, 1.2f), gravity: -0.04f, drag: 1.5f, max: 400, twinkle: true);
         }
 
         void Make(FxKind kind, Material mat, (float, float) size, (float, float) life, float gravity, float drag, int max,

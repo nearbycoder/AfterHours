@@ -316,6 +316,50 @@ namespace AfterHours
             return n == 0 || d >= n;
         }
 
+        /// <summary>
+        /// Where a task's unfinished work is: one point per thing still to do (a few per dirty
+        /// surface, at its dirtiest spots), with the room it's in. Empty when the task is done or,
+        /// for lights, while anything else on the sheet is still open.
+        /// </summary>
+        public List<(Vector3 pos, string room)> Remaining(TaskDef t)
+        {
+            var list = new List<(Vector3, string)>();
+            if (IsDone(t)) return list;
+            void Add(Vector3 p) => list.Add((p, RoomOf(p)));
+            switch (t.Kind)
+            {
+                case TaskKind.Clean:
+                    foreach (var id in t.Targets)
+                        if (Office.Surfaces.TryGetValue(id, out var g) && g.gameObject.activeSelf && !g.Done)
+                            foreach (var p in g.DirtiestSpots(3)) Add(p);
+                    break;
+                case TaskKind.Trash:
+                    foreach (var (item, room) in trash)
+                        if (item != null && !item.Binned && item.gameObject.activeInHierarchy && t.Targets.Contains(room)) Add(item.transform.position);
+                    break;
+                case TaskKind.Reset:
+                    foreach (var r in Resettable.All)
+                        if (r.Required && !r.AtHome && (t.Targets.Length == 0 || t.Targets.Contains(RoomOf(r.HomeAnchor)) || t.Targets.Contains(RoomOf(r.transform.position)) || t.Targets.Contains(r.Id)))
+                            Add(r.transform.position);
+                    break;
+                case TaskKind.Chairs:
+                    foreach (var c in Furniture.Chairs.Values)
+                        if (!c.Tucked && t.Targets.Contains(RoomOf(c.HomePos))) Add(c.transform.position + Vector3.up * 0.55f);
+                    break;
+                case TaskKind.Monitors:
+                    foreach (var m in Furniture.Monitors.Values)
+                        if (m.On && m.CountsForTask && t.Targets.Contains(RoomOf(m.transform.position))) Add(m.transform.position);
+                    break;
+                case TaskKind.Lights:
+                    if (Def.Tasks.Any(o => !o.Optional && o.Kind != TaskKind.Lights && !IsDone(o))) break;
+                    foreach (var r in t.Targets)
+                        if (Office.Rooms.TryGetValue(r, out var room) && room.LightsOn && Office.Switches.TryGetValue(r, out var sw))
+                            list.Add((sw.transform.position, r));
+                    break;
+            }
+            return list;
+        }
+
         static string RoomOf(Vector3 p) => Room.At(p + Vector3.up * 0.2f)?.Id ?? "?";
 
         void CheckTasks()

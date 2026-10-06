@@ -45,6 +45,10 @@ namespace AfterHours
             tasks = Ui.Label(paper.rectTransform, "", UiFont.Hand, 33, Ui.Ink, TextAlignmentOptions.TopLeft);
             Ui.Place(tasks.rectTransform, new Vector2(0, 1), new Vector2(40, -130), new Vector2(620, 660), new Vector2(0, 1));
             tasks.lineSpacing = 4;
+            // Long sheets (with where-is-it lines) shrink to fit the paper rather than run off it.
+            tasks.enableAutoSizing = true;
+            tasks.fontSizeMin = 24;
+            tasks.fontSizeMax = 33;
 
             var note = Ui.Panel(root, "Side", Palette.Hex("F7F2E2"), 8);
             Ui.Place(note.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(420, 40), new Vector2(460, 760));
@@ -102,7 +106,7 @@ namespace AfterHours
                 string box = done ? "<color=#2E8B57>☑</color>" : "☐";
                 string label = done ? $"<color=#7A8070><s>{t.Label}</s></color>" : t.Label;
                 string count = n > 1 && !done ? $" <size=75%><color=#8A7A5A>{d}/{n}</color></size>" : "";
-                sb.Append($"{box} {label}{count}\n");
+                sb.Append($"{box} {label}{count}{Where(dir, t, done)}\n");
             }
             tasks.text = sb.ToString();
 
@@ -120,6 +124,30 @@ namespace AfterHours
             s.Append("\n<size=85%><color=#8A7A5A>Leave things in a person's inbox tray, or feed them to a shredder.</color></size>");
             side.text = s.ToString();
         }
+
+        /// <summary>" · bullpen 2 · reception 1": which rooms still have work on a task that spans several.</summary>
+        static string Where(NightDirector dir, TaskDef t, bool done)
+        {
+            if (done || t.Kind == TaskKind.Lights || t.Kind == TaskKind.Flag) return "";
+            var left = dir.Remaining(t);
+            if (t.Kind == TaskKind.Clean)
+            {
+                // Surfaces report several spots each; count surfaces, not spots.
+                var rooms = t.Targets.Select(id => dir.Office.Surfaces.TryGetValue(id, out var g) ? g : null)
+                    .Where(g => g != null && g.gameObject.activeSelf && !g.Done)
+                    .Select(g => Room.At(g.transform.position + Vector3.up * 0.2f)?.Id ?? "?").ToList();
+                left = rooms.Select(r => (Vector3.zero, r)).ToList();
+                bool spread = t.Targets.Select(id => dir.Office.Surfaces.TryGetValue(id, out var g) ? Room.At(g.transform.position + Vector3.up * 0.2f)?.Id : null).Distinct().Count() > 1;
+                if (!spread) return "";
+            }
+            if (left.Count == 0) return "";
+            var parts = left.GroupBy(x => x.room).OrderByDescending(g => g.Count())
+                .Select(g => $"{RoomName(g.Key)} {g.Count()}");
+            return $"\n<size=70%><indent=1.4em><color=#86765A>{string.Join(" · ", parts)}</color></indent></size>";
+        }
+
+        static string RoomName(string id) =>
+            Room.All.TryGetValue(id ?? "", out var r) && r != null ? r.DisplayName.ToLowerInvariant() : "somewhere";
 
         void Update()
         {

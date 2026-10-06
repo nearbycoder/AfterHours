@@ -83,6 +83,7 @@ namespace AfterHours
             Cleaning.Rig.Hidden = false;
             Charging = false;
             Charge = 0f;
+            Holdable.RaiseReleased(h);
             arc.positionCount = 0;
             HideGhost();
         }

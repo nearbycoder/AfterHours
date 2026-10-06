@@ -436,6 +436,36 @@ namespace AfterHours
             return remain[y * mw + x];
         }
 
+        /// <summary>
+        /// World points at the centres of the dirtiest regions still left (up to
+        /// <paramref name="max"/>, dirtiest first), from a coarse grid over the CPU mask.
+        /// </summary>
+        public System.Collections.Generic.List<Vector3> DirtiestSpots(int max)
+        {
+            var spots = new System.Collections.Generic.List<Vector3>();
+            if (remain == null || weight == null) { spots.Add(transform.position); return spots; }
+            int gx = Mathf.Clamp(Mathf.RoundToInt(Size.x / 0.6f), 1, 12), gy = Mathf.Clamp(Mathf.RoundToInt(Size.y / 0.6f), 1, 12);
+            var cells = new float[gx * gy];
+            float total = 0;
+            for (int y = 0; y < mh; y++)
+            for (int x = 0; x < mw; x++)
+            {
+                int i = y * mw + x;
+                float v = remain[i] * weight[i];
+                cells[Mathf.Min(gy - 1, y * gy / mh) * gx + Mathf.Min(gx - 1, x * gx / mw)] += v;
+                total += v;
+            }
+            var order = System.Linq.Enumerable.ToList(System.Linq.Enumerable.OrderByDescending(System.Linq.Enumerable.Range(0, cells.Length), i => cells[i]));
+            foreach (int c in order)
+            {
+                // Skip cells holding only a sliver of what's left.
+                if (spots.Count >= max || cells[c] <= 0f || (spots.Count > 0 && cells[c] < total * 0.08f)) break;
+                spots.Add(UvToWorld(new Vector2((c % gx + 0.5f) / gx, (c / gx + 0.5f) / gy)) + Normal * 0.03f);
+            }
+            if (spots.Count == 0) spots.Add(transform.position);
+            return spots;
+        }
+
         /// <summary>Fraction of the (optional) ghost texture's area that is currently foamed.</summary>
         public float GhostFoamCoverage()
         {

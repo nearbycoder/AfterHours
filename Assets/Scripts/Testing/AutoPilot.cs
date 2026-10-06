@@ -149,6 +149,15 @@ namespace AfterHours
                 yield return WaitUnblocked(3f);
                 Check(!root.Blocked, "closing the pause menu hands control back");
             }
+            if (n > 1 && PadChecks)
+            {
+                // Every night's sheet, to check long ones still fit the paper.
+                Clipboard.Instance.Show();
+                yield return Wait(0.7f);
+                yield return Shot($"n{n}_clipboard");
+                Clipboard.Instance.Close();
+                yield return Wait(0.4f);
+            }
             float start = Time.realtimeSinceStartup;
             frameTimes.Clear();
             sampling = true;
@@ -214,6 +223,7 @@ namespace AfterHours
                     yield return ReadReadable("dana_welcome");
                     yield return ReadLocker("walt_note_1");
                     yield return RealInputNight1();
+                    if (PadChecks) yield return ShiftHelperChecks();
                     if (vpad != null && Keeps) yield return PadEvidenceKeep("theo_note");
                     else yield return Evidence("theo_note", Take);
                     yield return ReadMonitor("theo", "screen_theo_email", "Theo's email can be read");
@@ -586,6 +596,92 @@ namespace AfterHours
             yield return Wait(1.0f);
             if (key != null) key.GetComponent<KeyPickup>().Interact(null);
             Check(Story.State.Has("has_key_fc2"), "the FC-2 key goes on the key ring");
+        }
+
+        // ---- never stuck on the last item (night 1) ---------------------------------------------
+
+        IEnumerator ShiftHelperChecks()
+        {
+            var helper = ShiftHelper.Instance;
+            var dir = root.Director;
+            Check(helper != null, "the shift helper is running");
+            if (helper == null) yield break;
+            var cans = FindObjectsByType<TrashItem>(FindObjectsSortMode.None).Where(t => !t.Binned && t.gameObject.activeInHierarchy).ToList();
+            var can = cans.FirstOrDefault(t => t.Kind == TrashKind.Recyclable) ?? cans.FirstOrDefault();
+            if (can == null) { Check(false, "night 1 has rubbish left for the shift helper checks"); yield break; }
+            root.Player.Teleport(new Vector3(12.2f, 0, 6.2f), 0f, 10f);
+            yield return Wait(0.3f);
+
+            IEnumerator Lose(string what, Vector3 at, bool expectRecovered, float wait)
+            {
+                int before = helper.Recovered;
+                can.Body.isKinematic = false;
+                can.Body.linearVelocity = Vector3.zero;
+                can.Body.position = at;
+                can.transform.position = at;
+                can.Body.WakeUp();
+                helper.Watch(can);
+                for (float t = 0; t < wait && helper.Recovered == before; t += Time.deltaTime) yield return null;
+                bool recovered = helper.Recovered > before;
+                if (expectRecovered)
+                    Check(recovered && can.transform.position.y > -0.1f && ShiftHelper.Reachable(can),
+                        $"lost rubbish comes back within {wait:F0}s: {what} (now at {can.transform.position})");
+                else
+                    Check(!recovered, $"rubbish within reach is left alone: {what}");
+            }
+
+            // Out of the world, on a ledge above reach, and sealed in a crate on the floor.
+            yield return Lose("fell out of the world", new Vector3(12.5f, -3f, 8f), true, 5f);
+            yield return Wait(0.5f);
+            var test = new GameObject("ShiftHelperTest").transform;
+            GameObject Slab(Vector3 c, Vector3 size)
+            {
+                var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                g.transform.SetParent(test, false);
+                g.transform.position = c;
+                g.transform.localScale = size;
+                return g;
+            }
+            Slab(new Vector3(12.5f, 2.35f, 7.5f), new Vector3(0.5f, 0.06f, 0.5f));
+            yield return Lose("resting on a ledge at 2.4 m", new Vector3(12.5f, 2.5f, 7.5f), true, 5f);
+            Destroy(test.gameObject);
+            yield return Wait(0.3f);
+            test = new GameObject("ShiftHelperTest").transform;
+            var crate = new Vector3(13.0f, 0f, 7.0f);
+            Slab(crate + new Vector3(0, 0.5f, 0), new Vector3(0.5f, 0.04f, 0.5f));
+            Slab(crate + new Vector3(0.25f, 0.25f, 0), new Vector3(0.04f, 0.5f, 0.5f));
+            Slab(crate + new Vector3(-0.25f, 0.25f, 0), new Vector3(0.04f, 0.5f, 0.5f));
+            Slab(crate + new Vector3(0, 0.25f, 0.25f), new Vector3(0.5f, 0.5f, 0.04f));
+            Slab(crate + new Vector3(0, 0.25f, -0.25f), new Vector3(0.5f, 0.5f, 0.04f));
+            yield return Wait(0.1f);
+            yield return Lose("sealed in a crate", crate + new Vector3(0, 0.12f, 0), true, 5f);
+            Destroy(test.gameObject);
+            yield return Wait(0.3f);
+            // No false alarms: the open floor and under a desk (reachable crouching) stay put.
+            yield return Lose("on the open floor", new Vector3(11.6f, 0.15f, 7.4f), false, 4f);
+            yield return Lose("under Theo's desk", new Vector3(10.6f, 0.1f, 11.6f), false, 4f);
+
+            // Idle for a minute with rubbish left: everything unfinished glints.
+            root.Player.Teleport(new Vector3(12.6f, 0, 6.4f), 0f, 22f);
+            var remaining = dir.RequiredRemaining().SelectMany(t => dir.Remaining(t)).Select(r => r.pos).ToList();
+            int glints = helper.GlintCount;
+            float waited = 0;
+            while (helper.GlintCount == glints && waited < helper.StuckAfter + 15f) { waited += Time.deltaTime; yield return null; }
+            Check(helper.GlintCount > glints && helper.LastGlintIdle >= helper.StuckAfter, $"after {helper.StuckAfter:F0}s without progress the leftovers glint ({helper.LastGlintIdle:F0}s idle)");
+            yield return Wait(0.9f);
+            yield return Shot("n1_glint");
+            var binned = FindObjectsByType<TrashItem>(FindObjectsSortMode.None).Where(t => t.Binned).Select(t => t.transform.position).ToList();
+            bool exact = helper.LastGlint.Count == remaining.Count
+                         && helper.LastGlint.All(p => remaining.Any(r => (r - p).sqrMagnitude < 0.04f))
+                         && !helper.LastGlint.Any(p => binned.Any(b => (b - p).sqrMagnitude < 0.01f));
+            Check(exact, $"the glint marks exactly the unfinished things ({helper.LastGlint.Count} points, {remaining.Count} expected)");
+            Clipboard.Instance.Show();
+            yield return Wait(0.7f);
+            var sheet = Clipboard.Instance.GetComponentsInChildren<TMPro.TextMeshProUGUI>().Select(t => t.text).FirstOrDefault(t => t.Contains("Bin every bit"));
+            Check(sheet != null && sheet.Contains("· bullpen") , "the shift sheet says which rooms still have rubbish");
+            yield return Shot("n1_clipboard_where");
+            Clipboard.Instance.Close();
+            yield return Wait(0.4f);
         }
 
         // ---- task completion through real components -------------------------------------------

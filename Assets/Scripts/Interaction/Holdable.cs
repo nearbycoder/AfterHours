@@ -15,6 +15,10 @@ namespace AfterHours
         public float HoldDistance = 0.55f;
         public bool Locked;            // e.g. while being binned
 
+        /// <summary>Raised whenever the hands let go of something (placed, dropped or thrown).</summary>
+        public static event System.Action<Holdable> Released;
+        internal static void RaiseReleased(Holdable h) => Released?.Invoke(h);
+
         void Awake() => Body = GetComponent<Rigidbody>();
 
         public virtual string Prompt(Interactor who)

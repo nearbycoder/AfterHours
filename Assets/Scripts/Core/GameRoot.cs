@@ -98,6 +98,7 @@ namespace AfterHours
                 RoomPhotos.Create();
                 Director = NightDirector.Create(Office);
                 Director.transform.SetParent(transform, false);
+                ShiftHelper.Create(Director);
             }
         }
 
