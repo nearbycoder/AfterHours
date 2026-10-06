@@ -91,7 +91,17 @@ namespace AfterHours.EditorTools
             PlayerSettings.resizableWindow = true;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.SplashScreen.show = false;
+            // Company and product names set the save folder, so they never change; the bundle id
+            // names the macOS app.
+            PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, BundleId);
+            PlayerSettings.macOS.applicationCategoryType = "public.app-category.games";
+            var icon = AssetDatabase.LoadAssetAtPath<Texture2D>(IconPath);
+            if (icon != null) PlayerSettings.SetIcons(UnityEditor.Build.NamedBuildTarget.Unknown, new[] { icon }, IconKind.Any);
+            else Debug.LogWarning("[ProjectSetup] no app icon at " + IconPath + " (run Tools/make_icon.py)");
         }
+
+        public const string BundleId = "com.nearbycoder.afterhours";
+        const string IconPath = "Assets/Icons/AppIcon.png";
 
         /// <summary>Material assets in Resources so shaders and their keyword variants ship.</summary>
         static void EnsureTemplateMaterials()

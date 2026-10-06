@@ -13,6 +13,7 @@
 <p align="center">
   <img alt="Unity 6000.6 (URP)" src="https://img.shields.io/badge/Unity-6000.6%20URP-222c37?logo=unity&logoColor=white">
   <img alt="Platform: Linux" src="https://img.shields.io/badge/platform-Linux%20x86--64-FCC624?logo=linux&logoColor=black">
+  <img alt="macOS: builds, untested" src="https://img.shields.io/badge/macOS-builds%2C%20untested-999999?logo=apple&logoColor=white">
   <img alt="Models: Blender 4.5" src="https://img.shields.io/badge/models-Blender%204.5-E87D0D?logo=blender&logoColor=white">
   <img alt="Input: keyboard, mouse, gamepad" src="https://img.shields.io/badge/input-keyboard%20%2B%20mouse%20%7C%20gamepad-5FE3FF">
   <img alt="Status: v0.1.0" src="https://img.shields.io/badge/status-v0.1.0-D9483B">
@@ -207,14 +208,21 @@ previous one as a backup, so a crash or power cut mid-save can't lose a game.
 You need 64-bit Linux and a GPU with OpenGL 3.2 or later (the player uses OpenGL Core). It starts
 fullscreen; switch to windowed in Settings. Saves and settings live in
 `~/.config/unity3d/After Hours Team/After Hours/`. If the window never appears under XWayland, start it
-with `./AfterHours.x86_64 -force-wayland` to use Unity's native Wayland backend.
+with `./AfterHours.x86_64 -force-wayland` to use Unity's native Wayland backend. Zips made by
+`Tools/package.py` (below) include an `AfterHours.sh` launcher that does this for you in a
+Wayland session (`AH_X11=1` forces X11).
 
-Only a Linux build is published. The project has no Linux-specific code, so building for Windows
-or macOS from the editor should work, but those builds haven't been tested.
+Only a Linux build is published (v0.1.0). Since then the project also **builds for macOS** as a
+universal app (Intel and Apple Silicon, macOS 12 or later), but that build is unsigned and
+**untested: nobody has run it on a Mac yet**. It isn't published. To try it, build it from source
+(below); first launch needs right-click → Open, or `xattr -dr com.apple.quarantine` on the app.
+Windows builds need Unity's Windows Build Support module, which isn't installed on the
+development machine, so none has been made.
 
 ## Build from source
 
-**Requirements:** Unity **6000.6.2f1** with Linux Build Support (the project uses URP 17.6 and the
+**Requirements:** Unity **6000.6.2f1** with Linux Build Support (and Mac or Windows Build Support
+for those players; the project uses URP 17.6 and the
 Input System 1.20 from the Unity registry), Blender **4.5** on `PATH` for the models, and Python 3
 with NumPy, SciPy and Pillow for textures and audio. FFmpeg for the trailer and README media.
 
@@ -223,6 +231,9 @@ git clone https://github.com/nearbycoder/AfterHours.git && cd AfterHours
 
 # Unity: build, test, open
 Tools/unity.sh build-linux      # -> Builds/Linux/AfterHours.x86_64
+Tools/unity.sh build-mac        # -> Builds/macOS/After Hours.app (universal, unsigned)
+Tools/unity.sh build-windows    # -> Builds/Windows/AfterHours.exe (needs the Windows module)
+python3 Tools/package.py        # release zips of whatever is built -> Builds/release/
 Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml
 Tools/unity.sh                  # open the project in the editor
 Tools/play.sh                   # run the build windowed at 1600x900
@@ -242,9 +253,10 @@ them.
 blender -b -P ArtSource/office.py -- [--render DIR]          # the office, furniture and layout
 blender -b -P ArtSource/props.py  -- [--render DIR] [--only a,b]   # props and tools
 
-# Textures, sound effects and music
+# Textures, sound effects, music and the app icon
 python -m venv Tools/.venv && Tools/.venv/bin/pip install numpy scipy pillow
 Tools/.venv/bin/python Tools/gen_textures.py
+Tools/.venv/bin/python Tools/make_icon.py                   # -> Assets/Icons/AppIcon.png
 Tools/.venv/bin/python Tools/audio/build_sfx.py
 Tools/.venv/bin/python Tools/audio/build_music.py
 ```
@@ -293,7 +305,8 @@ Assets/
   Shaders/              grime overlay, UV ink, skyline, particles
   Resources/            generated models, textures, audio; bundled fonts
 ArtSource/              Blender generators (office.py, props.py, furniture.py, tools.py) and .blend files
-Tools/                  build, play and test scripts; texture and audio generators; trailer/
+Tools/                  build, play, test and packaging scripts; texture, icon and audio generators;
+                        trailer/, release/ (launcher and READMEs for the zips)
 docs/                   design plan, original brief, media/
 ```
 
@@ -367,10 +380,15 @@ mouse, and gamepad. It's a first release, and some things are still rough or unt
   looks like the Wayland compositor throttling hidden windows (the AutoPilot runs uncapped for
   that reason); whether a visible window holds the refresh rate wasn't checked.
 - **Wayland.** On the development machine the player hung at start-up under XWayland, so
-  `Tools/play.sh` passes `-force-wayland`. A monitor powering off or reconnecting under KDE once
-  crashed the player inside Unity's Wayland code.
+  `Tools/play.sh` and the packaged `AfterHours.sh` launcher pass `-force-wayland`. A monitor
+  powering off or reconnecting under KDE once crashed the player inside Unity's Wayland code, and
+  one unattended AutoPilot run crashed there too (in `wl_display_dispatch_queue_pending`); a re-run
+  passed.
 - **The art is stylised and procedural.** Every model is generated in Blender from code: chunky,
   bevelled and flat-shaded. It's consistent, but it isn't hand-modelled or textured to a
   commercial standard.
-- **Linux only.** Windows and macOS builds haven't been made or tested.
+- **Linux first.** The macOS build is made and checked on Linux (universal binary, bundle id
+  `com.nearbycoder.afterhours`, icon) but has never been launched on a Mac, and it's unsigned and
+  unnotarised. No Windows build has been made; the build entry point is ready for when the
+  module is installed.
 - **No licence has been chosen yet.** Until one is added, the default copyright applies.
