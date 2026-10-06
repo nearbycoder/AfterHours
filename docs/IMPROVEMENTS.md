@@ -318,6 +318,108 @@ Things noticed along the way:
 Still open from the ranked list: Windows (blocked on the module), WebGL, and art. Remapping pad
 buttons is still not possible.
 
+## Round 3 scope (6 October 2026)
+
+Rounds 1 and 2 are merged. What's left on the ranked list is blocked (Windows), a poor fit
+(WebGL) or out of reach for scripted work (art), apart from controller remapping. So this round
+also takes new items, found by reading the code and the AutoPilot's screenshots from a fresh
+baseline run, with one question in mind: what gets in the way of a first-time player, or
+of one who can't use the default controls?
+
+**Baseline (branch `improvements-3`, from `main` at 403bf87).** The Linux build succeeds (187 MB,
+0 errors). An `audit` route run failed its real-input checks on Night 1 (rebinding with a
+virtual keyboard, the pad's d-pad tool cycling, pad Y and A on documents) about 100 s in, right
+after the 60-second idle, although device input had worked earlier in the same run. The
+likeliest cause is that the unattended window lost focus to another session's window. The
+Input System then ignores device input, and on this shared desktop that can happen at any
+time. Round 2's runs passed because the window happened to keep focus. Item R3-0 fixes the test
+setup before anything else.
+
+### R3-0. AutoPilot input that doesn't depend on window focus
+
+Automated runs (`-ahAutopilot`, `-ahCapture` and the showcase and trailer recorders) tell the
+Input System to keep reading devices when the window isn't focused. Players are unaffected.
+
+**Acceptance:** the `audit` route passes with the window unfocused. **Verify:** all five routes,
+run while other sessions' windows are in front.
+
+### R3-1. Case file: read documents again
+
+A mystery game where you can't re-read the clues. Today the clipboard lists what's in your pocket
+by title only, and once a note is put back, binned or delivered, it's gone, so the evidence for
+a decision lives only in the player's memory. The clipboard gets a second page, the **case
+file**: every document you've read this playthrough, grouped by night, with what became of it
+(in your pocket, put back, left for Dana, shredded, thrown away, read on a screen or a wall).
+Pick one to read it again in the inspect view, which only offers Close and changes nothing:
+no secrets, leads or choices. A/D, the arrows, the d-pad or the mouse wheel flip between the
+shift sheet and the case file; W/S or the d-pad move through the list; E, Enter, pad A or a click
+reads. The story save keeps the list, so Night Select replays show what you had read by then.
+Saves from before this round build the list from their evidence records.
+
+**Acceptance:** after Night 1 the case file lists exactly the documents read, with the right fate
+for each; opening one shows that document read-only, and closing it returns to the list with the
+fate, secrets and leads unchanged; it works with keys, pad and mouse; Tab or Esc close the clipboard
+from either page, and closing a document doesn't also close the clipboard. **Verify:** EditMode
+tests (recording reads, fate labels, building the list for an old save); AutoPilot checks on
+Night 2 that open the case file and read a document with pad A and with E; screenshots.
+
+### R3-2. Hold or toggle for crouch and brisk walk
+
+Holding C to stay under a desk, or a stick click and a bumper on a pad, is tiring and hard
+for some players. Two settings, **Crouch: Hold / Toggle** and **Brisk walk: Hold / Toggle**,
+go on the controls page and apply to keys and pad alike. Toggle crouch keeps the existing
+headroom check (you can't stand up under a desk). Toggle brisk walk ends when you stop moving.
+Defaults stay Hold.
+
+**Acceptance:** with Toggle, one press crouches and the next stands; brisk walk stays on until
+you stop; Hold behaves as before; the settings are saved; an older settings file gets Hold.
+**Verify:** EditMode tests (the toggle logic, an old settings file); AutoPilot presses C on a
+virtual keyboard and the stick click on a virtual pad with each mode; all five routes.
+
+### R3-3. Controller button remapping
+
+The deferred half of round 2's remapping. The controls page gets a **Controller** tab beside
+**Keyboard and mouse**. Interact, drop, brisk walk, crouch, clean, spray, UV torch and the
+clipboard can go on any face button, shoulder, trigger, stick click, d-pad up or down, or View.
+A button already in use swaps over. Start (pause) and d-pad left and right (tools) stay
+fixed, and so do A, B, X and Y inside menus and documents (like Esc and Enter on the keyboard).
+In-game prompts show the bound button, as a PlayStation symbol on a DualShock or DualSense.
+
+**Acceptance:** binding Interact to X through the page makes pad X use a light switch and A no
+longer does; the prompt shows X (□ on a DualShock); the binding is saved and reset restores
+it; Start and the d-pad's tool buttons are refused; an older settings file gets the defaults.
+**Verify:** EditMode tests (defaults, swap, reserved buttons, round trip, old file); AutoPilot
+rebinds through the real page with a virtual pad, then presses X on a switch; screenshots.
+Still virtual pads only.
+
+### R3-4. Pause when the window loses focus or the controller disconnects
+
+The game keeps running in the background (it has to for capture), so alt-tabbing mid-night
+leaves the clock running and the music playing, and the click that brings the window back
+reaches the game as a left-click. Unplugging or losing a wireless pad leaves the player
+standing in the dark. During a night, losing focus or losing the pad in use now opens the pause
+menu, as long as nothing else is open apart from the clipboard (which closes). Documents
+and choices stay up: they are already waiting for an answer. Automated runs keep running.
+
+**Acceptance:** with nothing open, a focus loss or the pad being removed opens the pause menu;
+with a document open, nothing changes; the title and menus are unaffected. **Verify:** AutoPilot
+calls the focus handler and removes a virtual pad, checking each case. Losing focus to a real
+window manager can't be tested unattended, so that path is only covered through the handler.
+
+### R3-5. Small polish
+
+- Dana's welcome note says "(Tab)" in its text, whatever the clipboard is bound to and even on a
+  pad. Document text gets key tokens that follow the bindings and the pad, like the HUD's.
+- The Night 1 "shift sheet is on the clipboard" caption shows through between the clipboard and its
+  side note (visible in the baseline's `07_clipboard.png`). Opening the clipboard clears it.
+
+**Acceptance and verify:** screenshots of the note with keys and with a pad, and of the clipboard
+with no caption behind it; an AutoPilot check that the note's text shows the bound key.
+
+Out of scope this round: saving mid-night (quitting mid-night restarts that night, five to eight
+minutes at most; saving grime masks and every prop's state is a large change), larger text
+(needs a layout pass over every screen), and everything left with the owner.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
