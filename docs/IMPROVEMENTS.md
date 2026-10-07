@@ -461,6 +461,95 @@ Deferred: saving mid-night (a large change to grime masks and every prop's state
 to eight minutes), larger text (a layout pass over every screen), and still WebGL, Windows and
 the art.
 
+## Round 4 scope (6 October 2026)
+
+Round 3 is merged. Apart from items that are blocked (Windows), a poor fit (WebGL) or not
+scripted work (art), the ranked list is used up. So, like round 3, this round reads the code, the
+settings and the screens with one question in mind: what would a first-time player on their own
+screen, with their own hands, run into? A night is spent in a dark office, yet there's no
+brightness setting. Holding the clean button is the whole game, and it can't be toggled. A grade
+of A gives no reason why it isn't S. And one mis-click on "Quit to title" throws the night away
+without asking.
+
+**Baseline (branch `improvements-4`, from `main` at b6420b3).** The Linux build succeeds (187 MB,
+0 errors), and an `audit` AutoPilot run passes (results below, under Round 4 results).
+
+### R4-1. Brightness
+
+Monitors and rooms differ, and most of a night is spent in the dark before the lights go on.
+A **Brightness** slider goes under Display. It lifts or darkens the image through the
+post-processing stack (a gamma offset, so dark areas lift more than lit ones), and the menus and
+HUD aren't affected. The first time the game starts, a short brightness page appears over the
+dark office on the title screen ("turn it up until you can make out the desks"), with the same
+slider and a Done button. It's skipped by automated runs and never shown again once closed. It
+can be opened again from Settings.
+
+**Acceptance:** the slider changes the game image in the expected direction and leaves the UI
+alone; the value is saved; an older settings file gets the default (no change in look) and sees
+the page once. **Verify:** an EditMode test for the old settings file; AutoPilot checks that open
+the page, move the slider with the keyboard and the pad and check the applied gamma; screenshots
+at the lowest, default and highest settings, with mean luminance measured on them.
+
+### R4-2. Hold or toggle for clean and spray
+
+Holding the left mouse button, or the right trigger, is how every surface gets cleaned: minutes
+at a time, seven nights running. Like crouch and brisk walk in round 3, **Clean and spray:
+Hold / Toggle** goes on the controls page and applies to keys, mouse and pad. With Toggle, one
+press starts cleaning (or spraying) and the next stops it. Picking something up, dropping it, or
+opening any menu, document or the clipboard switches it off. A throw is charged with one press
+and thrown with the next. Default stays Hold.
+
+**Acceptance:** with Toggle, a tap starts cleaning a surface and it keeps getting cleaner with
+the button up; a second tap stops it; opening the clipboard stops it; a throw charges on one tap
+and flies on the next; Hold behaves as before; the setting is saved and an old settings file
+gets Hold. **Verify:** EditMode tests (the latch, an old settings file); AutoPilot clicks a
+virtual mouse once on a dirty surface and checks its completion keeps rising, then clicks again
+and checks it stops; the same with the pad's trigger; all five routes.
+
+### R4-3. The shift report says why
+
+The report stamps S, A, B or C but never says what the grade is made of: the shift sheet (60%),
+the bonus tasks (15%) and how clean every surface is (25%). An S needs every required task and a
+score of 97%. The report gets one line with those three parts ("Shift sheet 6/6 · bonus 1/2 ·
+surfaces 94% clean") and, below S, one short hint at what would have lifted it ("For an S: the
+bonus tasks, and leave fewer surfaces half done").
+
+**Acceptance:** the line matches the numbers the grade was computed from; an S shows no hint;
+below S the hint names the parts that fell short. **Verify:** an EditMode test for the grade and
+hint logic (the grading moves into a pure function the report and the night share); AutoPilot
+checks the line on each night's report; screenshots of an S and a lower grade.
+
+### R4-4. Larger HUD text
+
+Prompts, captions, toasts and the label under the reticle are sized for a 1080p monitor at desk
+distance. On a laptop at 720p or a TV across the room, 18–22 point text is small. A **Text
+size** setting (Normal, Large, Largest) under Accessibility scales them, and the hints under
+documents, by 1, 1.25 or 1.5. Menus, the clipboard and documents themselves keep their layout
+(their text is already 28–46 points on paper sized to the screen).
+
+**Acceptance:** at Largest, the prompt, caption, toasts and reticle label are 1.5× and stay on
+screen at 1280×720 and 4:3; Normal looks as before; the setting is saved and an old file gets
+Normal. **Verify:** AutoPilot sets each size and checks the HUD elements' on-screen rectangles
+stay inside the screen and don't overlap the watch; screenshots at 1280×720.
+
+### R4-5. Don't lose a night by accident
+
+"Quit to title" in the pause menu drops the night in progress straight away, and Continue then
+starts that night again from 10 PM. It now asks first ("Tonight starts over from the beginning
+next time"), as Restart already does. The Settings page also gets the room it needs for the new
+rows (the playtest log moves to the left column).
+
+**Acceptance:** choosing Quit to title shows the question; Back keeps the night; confirming goes
+to the title. The Settings layout check still finds no overlaps at five window sizes.
+**Verify:** AutoPilot (open the question, back out with the night still running, the clock not
+reset); the existing `menus` capture's layout check.
+
+Out of scope again: saving mid-night (a night is five to eight minutes; saving every grime mask
+and prop is a large change), a full layout pass for larger menu text, and the items left with
+the owner. Hints for missed secrets were considered (where to look, on the report); they need a
+room for every one of the 32 secrets and a decision on how much to give away, so they're noted
+for the owner rather than built.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
