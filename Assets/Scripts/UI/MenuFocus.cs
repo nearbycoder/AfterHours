@@ -28,6 +28,18 @@ namespace AfterHours
         /// <summary>Every selectable under <paramref name="host"/>, in hierarchy order.</summary>
         public static MenuFocus AttachAll(GameObject host) => Attach(host, host.GetComponentsInChildren<Selectable>(true));
 
+        /// <summary>The menu in front (the most recently opened), if any.</summary>
+        public static MenuFocus Top => open.Count > 0 ? open[^1] : null;
+
+        /// <summary>
+        /// Rows of a scrolling list, walked in order by up and down (their on-screen positions
+        /// say little while most of them are scrolled out of view). The first row goes up to
+        /// <see cref="Before"/> (or wraps to <see cref="After"/>), the last goes down to
+        /// <see cref="After"/>, and those come back to the list.
+        /// </summary>
+        public List<Selectable> Chain;
+        public List<Selectable> Before = new(), After = new();
+
         void OnEnable() => open.Add(this);
         void OnDisable() => open.Remove(this);
 
@@ -60,6 +72,24 @@ namespace AfterHours
                 bool adjusts = a.GetComponent<SliderNav>() || a.GetComponent<ChoiceNav>();
                 nav.selectOnLeft = adjusts ? null : Nearest(a, live, Vector2.left);
                 nav.selectOnRight = adjusts ? null : Nearest(a, live, Vector2.right);
+                a.navigation = nav;
+            }
+            if (Chain == null || Chain.Count == 0) return;
+            var chain = Chain.Where(c => c).ToList();
+            Selectable up0 = Before.FirstOrDefault(b => b) ?? After.FirstOrDefault(b => b), down1 = After.FirstOrDefault(b => b);
+            for (int i = 0; i < chain.Count; i++)
+            {
+                var nav = chain[i].navigation;
+                nav.selectOnUp = i > 0 ? chain[i - 1] : up0;
+                nav.selectOnDown = i < chain.Count - 1 ? chain[i + 1] : down1;
+                chain[i].navigation = nav;
+            }
+            foreach (var b in Before.Where(b => b)) { var nav = b.navigation; nav.selectOnDown = chain[0]; b.navigation = nav; }
+            foreach (var a in After.Where(a => a))
+            {
+                var nav = a.navigation;
+                nav.selectOnUp = chain[^1];
+                if (Before.Count == 0) nav.selectOnDown = chain[0];
                 a.navigation = nav;
             }
         }

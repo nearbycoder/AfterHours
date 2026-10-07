@@ -57,63 +57,84 @@ namespace AfterHours
 
         /// <summary>
         /// Title, Settings and Night Select at whatever window size the player was started with
-        /// (<c>AH_W</c>/<c>AH_H</c> in Tools/play.sh), plus a layout check on Settings: no row
-        /// overlaps another or the Done button, and nothing leaves the screen.
+        /// (<c>AH_W</c>/<c>AH_H</c> in Tools/play.sh), at each text size, plus a layout check on
+        /// Settings, both controls pages and the brightness page: no row overlaps another or the
+        /// buttons, and nothing leaves the screen. Rows in a scrolling list (the larger text sizes)
+        /// are checked against each other, and the list itself against the rest.
         /// </summary>
         IEnumerator Menus()
         {
             yield return Wait(2f);
-            string size = $"{Screen.width}x{Screen.height}";
-            yield return Shot($"title_{size}");
-            SettingsPanel.Show();
-            yield return Wait(0.8f);
             Rect ScreenRect(RectTransform rt)
             {
                 var c = new Vector3[4];
                 rt.GetWorldCorners(c);
                 return Rect.MinMaxRect(c[0].x, c[0].y, c[2].x, c[2].y);
             }
+            string size = $"{Screen.width}x{Screen.height}";
             // Every row, plus the panel's notes (the controls page's message under its rows).
-            void Layout(string what, string layer)
+            void Layout(string what, string layer, string text)
             {
                 var panel = Ui.Canvas.transform.Find(layer);
-                var rows = panel ? panel.GetComponentsInChildren<UnityEngine.UI.Selectable>().Select(x => (RectTransform)x.transform).ToList() : new System.Collections.Generic.List<RectTransform>();
+                var all = panel ? panel.GetComponentsInChildren<UnityEngine.UI.Selectable>().Select(x => (RectTransform)x.transform).ToList() : new System.Collections.Generic.List<RectTransform>();
+                var listed = all.Where(r => r.GetComponentInParent<UnityEngine.UI.RectMask2D>() != null).ToList();
+                var rows = all.Except(listed).ToList();
                 if (panel) rows.AddRange(panel.GetComponentsInChildren<TMPro.TextMeshProUGUI>()
                     .Where(t => t.transform.parent.name == "Panel" && t.text.Length > 60).Select(t => t.rectTransform));
-                var rects = rows.Select(r => (r.name, rect: ScreenRect(r))).ToList();
+                if (panel) rows.AddRange(panel.GetComponentsInChildren<UnityEngine.UI.RectMask2D>().Select(m => (RectTransform)m.transform));
                 int overlaps = 0, off = 0;
-                for (int i = 0; i < rects.Count; i++)
+                void Pairs(System.Collections.Generic.List<RectTransform> set, bool onScreen)
                 {
-                    var a = rects[i].rect;
-                    if (a.xMin < 0 || a.yMin < 0 || a.xMax > Screen.width || a.yMax > Screen.height) { off++; Log($"layout: {rects[i].name} leaves the screen ({a})"); }
-                    for (int j = i + 1; j < rects.Count; j++)
-                        if (a.Overlaps(rects[j].rect)) { overlaps++; Log($"layout: {rects[i].name} overlaps {rects[j].name}"); }
+                    var rects = set.Select(r => (r.name, rect: ScreenRect(r))).ToList();
+                    for (int i = 0; i < rects.Count; i++)
+                    {
+                        var a = rects[i].rect;
+                        if (onScreen && (a.xMin < 0 || a.yMin < 0 || a.xMax > Screen.width || a.yMax > Screen.height)) { off++; Log($"layout: {rects[i].name} leaves the screen ({a})"); }
+                        for (int j = i + 1; j < rects.Count; j++)
+                            if (a.Overlaps(rects[j].rect)) { overlaps++; Log($"layout: {rects[i].name} overlaps {rects[j].name}"); }
+                    }
                 }
-                Log($"layout {size}: {what} has {rects.Count} rows, {overlaps} overlaps, {off} off screen -> {(overlaps == 0 && off == 0 && rects.Count > 0 ? "OK" : "BAD")}");
+                Pairs(rows, true);
+                Pairs(listed, false);
+                Log($"layout {size} {text}: {what} has {rows.Count + listed.Count} rows ({listed.Count} in a scrolling list), {overlaps} overlaps, {off} off screen -> {(overlaps == 0 && off == 0 && rows.Count > 0 ? "OK" : "BAD")}");
             }
-            Layout("settings", "Settings");
-            yield return Shot($"settings_{size}");
-            ControlsPanel.Show(ControlsPanel.KeyboardPage);
-            yield return Wait(0.6f);
-            Layout("controls (keyboard)", "Controls");
-            yield return Shot($"controls_{size}");
-            FindAnyObjectByType<ControlsPanel>()?.SwitchTo(ControlsPanel.PadPage);
-            yield return Wait(0.6f);
-            Layout("controls (controller)", "Controls");
-            yield return Shot($"controls_pad_{size}");
-            FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
-            yield return Wait(0.3f);
-            BrightnessPanel.Show();
-            yield return Wait(0.6f);
-            Layout("brightness", "Brightness");
-            yield return Shot($"brightness_{size}");
-            FindAnyObjectByType<BrightnessPanel>()?.SendMessage("Close");
-            yield return Wait(0.3f);
-            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
-            yield return Wait(0.5f);
-            NightSelect.Show();
-            yield return Wait(0.8f);
-            yield return Shot($"night_select_{size}");
+            for (int ts = 0; ts <= 2; ts++)
+            {
+                Settings.Current.TextSize = ts;
+                string text = Settings.TextSizes[ts].ToLowerInvariant();
+                string tag = ts == 0 ? size : $"{size}_{text}";
+                yield return Wait(0.4f);
+                yield return Shot($"title_{tag}");
+                SettingsPanel.Show();
+                yield return Wait(0.8f);
+                Layout("settings", "Settings", text);
+                yield return Shot($"settings_{tag}");
+                ControlsPanel.Show(ControlsPanel.KeyboardPage);
+                yield return Wait(0.6f);
+                Layout("controls (keyboard)", "Controls", text);
+                yield return Shot($"controls_{tag}");
+                FindAnyObjectByType<ControlsPanel>()?.SwitchTo(ControlsPanel.PadPage);
+                yield return Wait(0.6f);
+                Layout("controls (controller)", "Controls", text);
+                yield return Shot($"controls_pad_{tag}");
+                FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
+                yield return Wait(0.3f);
+                BrightnessPanel.Show();
+                yield return Wait(0.6f);
+                Layout("brightness", "Brightness", text);
+                yield return Shot($"brightness_{tag}");
+                FindAnyObjectByType<BrightnessPanel>()?.SendMessage("Close");
+                yield return Wait(0.3f);
+                FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+                yield return Wait(0.5f);
+                NightSelect.Show();
+                yield return Wait(0.8f);
+                yield return Shot($"night_select_{tag}");
+                FindAnyObjectByType<NightSelect>()?.SendMessage("Close");
+                yield return Wait(0.4f);
+            }
+            Settings.Current.TextSize = 0;
+            Settings.Save();
         }
 
         IEnumerator Proto()

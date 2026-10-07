@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -30,6 +31,9 @@ namespace AfterHours
         int page;
         /// <summary>The page showing (automation checks this).</summary>
         public static int Page => instance != null ? instance.page : -1;
+        /// <summary>The scrolling list at the larger text sizes (null at Normal, which keeps two columns).</summary>
+        public static ScrollFollow List => instance != null ? instance.list : null;
+        ScrollFollow list;
 
         public static void Show(int page = KeyboardPage)
         {
@@ -59,24 +63,48 @@ namespace AfterHours
             var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.93f));
             Ui.Stretch(dim.rectTransform);
             dim.raycastTarget = true;
-            const float W = 1360, H = 900, ColW = 600;
+            // Normal: two columns. Large and Largest: one column of rows at that size, which scrolls,
+            // with the tabs, the note and the buttons scaled around it as far as the panel allows.
+            float k = Settings.TextScale;
+            bool large = k > 1f;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            const float ColW = 600;
+            float W = large ? Mathf.Min(canvasW - 80f, ColW * k + 160f) : 1360, H = large ? 1000 : 900;
+            float kt = large ? Mathf.Clamp((W - 140f) / 680f, 1f, k) : 1f;
             var panel = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
             Ui.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
             // Tabs: the two pages. The current one is the primary (filled) button.
             var tabs = new[] { (KeyboardPage, "Keyboard and mouse"), (PadPage, "Controller") };
             float tx = 60;
+            var tabSel = new List<Selectable>();
             foreach (var (p, name) in tabs)
             {
                 int to = p;
                 var tab = Widgets.Button(panel.rectTransform, name, () => SwitchTo(to), 330, 60, 28, p == page);
                 tab.name = "Tab_" + name;
                 Ui.Place(tab, new Vector2(0, 1), new Vector2(tx, -36), new Vector2(330, 60), new Vector2(0, 1));
-                tx += 350;
+                tab.localScale = Vector3.one * kt;
+                tabSel.Add(tab.GetComponent<Selectable>());
+                tx += 350 * kt;
             }
-            var left = Widgets.Column(panel.rectTransform, "Left", 6);
-            Ui.Place(left, new Vector2(0, 1), new Vector2(60, -116), new Vector2(ColW, 520), new Vector2(0, 1));
-            var right = Widgets.Column(panel.rectTransform, "Right", 6);
-            Ui.Place(right, new Vector2(0, 1), new Vector2(60 + ColW + 80, -116), new Vector2(ColW, 520), new Vector2(0, 1));
+            RectTransform left, right;
+            list = null;
+            // The note under the rows gets the height its longest text needs.
+            message = Ui.Label(panel.rectTransform, "", UiFont.Sans, 22 * k, Ui.TextDim, TextAlignmentOptions.TopLeft, "Note");
+            float noteH = large ? new[] { DefaultNote(KeyboardPage), DefaultNote(PadPage) }.Max(t => message.GetPreferredValues(t, W - 120, 0).y) + 10 : 60;
+            float buttonsTop = 40 + 60 * k;
+            if (large)
+            {
+                float top = 36 + 60 * kt + 24;
+                left = right = Widgets.ScrollList(panel.rectTransform, "List", new Vector2(60 - ScrollFollow.Inset, -top), new Vector2(W - 140f + 2 * ScrollFollow.Inset, H - top - (buttonsTop + 20 + noteH + 16)), k, 6, out list);
+            }
+            else
+            {
+                left = Widgets.Column(panel.rectTransform, "Left", 6);
+                Ui.Place(left, new Vector2(0, 1), new Vector2(60, -116), new Vector2(ColW, 520), new Vector2(0, 1));
+                right = Widgets.Column(panel.rectTransform, "Right", 6);
+                Ui.Place(right, new Vector2(0, 1), new Vector2(60 + ColW + 80, -116), new Vector2(ColW, 520), new Vector2(0, 1));
+            }
             var labels = page == PadPage ? Controls.PadLabels : Controls.Labels;
             int split = page == PadPage ? 4 : 7;
             for (int i = 0; i < labels.Length; i++)
@@ -91,15 +119,23 @@ namespace AfterHours
             Widgets.Choice(modeCol, "Crouch mode", modes, st.ToggleCrouch ? 1 : 0, i => { st.ToggleCrouch = i == 1; GameInput.ResetToggles(); }, ColW);
             Widgets.Choice(modeCol, "Brisk walk mode", modes, st.ToggleSprint ? 1 : 0, i => { st.ToggleSprint = i == 1; GameInput.ResetToggles(); }, ColW);
             Widgets.Choice(modeCol, "Clean and spray mode", modes, st.ToggleUse ? 1 : 0, i => { st.ToggleUse = i == 1; GameInput.ReleaseUse(); }, ColW);
-            message = Ui.Label(panel.rectTransform, "", UiFont.Sans, 22, Ui.TextDim, TextAlignmentOptions.TopLeft);
-            Ui.Place(message.rectTransform, new Vector2(0, 0), new Vector2(60, 110), new Vector2(1240, 60), new Vector2(0, 0));
+            Ui.Place(message.rectTransform, new Vector2(0, 0), new Vector2(60, large ? buttonsTop + 20 : 110), new Vector2(W - 120, noteH), new Vector2(0, 0));
             Note(null);
             var reset = Widgets.Button(panel.rectTransform, "Reset to defaults", ResetAll, 300, 60, 26);
             Ui.Place(reset, new Vector2(0, 0), new Vector2(60, 40), new Vector2(300, 60), new Vector2(0, 0));
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));
+            reset.localScale = done.localScale = Vector3.one * k;
             Refresh();
-            MenuFocus.AttachAll(panel.gameObject);
+            var focus = MenuFocus.AttachAll(panel.gameObject);
+            if (list != null)
+            {
+                list.Focus = focus;
+                focus.Chain = left.GetComponentsInChildren<Selectable>().ToList();
+                focus.Before.AddRange(tabSel);
+                focus.After.Add(done.GetComponent<Selectable>());
+                focus.After.Add(reset.GetComponent<Selectable>());
+            }
         }
 
         void Row(Transform parent, Act act, string label, float width)
@@ -201,7 +237,9 @@ namespace AfterHours
             Note("Back to the defaults.");
         }
 
-        void Note(string text) => message.text = text ?? (page == PadPage
+        void Note(string text) => message.text = text ?? DefaultNote(page);
+
+        static string DefaultNote(int page) => (page == PadPage
             ? "Start pauses and the d-pad's left and right pick tools; in menus and documents A, B, X and Y stay as they are. A button that's already in use swaps over. Toggle: press once to start crouching, walking briskly, cleaning or spraying, and again to stop."
             : "Esc pauses, Enter confirms and 1–4 pick tools; those stay fixed. A key that's already in use swaps over. Toggle: press once to start crouching, walking briskly, cleaning or spraying, and again to stop.");
 

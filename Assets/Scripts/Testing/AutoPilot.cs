@@ -213,6 +213,7 @@ namespace AfterHours
                 yield return Shot("pause");
                 yield return PauseCardChecks();
                 yield return PauseTextChecks();
+                yield return SettingsLargeChecks();
                 GameObject.Find("Btn_Restart this night")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
                 yield return Wait(0.5f);
                 Check(ChoiceMenu.IsOpen, "Restart this night asks first");
@@ -1484,6 +1485,137 @@ namespace AfterHours
             yield return Wait(0.3f);
             s.TextSize = 0;
             yield return Wait(0.3f);
+        }
+
+        /// <summary>Settings and both controls pages at Largest: one column that scrolls, walked with the pad and keys; switching text size relays the page.</summary>
+        IEnumerator SettingsLargeChecks()
+        {
+            var s = Settings.Current;
+            bool wasPad = GameInput.UsingPad;
+            s.TextSize = 2;
+            GameObject.Find("Btn_Settings")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.6f);
+            vpad.MakeCurrent();
+            GameInput.UsingPad = true;
+            yield return ListChecks("Settings", () => SettingsPanel.List, "Settings");
+            yield return Shot("settings_largest");
+            // Text size from the pad, on its own row: the page is laid out again around the same row.
+            var es = EventSystem.current;
+            for (int i = 0; i < 40 && Selected != "Choice_Text size"; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.1f); }
+            RectTransform Row() => es.currentSelectedGameObject ? (RectTransform)es.currentSelectedGameObject.transform : null;
+            bool InView()
+            {
+                var list = SettingsPanel.List;
+                return list != null && Row() != null && Inside(ScreenRect(Row()), ScreenRect((RectTransform)list.transform), 2f);
+            }
+            IEnumerator Settle() { for (float t = 0; t < 1f && SettingsPanel.List != null && !SettingsPanel.List.Settled; t += GameTime.UnscaledDelta) yield return null; }
+            yield return Press(GamepadButton.DpadLeft);
+            yield return Wait(0.3f);
+            yield return Settle();
+            float h1 = Row() ? Units(ScreenRect(Row()).height) : 0f;
+            Check(s.TextSize == 1 && SettingsPanel.List != null && Selected == "Choice_Text size" && Mathf.Abs(h1 - 70f) < 2.5f && InView(),
+                $"d-pad left on Text size relays Settings at Large around the same row ({Selected}, {h1:F0} units, in view {InView()})");
+            yield return Press(GamepadButton.DpadLeft);
+            yield return Wait(0.4f);
+            bool twoCols = Ui.Canvas.transform.Find("Settings/Panel/Right") != null;
+            Check(s.TextSize == 0 && SettingsPanel.List == null && twoCols && Selected == "Choice_Text size",
+                $"and again at Normal: two columns, the same row selected ({Selected})");
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.3f);
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.3f);
+            yield return Settle();
+            Check(s.TextSize == 2 && SettingsPanel.List != null && Selected == "Choice_Text size" && InView(), $"d-pad right twice is back at Largest with the row in view ({Selected})");
+            // The wheel scrolls the list.
+            var mouse = InputSystem.AddDevice<Mouse>("AutoPilotWheelMouse");
+            var list0 = SettingsPanel.List;
+            float before = list0.Scroll;
+            InputSystem.QueueStateEvent(mouse, new MouseState { scroll = new Vector2(0, 120f) });
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState());
+            yield return Wait(0.5f);
+            Check(list0.Scroll < before - 50f, $"the mouse wheel scrolls the list up ({before:F0} → {list0.Scroll:F0} units)");
+            InputSystem.RemoveDevice(mouse);
+            vpad.MakeCurrent();
+            GameInput.UsingPad = true;
+            // The controls pages.
+            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Keyboard, mouse"))?.onClick.Invoke();
+            yield return Wait(0.6f);
+            yield return ListChecks("Controls", () => ControlsPanel.List, "the keyboard controls page");
+            yield return Shot("controls_largest");
+            // The arrow keys walk it too, keeping the row in view.
+            var rows = ControlsPanel.List.transform.Find("Content").GetComponentsInChildren<UnityEngine.UI.Selectable>().ToList();
+            es.SetSelectedGameObject(rows[0].gameObject);
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotListKeyboard");
+            vkb.MakeCurrent();
+            for (int i = 0; i < 6; i++)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(UnityEngine.InputSystem.Key.DownArrow));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.15f);
+            }
+            for (float t = 0; t < 1f && !ControlsPanel.List.Settled; t += GameTime.UnscaledDelta) yield return null;
+            var sel = Row();
+            Check(sel != null && rows.IndexOf(sel.GetComponent<UnityEngine.UI.Selectable>()) == 6 && Inside(ScreenRect(sel), ScreenRect((RectTransform)ControlsPanel.List.transform), 2f),
+                $"the down arrow walks the controls list too, the row in view ({Selected})");
+            InputSystem.RemoveDevice(vkb);
+            vpad.MakeCurrent();
+            GameInput.UsingPad = true;
+            FindAnyObjectByType<ControlsPanel>()?.SwitchTo(ControlsPanel.PadPage);
+            yield return Wait(0.6f);
+            yield return ListChecks("Controls", () => ControlsPanel.List, "the controller page");
+            FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            s.TextSize = 0; // before Settings saves on closing: the profile's later runs start at Normal
+            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            GameInput.UsingPad = wasPad;
+            yield return Wait(0.3f);
+            Check(PauseMenu.IsOpen && !SettingsPanel.IsOpen, "back in the pause menu after the Settings checks");
+        }
+
+        /// <summary>
+        /// A scrolling list at Largest: rows 1.5x, on screen and apart from each other and the
+        /// buttons; the d-pad walks every row from the first, each in view, and on to Done.
+        /// </summary>
+        IEnumerator ListChecks(string layer, Func<ScrollFollow> getList, string what)
+        {
+            var list = getList();
+            if (list == null) { Check(false, $"{what} at Largest is a scrolling list"); yield break; }
+            var view = (RectTransform)list.transform;
+            var panel = (RectTransform)Ui.Canvas.transform.Find(layer + "/Panel");
+            var rows = view.Find("Content").GetComponentsInChildren<UnityEngine.UI.Selectable>().ToList();
+            var others = panel.GetComponentsInChildren<UnityEngine.UI.Selectable>().Where(x => !rows.Contains(x)).ToList();
+            var vr = ScreenRect(view);
+            int overlaps = 0;
+            for (int i = 0; i < rows.Count; i++)
+                for (int j = i + 1; j < rows.Count; j++)
+                    if (ScreenRect((RectTransform)rows[i].transform).Overlaps(ScreenRect((RectTransform)rows[j].transform))) overlaps++;
+            var heights = rows.Select(r => Units(ScreenRect((RectTransform)r.transform).height)).ToList();
+            Check(rows.Count > 5 && heights.All(h => Mathf.Abs(h - 84f) < 2.5f) && overlaps == 0 && Inside(ScreenRect(panel), ScreenArea) && Inside(vr, ScreenRect(panel))
+                  && others.All(o => !ScreenRect((RectTransform)o.transform).Overlaps(vr)) && list.MaxScroll > 0f,
+                $"{what} at Largest, {Screen.width}x{Screen.height}: {rows.Count} rows in one scrolling list ({heights.Min():F0}–{heights.Max():F0} units, Normal 56), {overlaps} overlaps, clear of {others.Count} buttons, on screen");
+            var es = EventSystem.current;
+            es.SetSelectedGameObject(rows[0].gameObject);
+            yield return Wait(0.3f);
+            var seen = new System.Collections.Generic.HashSet<string>();
+            int outOfView = 0;
+            for (int i = 0; i < rows.Count + 2; i++)
+            {
+                for (float t = 0; t < 1f && !list.Settled; t += GameTime.UnscaledDelta) yield return null;
+                var cur = es.currentSelectedGameObject;
+                var row = cur ? cur.GetComponent<UnityEngine.UI.Selectable>() : null;
+                if (row == null || !rows.Contains(row)) break;
+                seen.Add(cur.name);
+                if (!Inside(ScreenRect((RectTransform)cur.transform), vr, 2f)) { outOfView++; Log($"list: {cur.name} out of view"); }
+                yield return Press(GamepadButton.DpadDown);
+                yield return Wait(0.1f);
+            }
+            Check(seen.Count == rows.Count && outOfView == 0 && Selected == "Btn_Done",
+                $"{what}: the d-pad walks all {rows.Count} rows ({seen.Count} seen, {outOfView} out of view) and on to Done ({Selected})");
+            es.SetSelectedGameObject(rows[0].gameObject);
+            yield return Wait(0.4f);
         }
 
         /// <summary>The title menu at each text size: buttons grow from the bottom, clear of the tagline and the footer.</summary>

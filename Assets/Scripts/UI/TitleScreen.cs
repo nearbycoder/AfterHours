@@ -326,7 +326,11 @@ namespace AfterHours
     {
         static SettingsPanel instance;
         public static bool IsOpen => instance != null;
-        RectTransform root;
+        RectTransform root, panel;
+        /// <summary>The scrolling list at the larger text sizes (null at Normal, which keeps two columns).</summary>
+        public static ScrollFollow List => instance != null ? instance.list : null;
+        ScrollFollow list;
+        bool rebuild;
 
         public static void Show()
         {
@@ -343,16 +347,38 @@ namespace AfterHours
             var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.93f));
             Ui.Stretch(dim.rectTransform);
             dim.raycastTarget = true;
-            // Two columns so everything fits from 4:3 up (the canvas is always 1080 units tall).
-            const float W = 1360, H = 1000, ColW = 600;
-            var panel = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
-            Ui.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
-            var title = Ui.Label(panel.rectTransform, "Settings", UiFont.SansBold, 44, Ui.Text, TextAlignmentOptions.TopLeft);
+            BuildPanel();
+        }
+
+        /// <summary>
+        /// Normal: two columns, so everything fits from 4:3 up (the canvas is always 1080 units tall).
+        /// Large and Largest: one column of rows at that size, which scrolls.
+        /// </summary>
+        void BuildPanel()
+        {
+            float k = Settings.TextScale;
+            bool large = k > 1f;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            const float ColW = 600;
+            float W = large ? Mathf.Min(canvasW - 80f, ColW * k + 160f) : 1360, H = 1000;
+            var p = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
+            panel = p.rectTransform;
+            Ui.Place(panel, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
+            var title = Ui.Label(panel, "Settings", UiFont.SansBold, 44, Ui.Text, TextAlignmentOptions.TopLeft);
             Ui.Place(title.rectTransform, new Vector2(0, 1), new Vector2(60, -36), new Vector2(700, 60), new Vector2(0, 1));
-            var left = Widgets.Column(panel.rectTransform, "Left", 6);
-            Ui.Place(left, new Vector2(0, 1), new Vector2(60, -100), new Vector2(ColW, 680), new Vector2(0, 1));
-            var right = Widgets.Column(panel.rectTransform, "Right", 6);
-            Ui.Place(right, new Vector2(0, 1), new Vector2(60 + ColW + 80, -100), new Vector2(ColW, 680), new Vector2(0, 1));
+            RectTransform left, right;
+            list = null;
+            if (large)
+            {
+                left = right = Widgets.ScrollList(panel, "List", new Vector2(60 - ScrollFollow.Inset, -110), new Vector2(W - 140f + 2 * ScrollFollow.Inset, H - 110f - 150f), k, 6, out list);
+            }
+            else
+            {
+                left = Widgets.Column(panel, "Left", 6);
+                Ui.Place(left, new Vector2(0, 1), new Vector2(60, -100), new Vector2(ColW, 680), new Vector2(0, 1));
+                right = Widgets.Column(panel, "Right", 6);
+                Ui.Place(right, new Vector2(0, 1), new Vector2(60 + ColW + 80, -100), new Vector2(ColW, 680), new Vector2(0, 1));
+            }
             var s = Settings.Current;
             string Times(float v) => v.ToString("0.0") + "×";
 
@@ -383,12 +409,32 @@ namespace AfterHours
             Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
-            Widgets.Choice(right, "Text size", Settings.TextSizes, Mathf.Clamp(s.TextSize, 0, 2), i => s.TextSize = i, ColW);
+            // The page is laid out again at the new size straight away (next frame: this runs inside the row's own input event).
+            Widgets.Choice(right, "Text size", Settings.TextSizes, Mathf.Clamp(s.TextSize, 0, 2), i => { s.TextSize = i; rebuild = true; }, ColW);
             Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
 
-            var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
+            var done = Widgets.Button(panel, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));
-            MenuFocus.AttachAll(panel.gameObject);
+            done.localScale = Vector3.one * k;
+            var focus = MenuFocus.AttachAll(panel.gameObject);
+            if (list != null)
+            {
+                list.Focus = focus;
+                focus.Chain = left.GetComponentsInChildren<Selectable>().ToList();
+                focus.After.Add(done.GetComponent<Selectable>());
+            }
+        }
+
+        /// <summary>Lay the page out again (text size changed), keeping the same row selected.</summary>
+        void Rebuild()
+        {
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            string selected = es != null && es.currentSelectedGameObject != null ? es.currentSelectedGameObject.name : null;
+            panel.gameObject.SetActive(false); // out of navigation now; destroyed at the end of the frame
+            Destroy(panel.gameObject);
+            BuildPanel();
+            var again = selected != null ? panel.GetComponentsInChildren<Selectable>().FirstOrDefault(x => x.name == selected) : null;
+            if (again != null) es.SetSelectedGameObject(again.gameObject);
         }
 
         void Close()
@@ -401,6 +447,7 @@ namespace AfterHours
 
         void Update()
         {
+            if (rebuild) { rebuild = false; Rebuild(); }
             if (GameInput.Menu.Back && !ControlsPanel.IsOpen && Time.frameCount != ControlsPanel.ClosedFrame
                 && !BrightnessPanel.IsOpen && Time.frameCount != BrightnessPanel.ClosedFrame) Close();
         }
