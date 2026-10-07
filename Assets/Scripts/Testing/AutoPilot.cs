@@ -347,6 +347,7 @@ namespace AfterHours
                     yield return RealInputNight1();
                     if (PadChecks) yield return ShiftHelperChecks();
                     if (PadChecks) yield return HighlightChecks();
+                    if (PadChecks) yield return CameraMotionChecks();
                     if (PadChecks) yield return RemapChecks();
                     if (PadChecks && vpad != null) yield return ToggleChecks();
                     if (PadChecks && vpad != null) yield return PadToolChecks();
@@ -2688,6 +2689,42 @@ namespace AfterHours
                 yield return Shot("n1_highlight_switch");
                 if (was && !closet.LightsOn) sw.Toggle();
             }
+        }
+
+        // ---- camera motion (night 1) --------------------------------------------------------------
+
+        /// <summary>
+        /// Camera motion off in Settings (round 9) stops the camera kick a throw or a bump gives
+        /// and the field-of-view punch of a reveal, as well as the head bob; on, both happen.
+        /// </summary>
+        IEnumerator CameraMotionChecks()
+        {
+            var p = root.Player;
+            var s = Settings.Current;
+            bool was = s.HeadBob;
+            IEnumerator Measure(Action<float, float> got)
+            {
+                float kick = 0f, fov = 0f;
+                p.Kick(1.8f); // a full-charge throw
+                p.FovPunch = -4f; // the whiteboard's reveal
+                for (float t = 0; t < 0.5f; t += Time.deltaTime)
+                {
+                    kick = Mathf.Max(kick, Mathf.Abs(p.KickPitch));
+                    fov = Mathf.Max(fov, s.Fov - p.Camera.fieldOfView);
+                    yield return null;
+                }
+                got(kick, fov);
+                yield return Wait(1.5f);
+            }
+            float k0 = 0, f0 = 0, k1 = 0, f1 = 0;
+            s.HeadBob = false;
+            yield return Wait(0.3f);
+            yield return Measure((k, f) => { k0 = k; f0 = f; });
+            Check(k0 < 0.01f && f0 < 0.05f, $"with Camera motion off, a throw's kick and a reveal's punch leave the camera still (kick {k0:F2}°, punch {f0:F2}°)");
+            s.HeadBob = true;
+            yield return Measure((k, f) => { k1 = k; f1 = f; });
+            Check(k1 > 0.5f && f1 > 1f, $"with it on, they move it (kick {k1:F2}°, punch {f1:F2}°)");
+            s.HeadBob = was;
         }
 
         // ---- never stuck on the last item (night 1) ---------------------------------------------

@@ -14,6 +14,7 @@ namespace AfterHours
         public bool InvertY;
         public bool Vibration = true;
         public float Fov = 72f;
+        /// <summary>Camera motion: head bob while walking, kicks (throws, bumps) and FOV punches (reveals). Off keeps the camera still.</summary>
         public bool HeadBob = true;
         public float MasterVolume = 0.9f;
         public float MusicVolume = 0.7f;

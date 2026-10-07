@@ -89,12 +89,18 @@ namespace AfterHours
             return fpc;
         }
 
-        /// <summary>Small camera kick (throws, impacts, discoveries).</summary>
+        /// <summary>
+        /// Small camera kick (throws, impacts, discoveries). With Camera motion off in Settings
+        /// (<see cref="Settings.HeadBob"/>) the camera stays still; the pad still rumbles.
+        /// </summary>
         public void Kick(float degrees)
         {
-            kickVel -= degrees * 18f;
+            if (Settings.Current.HeadBob) kickVel -= degrees * 18f;
             Rumble.Pulse(0.12f * degrees, 0.25f * degrees, 0.08f + 0.05f * degrees);
         }
+
+        /// <summary>How far a kick has tipped the camera right now, in degrees (for checks).</summary>
+        public float KickPitch => kickPitch;
 
         /// <summary>Raised with the jump distance whenever the player is moved instantly.</summary>
         public static event System.Action<float> Teleported;
@@ -183,7 +189,9 @@ namespace AfterHours
 
             Head.localPosition = new Vector3(0, eye, 0) + bob;
             ApplyRotation();
-            Camera.fieldOfView = Mathf.Lerp(Camera.fieldOfView, Settings.Current.Fov + FovPunch, 1f - Mathf.Exp(-dt * 10f));
+            // A punch (a surface coming clean, a reveal) is camera motion too.
+            float punch = Settings.Current.HeadBob ? FovPunch : 0f;
+            Camera.fieldOfView = Mathf.Lerp(Camera.fieldOfView, Settings.Current.Fov + punch, 1f - Mathf.Exp(-dt * 10f));
             if (HandsCamera) HandsCamera.fieldOfView = Camera.fieldOfView;
             FovPunch = Mathf.Lerp(FovPunch, 0f, 1f - Mathf.Exp(-dt * 3f));
         }

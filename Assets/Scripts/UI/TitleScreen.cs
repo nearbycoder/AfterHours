@@ -404,7 +404,7 @@ namespace AfterHours
             Widgets.Toggle(left, "Invert look Y", s.InvertY, v => s.InvertY = v, ColW);
             Widgets.Toggle(left, "Controller vibration", s.Vibration, v => { s.Vibration = v; if (!v) Rumble.Stop(); else Rumble.Pulse(0.2f, 0.4f, 0.15f); }, ColW);
             Widgets.Slider(left, "Field of view", Mathf.InverseLerp(60f, 95f, s.Fov), v => s.Fov = Mathf.Round(Mathf.Lerp(60f, 95f, v)), v => Mathf.Round(Mathf.Lerp(60f, 95f, v)) + "°", ColW, 250);
-            Widgets.Toggle(left, "Head bob", s.HeadBob, v => s.HeadBob = v, ColW);
+            Widgets.Toggle(left, "Camera motion", s.HeadBob, v => s.HeadBob = v, ColW); // head bob, kicks and punches
             Widgets.Heading(left, "Sound", ColW);
             Widgets.Slider(left, "Master volume", s.MasterVolume, v => s.MasterVolume = v, null, ColW, 250);
             Widgets.Slider(left, "Music", s.MusicVolume, v => s.MusicVolume = v, null, ColW, 250);
