@@ -591,6 +591,80 @@ Known limits:
 Deferred: saving mid-night, larger text everywhere, hints for missed secrets (see below), and
 still WebGL, Windows and the art.
 
+## Round 5 scope (6 October 2026)
+
+Round 4 is merged. Its own notes leave one player-facing gap open that can be checked here:
+**Text size** (Normal, Large, Largest) only reaches the HUD. The things a mystery game asks
+you to *read*, such as the documents, the shift sheet and its notes, the choices at trays and
+shredders, the morning chat and the shift report, stay at their Normal sizes. The smallest of
+them are small: on the clipboard, the "which rooms" lines under a task are about 17 units of a
+1080-unit screen (11 px at 720p), and Night 2's long sheet already shrinks itself to fit.
+Round 4 deferred this as "a layout pass over every screen". This round does that pass for the
+reading screens. The menus (title, pause, settings) keep their sizes: their smallest text is
+about 22 units and the settings page has no room to grow. It also adds one small thing for new
+players: the pause menu's empty right half shows the controls.
+
+**Baseline (branch `improvements-5`, from `main` at 4ea75b5).** The Linux build succeeds with 0
+errors, and an `audit` AutoPilot run is under Round 5 results below.
+
+Not chosen: saving mid-night (every night's scripted events keep their state in local
+variables, so restoring a night half-way means rewriting all seven nights' scripts; a night is
+five to eight minutes), hints for missed secrets (the owner's call), and everything left with
+the owner. The morning chat's pace was looked at. Messages arrive every 0.7–2.2 s, faster than
+most people read, but they stay on screen and the next night waits for a press. They only
+scroll away when a morning has more messages than fit, which is rare at Normal and common at
+Largest. So scrolling back goes into R5-1 rather than being an item of its own.
+
+### R5-1. Text size for documents, choices, the morning chat and the report
+
+- **Documents** (the inspect view): at Large and Largest the paper grows, within the space
+  between the header and the key hints and the screen's width, and its text grows up to 1.25× or
+  1.5×. It never gets smaller than at Normal, and it never runs past the paper. Monitor
+  screenshots (documents that are images) grow to fit as well.
+- **Choices** (inbox trays, shredders, clocking out early, Restart and Quit): the panel scales
+  with the setting and stays on screen.
+- **Morning chat**: names, messages, the "is typing" line and the hint scale. The chat can be
+  scrolled back at any time with W/S, the arrows, the mouse wheel, the d-pad or the left stick,
+  and new messages wait while you're scrolled up.
+- **Shift report**: the small grey lines (the night line, the grade breakdown, the locker) and
+  the hint under it grow with the setting, within the paper.
+
+**Acceptance:** at Largest, every document in the game (all of them, opened one by one) has
+its text inside its paper and its paper inside the screen, at 1600×900, 1280×720 and 1024×768.
+The text is at least its Normal size, and short documents reach 1.5×. The choice panel is 1.5×
+and on screen. The chat's messages are 1.5×, and scrolling back brings the first message into
+view. Normal is unchanged (same sizes as before). **Verify:** AutoPilot checks at those three
+window sizes (Night 1 and Night 2 runs); screenshots of a document, a choice and the chat at
+Largest; all five routes.
+
+### R5-2. The clipboard at larger text sizes
+
+Today the clipboard is a sheet with a side note. At Large and Largest there isn't room for both
+at the bigger size, so it becomes one wider sheet with three pages: **Shift sheet**, **Notes**
+(secrets, leads and your pocket, now on the side note) and **Case file**. A/D, the arrows or
+the d-pad turn the pages, as they do now between two. The text is 1.25× or 1.5× Normal's. A page
+that doesn't fit continues below: W/S, the wheel or the d-pad scroll it, with a "more" marker
+and the footer showing the keys. Normal keeps today's layout exactly.
+
+**Acceptance:** at Largest on Night 2 (the longest sheet), at 1280×720 and 1024×768: the text
+is 1.5× Normal's, no text runs off the paper and the paper is on screen; every task can be
+reached by scrolling; the three pages turn with the keys and the pad; the case file still
+reads a document; at Normal, the clipboard is laid out as before. **Verify:** AutoPilot checks
+on Night 2 with real key and pad presses; screenshots; all five routes.
+
+### R5-3. Controls at a glance in the pause menu
+
+A first-time player who forgets how to spray, crouch or switch on the torch has to find the
+rebinding page in Settings, or the README. The pause menu's empty right half gets a card listing
+what each control does, with your current keys, or your pad's buttons (PlayStation symbols on a
+DualShock or DualSense) when the pad was used last. The torch appears from Night 2, when you
+have it.
+
+**Acceptance:** the card's keys match the current bindings, and change after a rebind; with a
+pad it shows pad buttons; on Night 1 there's no torch line; it doesn't overlap the menu at
+1280×720 or 1024×768. **Verify:** AutoPilot checks (rebinding Interact to F shows F on the
+card; a virtual pad shows A; a virtual DualShock shows ✕); screenshots.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
