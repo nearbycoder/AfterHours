@@ -724,6 +724,86 @@ so it would mean rewriting all seven nights' scripts), hints for missed secrets 
 call), the chat being readable again later (the case file covers documents only), and still
 WebGL, Windows and the art.
 
+## Round 6 scope (7 October 2026)
+
+Round 5 is merged. It left one gap in Text size open: the title, pause and settings menus
+(and Night Select, the brightness page and the ending) keep their Normal sizes, so a player who
+needs Largest to read can't read the menu where they set it. Its smallest text is 18–22 units of
+a 1080-unit screen: the settings headings, the title footer, Night Select's grade line. The
+setting is also still labelled "HUD text size", though since round 5 it covers much more. The
+morning chat, where the office reacts to what you did, can't be read again once you clock in for
+the next night; the case file only holds documents. And one trap a real player can walk into:
+in the middle of the story, picking an earlier night in Night Select silently rolls the save back
+to it, so Continue no longer offers the night you were on.
+
+**Baseline (branch `improvements-6`, from `main` at c13f3f5).** The Linux build succeeds with 0
+errors; an `audit` AutoPilot run is under Round 6 results below.
+
+Not chosen: saving mid-night (each night's scripted events keep their state in local
+variables; rewriting all seven nights' scripts is a round of its own), hints for missed secrets
+(the owner's call), and everything left with the owner.
+
+### R6-1. The title, pause menu, Night Select, brightness page and ending follow Text size
+
+- **Title**: the menu buttons and the footer scale with the setting (the logo and tagline are
+  already 120 and 40 units and stay).
+- **Pause menu**: the buttons and the subtitle scale; the controls card grows as far as the
+  space beside the menu allows, never below Normal. On narrow screens the margins close up first.
+- **Night Select**: the day, title and grade line on each card, the subtitle, the endings list
+  and Back scale, within the card (the number photo gives up the room).
+- **Brightness page** and **the ending** (epilogue lines, stats, the hint) scale, within the
+  screen. So does the shred puzzle's key hint.
+- The setting is renamed **Text size**. Title and pause menus follow a change as soon as
+  Settings closes.
+
+**Acceptance:** at Large and Largest, at 1600×900, 1280×720 and 1024×768: the title's buttons are
+1.25× and 1.5× and on screen, clear of the tagline and footer; the pause menu's buttons are
+1.5× at Largest, the card at least 1× and clear of the menu, with its text inside; on every
+Night Select card the text stays on the card and the grade line is larger than at Normal;
+the brightness panel is on screen; Normal is unchanged. **Verify:** AutoPilot checks on Night 1
+at those three sizes, the `menus` capture at five sizes, screenshots.
+
+### R6-2. Settings and the controls pages at larger text sizes
+
+At Large and Largest the two-column Settings page (and the two-column controls pages) can't grow
+in place: the panel already takes 1000 of the 1080 units. They become one column at 1.25× or
+1.5× that scrolls: the selected row is always brought into view, the mouse wheel scrolls, and a
+thin bar shows where you are. The Done (and Reset, and the tabs) stay put outside the list.
+Changing Text size rebuilds the page straight away at the new size, with the Text size row
+still selected. Normal keeps today's two columns exactly.
+
+**Acceptance:** at Largest, at 1600×900, 1280×720 and 1024×768: rows are 1.5× Normal; the
+d-pad walks every row from the first to the last and each selected row is fully inside the
+visible part of the list; the wheel scrolls; no row overlaps another, the list doesn't overlap
+the buttons, and nothing leaves the screen; switching Text size with the pad rebuilds the page
+and keeps that row selected; at Normal the layout check is as before. **Verify:** AutoPilot
+checks with a virtual pad and keyboard; the `menus` capture at each text size and five window
+sizes; screenshots.
+
+### R6-3. Read the morning chats again
+
+Each morning's chat is remembered (which messages showed, in the save) and appears in the case
+file under its night as "Tuesday morning · #general". Reading it opens the chat with every
+message there, at the top; W/S, the arrows, the d-pad or the wheel scroll, and E, Esc or Tab
+close it back to the case file. Saves from before this round get their chats from the
+night snapshots (the state the chat was chosen from); a night with neither shows none.
+
+**Acceptance:** on Night 2 the case file lists Tuesday morning's chat under Night 1; reading it
+shows exactly the messages shown that morning, from the first, and scrolls; closing it leaves
+the clipboard open on the case file and changes nothing in the story; it works with pad and
+keys; an old save gets its chats from its snapshots. **Verify:** EditMode tests (recording,
+the list for an old save); AutoPilot checks on Night 2 (every route); screenshots.
+
+### R6-4. Don't lose your place by replaying an earlier night
+
+With a story in progress, picking an earlier night in Night Select asks first: "Replay Night 2?
+Continue will pick up from Night 2 afterwards. Night 4 stays in Night Select." Never mind leaves
+everything as it was. After the ending, or on the night you're on, it doesn't ask (nothing is lost).
+
+**Acceptance:** mid-story (on Night 3), picking Night 1 asks; pad B backs out with the save and
+Continue still on Night 3; confirming starts Night 1; after the ending the replay doesn't ask.
+**Verify:** AutoPilot checks on the title mid-run and in the existing after-ending replay.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
