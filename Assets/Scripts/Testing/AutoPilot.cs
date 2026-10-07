@@ -222,6 +222,7 @@ namespace AfterHours
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
                 if (n == 2) yield return CaseFileChecks();
+                if (n == 2) yield return ClipboardLargeChecks();
                 if (n == 2) yield return AutoPauseChecks();
             }
             float start = Time.realtimeSinceStartup;
@@ -1262,6 +1263,157 @@ namespace AfterHours
                 yield return Wait(0.4f);
             }
             s.TextSize = 0;
+            yield return WaitUnblocked(3f);
+        }
+
+        /// <summary>Where one part (page) of a paged text draws on screen: its visible characters' bounds.</summary>
+        static Rect PartRect(TMPro.TextMeshProUGUI t, int page)
+        {
+            var info = t.textInfo;
+            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+            for (int i = 0; i < info.characterCount; i++)
+            {
+                var c = info.characterInfo[i];
+                if (!c.isVisible || c.pageNumber != page) continue;
+                foreach (var v in new[] { c.bottomLeft, c.topRight })
+                {
+                    var w = t.rectTransform.TransformPoint(v);
+                    x0 = Mathf.Min(x0, w.x); y0 = Mathf.Min(y0, w.y); x1 = Mathf.Max(x1, w.x); y1 = Mathf.Max(y1, w.y);
+                }
+            }
+            return x0 > x1 ? Rect.zero : Rect.MinMaxRect(x0, y0, x1, y1);
+        }
+
+        /// <summary>
+        /// The clipboard at Large and Largest (night 2, the longest sheet): one wide sheet with three
+        /// pages, text at the setting's scale, long pages in parts that stay on the paper; Normal
+        /// laid out as before.
+        /// </summary>
+        IEnumerator ClipboardLargeChecks()
+        {
+            var cb = Clipboard.Instance;
+            var s = Settings.Current;
+            var pad = InputSystem.AddDevice<Gamepad>("AutoPilotClipPad");
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotClipKeyboard");
+            IEnumerator PadPress(GamepadButton b)
+            {
+                InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(b));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(pad, new GamepadState());
+                yield return Wait(0.35f);
+            }
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.35f);
+            }
+            var clip = Ui.Canvas.transform.Find("Clipboard");
+            var board = (RectTransform)clip.Find("Board");
+            var paperRt = (RectTransform)clip.Find("Board/Paper");
+            var note = clip.Find("Side");
+            TMPro.TextMeshProUGUI Label(string name) => clip.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).First(t => t.name == name);
+            float W = Screen.width, H = Screen.height;
+
+            vkb.MakeCurrent();
+            s.TextSize = 0;
+            cb.Show();
+            yield return Wait(0.6f);
+            Check(!cb.Large && board.sizeDelta == new Vector2(760, 920) && Mathf.Abs(board.anchoredPosition.x + 170f) < 0.5f && note.gameObject.activeSelf
+                  && Label("Sheet").enableAutoSizing && Mathf.Approximately(Label("Notes").fontSize, 22f),
+                "at Normal the clipboard is laid out as before: the sheet, and the side note beside it");
+            cb.Close();
+            yield return Wait(0.4f);
+
+            for (int size = 1; size <= 2; size++)
+            {
+                s.TextSize = size;
+                float k = Settings.TextScale;
+                cb.Show(); // as Tab does (play keys come from the AutoPilot's own input; menu keys below are real)
+                yield return Wait(0.7f);
+                var sheet = Label("Sheet");
+                var paper = ScreenRect(paperRt);
+                Check(cb.Open && cb.Large && cb.Page == Clipboard.SheetPage && !note.gameObject.activeSelf && Inside(ScreenRect(board), ScreenArea, 30f) && Inside(paper, ScreenArea),
+                    $"{Settings.TextSizes[size]} at {W}x{H}: the clipboard opens as one wide sheet ({paper.width:F0}x{paper.height:F0} px), the side note folded into it");
+                Check(Mathf.Abs(sheet.fontSize - 33f * k) < 0.5f && Mathf.Abs(Label("Header").fontSize - 34f * k) < 0.5f && Mathf.Abs(Label("PageHint").fontSize - 20f * k) < 0.5f,
+                    $"{Settings.TextSizes[size]}: the sheet's text is {k}x Normal's (tasks {sheet.fontSize:F1}, header {Label("Header").fontSize:F1}, footer {Label("PageHint").fontSize:F1})");
+                // Every part of the sheet stays on the paper, and the parts hold every task.
+                int parts = cb.Parts, onPaper = 0;
+                var tasksSeen = new System.Collections.Generic.HashSet<string>();
+                var def = root.Director.Def;
+                for (int part = 0; part < parts; part++)
+                {
+                    if (part > 0) yield return Key(UnityEngine.InputSystem.Key.S);
+                    sheet.ForceMeshUpdate();
+                    var r = PartRect(sheet, part);
+                    if (cb.Part == part && r.width > 0 && Inside(r, paper)) onPaper++;
+                    var info = sheet.textInfo;
+                    var visible = new System.Text.StringBuilder();
+                    for (int i = 0; i < info.characterCount; i++) if (info.characterInfo[i].pageNumber == part) visible.Append(info.characterInfo[i].character);
+                    foreach (var t in def.Tasks) if (visible.ToString().Contains(t.Label)) tasksSeen.Add(t.Id);
+                    if (size == 2 && part == 0) yield return Shot("n2_clipboard_largest_sheet");
+                    if (size == 2 && part == 1) yield return Shot("n2_clipboard_largest_sheet_part2");
+                }
+                Check(onPaper == parts && tasksSeen.Count == def.Tasks.Count,
+                    $"{Settings.TextSizes[size]}: the sheet is in {parts} part(s) reached with S, each on the paper, holding all {tasksSeen.Count}/{def.Tasks.Count} tasks");
+                if (parts > 1)
+                {
+                    yield return Key(UnityEngine.InputSystem.Key.S);
+                    Check(cb.Part == 0, "S on the last part goes back to the top");
+                    yield return Key(UnityEngine.InputSystem.Key.S);
+                    yield return Key(UnityEngine.InputSystem.Key.W);
+                    Check(cb.Part == 0, "W goes back a part");
+                }
+                // Pages: D to the notes, D to the case file, A back; then the pad.
+                yield return Key(UnityEngine.InputSystem.Key.D);
+                var notes = Label("Notes");
+                notes.ForceMeshUpdate();
+                bool notesOk = cb.Page == Clipboard.NotesPage && notes.enabled && notes.text.Contains("SECRETS") && Mathf.Abs(notes.fontSize - 22f * k) < 0.5f
+                               && Enumerable.Range(0, cb.Parts).All(p => { var r = PartRect(notes, p); return r.width > 0 && Inside(r, paper); });
+                Check(notesOk, $"{Settings.TextSizes[size]}: D turns to the notes (secrets, leads, pocket) at {notes.fontSize:F1}, on the paper in {cb.Parts} part(s)");
+                if (size == 2) yield return Shot("n2_clipboard_largest_notes");
+                yield return Key(UnityEngine.InputSystem.Key.D);
+                var files = Label("CaseFile");
+                files.ForceMeshUpdate();
+                Check(cb.Page == Clipboard.CasePage && files.enabled && !files.isTextOverflowing && Inside(TextRect(files), paper) && cb.CaseEntries.Count > 0,
+                    $"{Settings.TextSizes[size]}: D again turns to the case file, which fits the paper ({cb.CaseEntries.Count} documents)");
+                if (size == 2)
+                {
+                    yield return Shot("n2_clipboard_largest_case_file");
+                    yield return Key(UnityEngine.InputSystem.Key.E);
+                    yield return Wait(0.4f);
+                    Check(InspectView.IsOpen && InspectView.CurrentDoc == cb.CaseEntries[0], $"E reads the first case-file entry again ({InspectView.CurrentDoc})");
+                    yield return Key(UnityEngine.InputSystem.Key.Escape);
+                    Check(!InspectView.IsOpen && cb.Open, "Esc closes it and leaves the clipboard open");
+                }
+                yield return Key(UnityEngine.InputSystem.Key.A);
+                yield return Key(UnityEngine.InputSystem.Key.A);
+                yield return Key(UnityEngine.InputSystem.Key.A);
+                Check(cb.Page == Clipboard.SheetPage, "A turns back through the notes to the shift sheet and stops there");
+                pad.MakeCurrent();
+                yield return PadPress(GamepadButton.DpadRight);
+                bool padNotes = cb.Page == Clipboard.NotesPage;
+                yield return PadPress(GamepadButton.DpadLeft);
+                Check(padNotes && cb.Page == Clipboard.SheetPage, "the d-pad turns the pages too");
+                if (cb.Parts > 1)
+                {
+                    yield return PadPress(GamepadButton.DpadDown);
+                    Check(cb.Part == 1, "d-pad down shows the next part");
+                }
+                vkb.MakeCurrent();
+                GameInput.UsingPad = false;
+                yield return Key(UnityEngine.InputSystem.Key.Escape);
+                Check(!cb.Open && !PauseMenu.IsOpen, "Esc closes the clipboard");
+            }
+            s.TextSize = 0;
+            cb.Show();
+            yield return Wait(0.6f);
+            Check(!cb.Large && note.gameObject.activeSelf && board.sizeDelta == new Vector2(760, 920), "back at Normal, the side note returns");
+            cb.Close();
+            InputSystem.RemoveDevice(vkb);
+            InputSystem.RemoveDevice(pad);
+            GameInput.UsingPad = false;
             yield return WaitUnblocked(3f);
         }
 

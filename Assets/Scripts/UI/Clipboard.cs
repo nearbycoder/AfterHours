@@ -10,23 +10,34 @@ namespace AfterHours
     /// <summary>
     /// Tab: the shift sheet on a clipboard (tasks with progress, secrets, leads, your pocket), and
     /// a second page, the case file: every document read so far, to read again.
+    /// At the larger text sizes it's one wide sheet with three pages: the shift sheet, the notes
+    /// (what the side note shows at Normal) and the case file; long pages scroll.
     /// </summary>
     public class Clipboard : MonoBehaviour
     {
         public static Clipboard Instance { get; private set; }
-        RectTransform root, board;
+        RectTransform root, board, paper, note;
         CanvasGroup group;
         TextMeshProUGUI tasks, side, header, files, footer;
         public bool Open { get; private set; }
         float refresh;
 
-        public const int SheetPage = 0, CasePage = 1;
-        /// <summary>Which page is showing: the shift sheet or the case file.</summary>
+        public const int SheetPage = 0, CasePage = 1, NotesPage = 2;
+        /// <summary>Which page is showing: the shift sheet, the notes (larger text sizes only) or the case file.</summary>
         public int Page { get; private set; }
         /// <summary>The case file's entries (newest night first) and the one selected.</summary>
         public readonly List<string> CaseEntries = new();
         public int Selected { get; private set; }
-        const int VisibleLines = 14;
+        int VisibleLines = 14;
+
+        /// <summary>The wide three-page layout for Large and Largest text (laid out on Show).</summary>
+        public bool Large { get; private set; }
+        float boardX = -170f;
+        /// <summary>The part of a long page that's showing (0 is the top), and how many parts it has.</summary>
+        public int Part { get; private set; }
+        public int Parts { get; private set; } = 1;
+        /// <summary>Pages in reading order, left to right.</summary>
+        int[] Order => Large ? new[] { SheetPage, NotesPage, CasePage } : new[] { SheetPage, CasePage };
 
         public static Clipboard Create()
         {
@@ -47,32 +58,71 @@ namespace AfterHours
             Ui.Stretch(dim.rectTransform);
             var b = Ui.Panel(root, "Board", Palette.Hex("8A5A34"), 22);
             board = b.rectTransform;
-            Ui.Place(board, new Vector2(0.5f, 0.5f), new Vector2(-170, -10), new Vector2(760, 920));
             var clip = Ui.Panel(board, "Clip", Palette.Hex("B9C0C7"), 10);
             Ui.Place(clip.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 26), new Vector2(240, 66), new Vector2(0.5f, 1));
-            var paper = Ui.Panel(board, "Paper", Ui.Paper, 6);
-            Ui.Place(paper.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -24), new Vector2(690, 830));
-            header = Ui.Label(paper.rectTransform, "", UiFont.Type, 34, Ui.Ink, TextAlignmentOptions.TopLeft);
-            Ui.Place(header.rectTransform, new Vector2(0, 1), new Vector2(40, -34), new Vector2(620, 90), new Vector2(0, 1));
-            tasks = Ui.Label(paper.rectTransform, "", UiFont.Hand, 33, Ui.Ink, TextAlignmentOptions.TopLeft);
-            Ui.Place(tasks.rectTransform, new Vector2(0, 1), new Vector2(40, -130), new Vector2(620, 630), new Vector2(0, 1));
+            paper = Ui.Panel(board, "Paper", Ui.Paper, 6).rectTransform;
+            header = Ui.Label(paper, "", UiFont.Type, 34, Ui.Ink, TextAlignmentOptions.TopLeft, "Header");
+            tasks = Ui.Label(paper, "", UiFont.Hand, 33, Ui.Ink, TextAlignmentOptions.TopLeft, "Sheet");
             tasks.lineSpacing = 4;
-            // Long sheets (with where-is-it lines) shrink to fit the paper rather than run off it.
-            tasks.enableAutoSizing = true;
-            tasks.fontSizeMin = 24;
-            tasks.fontSizeMax = 33;
-            files = Ui.Label(paper.rectTransform, "", UiFont.Hand, 31, Ui.Ink, TextAlignmentOptions.TopLeft, "CaseFile");
-            Ui.Place(files.rectTransform, new Vector2(0, 1), new Vector2(40, -130), new Vector2(620, 620), new Vector2(0, 1));
+            files = Ui.Label(paper, "", UiFont.Hand, 31, Ui.Ink, TextAlignmentOptions.TopLeft, "CaseFile");
             files.lineSpacing = 2;
             files.richText = true;
-            footer = Ui.Label(paper.rectTransform, "", UiFont.SansMedium, 20, new Color(0.35f, 0.32f, 0.27f), TextAlignmentOptions.BottomLeft, "PageHint");
-            Ui.Place(footer.rectTransform, new Vector2(0, 0), new Vector2(40, 16), new Vector2(620, 36), new Vector2(0, 0));
+            footer = Ui.Label(paper, "", UiFont.SansMedium, 20, new Color(0.35f, 0.32f, 0.27f), TextAlignmentOptions.BottomLeft, "PageHint");
 
-            var note = Ui.Panel(root, "Side", Palette.Hex("F7F2E2"), 8);
-            Ui.Place(note.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(420, 40), new Vector2(460, 760));
-            note.rectTransform.localRotation = Quaternion.Euler(0, 0, -2f);
-            side = Ui.Label(note.rectTransform, "", UiFont.Sans, 22, Ui.Ink, TextAlignmentOptions.TopLeft);
-            Ui.Stretch(side.rectTransform, 30);
+            note = Ui.Panel(root, "Side", Palette.Hex("F7F2E2"), 8).rectTransform;
+            Ui.Place(note, new Vector2(0.5f, 0.5f), new Vector2(420, 40), new Vector2(460, 760));
+            note.localRotation = Quaternion.Euler(0, 0, -2f);
+            side = Ui.Label(note, "", UiFont.Sans, 22, Ui.Ink, TextAlignmentOptions.TopLeft, "Notes");
+            Layout(false);
+        }
+
+        /// <summary>
+        /// Normal: the sheet on the clipboard with the side note beside it. Large and Largest: one
+        /// wide sheet, the side note's contents moved onto it as a page, every text scaled, and
+        /// long pages split into parts rather than shrunk.
+        /// </summary>
+        void Layout(bool large)
+        {
+            Large = large;
+            float k = large ? Settings.TextScale : 1f;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            float boardW = large ? Mathf.Min(1180f, canvasW - 80f) : 760f, boardH = large ? 1000f : 920f;
+            boardX = large ? 0f : -170f;
+            Ui.Place(board, new Vector2(0.5f, 0.5f), new Vector2(boardX, -10), new Vector2(boardW, boardH));
+            float pw = boardW - 70f, ph = boardH - 90f;
+            Ui.Place(paper, new Vector2(0.5f, 0.5f), new Vector2(0, -24), new Vector2(pw, ph));
+            float headH = 90f * k, top = 34f + headH + 6f, foot = 36f * k, bottom = 16f + foot + 12f;
+            header.fontSize = 34f * k;
+            Ui.Place(header.rectTransform, new Vector2(0, 1), new Vector2(40, -34), new Vector2(pw - 70f, headH), new Vector2(0, 1));
+            Ui.Place(tasks.rectTransform, new Vector2(0, 1), new Vector2(40, -top), new Vector2(pw - 70f, large ? ph - top - bottom : 630f), new Vector2(0, 1));
+            Ui.Place(files.rectTransform, new Vector2(0, 1), new Vector2(40, -top), new Vector2(pw - 70f, large ? ph - top - bottom : 620f), new Vector2(0, 1));
+            Ui.Place(footer.rectTransform, new Vector2(0, 0), new Vector2(40, 16), new Vector2(pw - 70f, foot), new Vector2(0, 0));
+            footer.fontSize = 20f * k;
+            files.fontSize = 31f * k;
+            // Normal: long sheets (with where-is-it lines) shrink to fit the paper rather than run off
+            // it. Larger sizes keep the size and turn the overflow into parts, as pages of a book.
+            tasks.enableAutoSizing = !large;
+            tasks.fontSize = 33f * k;
+            tasks.fontSizeMin = 24;
+            tasks.fontSizeMax = 33;
+            tasks.overflowMode = large ? TextOverflowModes.Page : TextOverflowModes.Overflow;
+            // The case file shows a window of lines around the selection (14 at Normal).
+            VisibleLines = large ? Mathf.Max(5, Mathf.FloorToInt(files.rectTransform.sizeDelta.y / (44f * k))) : 14;
+            // The notes: on the side note at Normal, a page of the sheet at larger sizes.
+            note.gameObject.SetActive(!large);
+            if (large)
+            {
+                side.rectTransform.SetParent(paper, false);
+                Ui.Place(side.rectTransform, new Vector2(0, 1), new Vector2(40, -top), new Vector2(pw - 70f, ph - top - bottom), new Vector2(0, 1));
+            }
+            else
+            {
+                side.rectTransform.SetParent(note, false);
+                Ui.Stretch(side.rectTransform, 30);
+                side.rectTransform.pivot = new Vector2(0.5f, 0.5f);
+            }
+            side.fontSize = 22f * k;
+            side.overflowMode = large ? TextOverflowModes.Page : TextOverflowModes.Overflow;
         }
 
         public void Toggle()
@@ -86,7 +136,10 @@ namespace AfterHours
         {
             if (NightDirector.Instance == null || NightDirector.Instance.Def == null) return;
             Open = true;
+            bool large = Settings.TextScale > 1f;
+            if (large || large != Large) Layout(large); // larger sizes follow the window's width too
             Page = page;
+            Part = 0;
             Hud.Instance?.ClearCaption(); // e.g. Night 1's "shift sheet is on the clipboard", which would show at the edges
             Selected = 0;
             Refresh();
@@ -97,7 +150,7 @@ namespace AfterHours
             Tween.Run(0.3f, k =>
             {
                 group.alpha = k;
-                board.anchoredPosition = new Vector2(-170, Mathf.LerpUnclamped(-500, -10, k));
+                board.anchoredPosition = new Vector2(boardX, Mathf.LerpUnclamped(-500, -10, k));
             }, Ease.OutBack, owner: this);
         }
 
@@ -111,7 +164,7 @@ namespace AfterHours
             Tween.Run(0.2f, k =>
             {
                 group.alpha = 1 - k;
-                board.anchoredPosition = new Vector2(-170, Mathf.Lerp(-10, -500, k));
+                board.anchoredPosition = new Vector2(boardX, Mathf.Lerp(-10, -500, k));
             }, Ease.InCubic, owner: this);
         }
 
@@ -120,16 +173,37 @@ namespace AfterHours
             var dir = NightDirector.Instance;
             var def = dir.Def;
             RefreshSide(dir, def);
-            bool sheet = Page == SheetPage;
+            bool sheet = Page == SheetPage, notes = Page == NotesPage;
             tasks.enabled = sheet;
-            files.enabled = !sheet;
+            files.enabled = Page == CasePage;
+            side.enabled = !Large || notes;
+            if (!sheet && !notes) RefreshCaseFile();
+            else if (notes) header.text = $"NOTES  ·  NIGHT {def.Number}\n<size=60%>Secrets, leads and your pocket</size>";
+            else
+            {
+                header.text = $"SHIFT SHEET  ·  NIGHT {def.Number}\n<size=60%>{def.Day} — {def.Title}</size>";
+                tasks.text = SheetText(dir, def);
+            }
+            // A long page at the larger sizes shows one part at a time.
+            var paged = sheet ? tasks : notes ? side : null;
+            Parts = 1;
+            if (Large && paged != null)
+            {
+                paged.ForceMeshUpdate();
+                Parts = Mathf.Max(1, paged.textInfo.pageCount);
+                Part = Mathf.Clamp(Part, 0, Parts - 1);
+                paged.pageToDisplay = Part + 1;
+            }
             // Key caps drawn darker than the HUD's, to show on paper.
             static string Cap(string key) => $"<mark=#1B223026 padding=\"10,10,4,4\"><b>{GameInput.Glyph(key)}</b></mark>";
-            string Tab(string name, bool on) => on ? $"<color=#1B2230>{name}</color>" : name;
-            footer.text = $"{Cap("A / D")}  {Tab("Shift sheet", sheet)}  ·  {Tab("Case file", !sheet)}"
-                          + (sheet ? "" : $"          {Cap("E")}  Read again");
-            if (!sheet) { RefreshCaseFile(); return; }
-            header.text = $"SHIFT SHEET  ·  NIGHT {def.Number}\n<size=60%>{def.Day} — {def.Title}</size>";
+            string Tab(string name, int page) => Page == page ? $"<color=#1B2230>{name}</color>" : name;
+            footer.text = $"{Cap("A / D")}  {Tab("Shift sheet", SheetPage)}  ·  {(Large ? Tab("Notes", NotesPage) + "  ·  " : "")}{Tab("Case file", CasePage)}"
+                          + (Page == CasePage ? $"          {Cap("E")}  Read again" : "")
+                          + (Parts > 1 ? $"          {Cap("W / S")}  {(Part < Parts - 1 ? "More" : "Back to the top")}  <color=#8A7A5A>{Part + 1}/{Parts}</color>" : "");
+        }
+
+        string SheetText(NightDirector dir, NightDef def)
+        {
             var sb = new StringBuilder();
             string lastRoom = null;
             foreach (var t in def.Tasks.OrderBy(t => t.Optional))
@@ -142,7 +216,7 @@ namespace AfterHours
                 string count = n > 1 && !done ? $" <size=75%><color=#8A7A5A>{d}/{n}</color></size>" : "";
                 sb.Append($"{box} {label}{count}{Where(dir, t, done)}\n");
             }
-            tasks.text = sb.ToString();
+            return sb.ToString();
         }
 
         void RefreshSide(NightDirector dir, NightDef def)
@@ -220,7 +294,27 @@ namespace AfterHours
         {
             if (page == Page) return;
             Page = page;
+            Part = 0;
             Sfx.Play("ui_page", null, 0.4f, 1.1f, 0.1f, AudioBus.Ui);
+            Refresh();
+        }
+
+        /// <summary>Turn to the next page (1) or the previous one (-1), stopping at either end.</summary>
+        public void Turn(int by)
+        {
+            var order = Order;
+            int i = System.Array.IndexOf(order, Page);
+            FlipTo(order[Mathf.Clamp((i < 0 ? 0 : i) + by, 0, order.Length - 1)]);
+        }
+
+        /// <summary>The next part of a long page (from the last, back to the top), or the previous one.</summary>
+        public void ScrollPart(int by)
+        {
+            if (Parts <= 1) return;
+            int next = by > 0 ? (Part + 1) % Parts : Mathf.Max(0, Part - 1);
+            if (next == Part) return;
+            Part = next;
+            Sfx.Play("ui_page", null, 0.3f, 1.25f, 0.1f, AudioBus.Ui);
             Refresh();
         }
 
@@ -268,10 +362,15 @@ namespace AfterHours
             if (InspectView.IsOpen || Time.frameCount == InspectView.ClosedFrame) return;
             var m = GameInput.Menu;
             if (m.Clipboard || m.Back) { Close(); return; }
-            if (m.Left) FlipTo(SheetPage);
-            else if (m.Right) FlipTo(CasePage);
-            if (Page != CasePage) return;
+            if (m.Left) Turn(-1);
+            else if (m.Right) Turn(1);
             float wheel = Mouse.current != null ? Mouse.current.scroll.ReadValue().y : 0f;
+            if (Page != CasePage)
+            {
+                if (m.Up || wheel > 0.1f) ScrollPart(-1);
+                else if (m.Down || wheel < -0.1f) ScrollPart(1);
+                return;
+            }
             if (m.Up || wheel > 0.1f) Move(-1);
             else if (m.Down || wheel < -0.1f) Move(1);
             else if (m.Confirm) ReadSelected();

@@ -209,6 +209,7 @@ namespace AfterHours
                 var act = ActFor(key);
                 if (act.HasValue) return Controls.Display(act.Value);
                 if (key.ToUpperInvariant() == "A / D") return $"{Controls.Display(Act.Left)} / {Controls.Display(Act.Right)}";
+                if (key.ToUpperInvariant() == "W / S") return $"{Controls.Display(Act.Forward)} / {Controls.Display(Act.Back)}";
                 return key;
             }
             // In play, actions follow the pad bindings; TAB and X name the reader's fixed Keep and Throw away.
@@ -228,6 +229,7 @@ namespace AfterHours
                 var act = ActFor(key);
                 if (act.HasValue) return Controls.Display(act.Value);
                 if (key.ToUpperInvariant() == "A / D") return $"{Controls.Display(Act.Left)} / {Controls.Display(Act.Right)}";
+                if (key.ToUpperInvariant() == "W / S") return $"{Controls.Display(Act.Forward)} / {Controls.Display(Act.Back)}";
                 return key;
             }
             return PadGlyph(key.ToUpperInvariant() switch
@@ -241,6 +243,7 @@ namespace AfterHours
                 "F" => "D-PAD ↑",
                 "SHIFT" => "RB",
                 "A / D" => "◀ ▶",
+                "W / S" => "▲ ▼",
                 _ => key,
             });
         }
