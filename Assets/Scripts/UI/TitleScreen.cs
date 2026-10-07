@@ -176,6 +176,7 @@ namespace AfterHours
         {
             if (Instance) return;
             PlaytestLog.Log("pause");
+            Hud.Instance?.ClearCaption(); // it would show under the menu (Night 1's first caption, a story sound)
             var rt = Ui.Layer("Pause", 55);
             Instance = rt.gameObject.AddComponent<PauseMenu>();
             Instance.root = rt;

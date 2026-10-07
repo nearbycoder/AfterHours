@@ -217,9 +217,12 @@ namespace AfterHours
                 Check(!Hud.Instance.CaptionShowing, "no caption shows behind the open clipboard");
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
+                Hud.Instance.Caption("[A caption that's still up when the game is paused]", 4f);
+                yield return Wait(0.4f);
                 PauseMenu.Show();
                 yield return Wait(0.6f);
                 Check(PauseMenu.IsOpen, "the pause menu opens during a night");
+                Check(!Hud.Instance.CaptionShowing, "a caption doesn't stay on screen under the pause menu");
                 yield return Shot("pause");
                 yield return PauseCardChecks();
                 yield return PauseTextChecks();
