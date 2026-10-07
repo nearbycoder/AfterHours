@@ -199,6 +199,7 @@ namespace AfterHours
                 yield return Wait(0.6f);
                 Check(PauseMenu.IsOpen, "the pause menu opens during a night");
                 yield return Shot("pause");
+                yield return PauseCardChecks();
                 GameObject.Find("Btn_Restart this night")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
                 yield return Wait(0.5f);
                 Check(ChoiceMenu.IsOpen, "Restart this night asks first");
@@ -223,6 +224,15 @@ namespace AfterHours
                 yield return Wait(0.4f);
                 if (n == 2) yield return CaseFileChecks();
                 if (n == 2) yield return ClipboardLargeChecks();
+                if (n == 3) // the torch turns up during night 2
+                {
+                    PauseMenu.Show();
+                    yield return Wait(0.5f);
+                    string card = PauseMenu.ControlsText();
+                    Check(card.Contains("UV torch") && card.Contains($"<b>{Controls.Display(Act.Torch)}</b>"), $"night 3: with the torch, the pause menu's controls list it on {Controls.Display(Act.Torch)}");
+                    PauseMenu.Instance.Close();
+                    yield return WaitUnblocked(3f);
+                }
                 if (n == 2) yield return AutoPauseChecks();
             }
             float start = Time.realtimeSinceStartup;
@@ -1415,6 +1425,55 @@ namespace AfterHours
             InputSystem.RemoveDevice(pad);
             GameInput.UsingPad = false;
             yield return WaitUnblocked(3f);
+        }
+
+        /// <summary>
+        /// The pause menu's controls card (night 1, menu open): the bound keys, a rebind showing at
+        /// once, pad buttons and PlayStation symbols, no torch before night 2, clear of the menu.
+        /// </summary>
+        IEnumerator PauseCardChecks()
+        {
+            var s = Settings.Current;
+            var pause = Ui.Canvas.transform.Find("Pause");
+            var card = (RectTransform)pause.Find("ControlsCard");
+            var list = card.Find("ControlsList").GetComponent<TMPro.TextMeshProUGUI>();
+            var menu = (RectTransform)pause.Find("Menu");
+            string Row(string what)
+            {
+                var line = list.text.Split('\n').FirstOrDefault(l => l.Contains(what)) ?? "";
+                int a = line.IndexOf("<b>"), b = line.IndexOf("</b>");
+                return a >= 0 && b > a ? line.Substring(a + 3, b - a - 3) : null;
+            }
+            bool wasPad = GameInput.UsingPad;
+            GameInput.UsingPad = false;
+            yield return Wait(0.4f);
+            list.ForceMeshUpdate();
+            var cr = ScreenRect(card);
+            Check(Inside(cr, ScreenArea) && !cr.Overlaps(ScreenRect(menu)) && !list.isTextOverflowing && Inside(TextRect(list), cr),
+                $"the pause menu's controls card is on screen at {Screen.width}x{Screen.height}, clear of the menu, with its text inside");
+            Check(Row("Use, pick up") == Controls.Display(Act.Interact) && Row("Clean") == Controls.Display(Act.Use) && Row("Clipboard") == Controls.Display(Act.Clipboard) && Row("UV torch") == null,
+                $"the card shows the bound keys (interact {Row("Use, pick up")}, clean {Row("Clean")}, clipboard {Row("Clipboard")}) and no torch on night 1");
+            Controls.Set(s, Act.Interact, "<Keyboard>/f");
+            yield return Wait(0.4f);
+            Check(Row("Use, pick up") == "F", $"after rebinding Interact to F the card shows F ({Row("Use, pick up")})");
+            Controls.Set(s, Act.Interact, "<Keyboard>/e");
+            Check(Controls.Display(Act.Interact) == "E" && Controls.Display(Act.Torch) == "F", "and the binding is put back");
+            var pad = InputSystem.AddDevice<Gamepad>("AutoPilotCardPad");
+            pad.MakeCurrent();
+            GameInput.UsingPad = true;
+            yield return Wait(0.4f);
+            string padRow = Row("Use, pick up");
+            var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotCardDS4");
+            ds.MakeCurrent();
+            GameInput.UsingPad = true;
+            yield return Wait(0.4f);
+            string psRow = Row("Use, pick up");
+            Check(padRow == "A" && psRow == "✕" && Row("Pick a tool") == "◀ ▶", $"with a pad the card shows its buttons (interact {padRow}; on a DualShock {psRow})");
+            yield return Shot("pause_card_playstation");
+            InputSystem.RemoveDevice(ds);
+            InputSystem.RemoveDevice(pad);
+            GameInput.UsingPad = wasPad; // later checks carry on with the device they had
+            yield return Wait(0.3f);
         }
 
         /// <summary>At Largest, the report's grey lines grow and everything stays on the paper.</summary>

@@ -183,7 +183,64 @@ namespace AfterHours
                 new("Quit to title", null, () => { Close(); GameRoot.Instance.ToTitle(); }),
             }), 460, 64);
             MenuFocus.AttachAll(col.gameObject);
+            BuildControlsCard();
             Sfx.Play("ui_click", null, 0.5f, 0.8f, 0f, AudioBus.Ui);
+        }
+
+        TextMeshProUGUI controls;
+        RectTransform controlsCard;
+        float controlsRefresh;
+
+        /// <summary>The right half: what each control does, with the keys or pad buttons in use now.</summary>
+        void BuildControlsCard()
+        {
+            var card = controlsCard = Ui.Panel(root, "ControlsCard", new Color(0.06f, 0.08f, 0.12f, 0.78f), 18).rectTransform;
+            Ui.Place(card, new Vector2(1, 0.5f), new Vector2(-110, -20), new Vector2(700, 720), new Vector2(1, 0.5f));
+            var head = Ui.Label(card, "CONTROLS", UiFont.SansBold, 24, Ui.Accent, TextAlignmentOptions.TopLeft, "Title");
+            Ui.Place(head.rectTransform, new Vector2(0, 1), new Vector2(36, -30), new Vector2(620, 34), new Vector2(0, 1));
+            head.characterSpacing = 4;
+            controls = Ui.Label(card, "", UiFont.Sans, 24, Ui.Text, TextAlignmentOptions.TopLeft, "ControlsList");
+            Ui.Place(controls.rectTransform, new Vector2(0, 1), new Vector2(36, -82), new Vector2(630, 560), new Vector2(0, 1));
+            controls.lineSpacing = 22;
+            var foot = Ui.Label(card, "Keys and buttons can be changed in Settings.", UiFont.Sans, 20, Ui.TextDim, TextAlignmentOptions.BottomLeft, "Hint");
+            Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(36, 26), new Vector2(570, 30), new Vector2(0, 0));
+            RefreshControls();
+        }
+
+        /// <summary>The card's rows: the key or button as a cap, then what it does.</summary>
+        public static string ControlsText()
+        {
+            var s = Settings.Current;
+            bool pad = GameInput.UsingPad;
+            static string Cap(string g) => $"<mark=#FFFFFF2E padding=\"10,10,5,5\"><b>{g}</b></mark>";
+            string Key(Act a) => GameInput.ActGlyph(a);
+            string Hold(bool toggle) => toggle ? "toggle" : "hold";
+            var rows = new List<(string key, string what)>
+            {
+                (pad ? $"{GameInput.PadGlyph("L-STICK")}  {GameInput.PadGlyph("R-STICK")}" : $"{Key(Act.Forward)} {Key(Act.Left)} {Key(Act.Back)} {Key(Act.Right)}  ·  Mouse", "Move and look"),
+                (Key(Act.Sprint), $"Brisk walk ({Hold(s.ToggleSprint)})"),
+                (Key(Act.Crouch), $"Crouch ({Hold(s.ToggleCrouch)}): under desks"),
+                (Key(Act.Use), $"Clean ({Hold(s.ToggleUse)}); throw when holding"),
+                (Key(Act.Spray), "Spray: foam glass, then wipe"),
+                (Key(Act.Interact), "Use, pick up, put back, read"),
+                (Key(Act.Drop), "Drop what you're holding"),
+            };
+            if (Story.State.Has("has_uv_torch")) rows.Add((Key(Act.Torch), "UV torch: missed spots glow"));
+            rows.Add((Key(Act.Clipboard), "Clipboard: tasks, case file"));
+            rows.Add((pad ? "◀ ▶" : "1–4  ·  Wheel", "Pick a tool (or automatic)"));
+            return string.Join("\n", rows.Select(r => $"{Cap(r.key)}<indent=40%>{r.what}</indent>"));
+        }
+
+        void RefreshControls()
+        {
+            if (!controls) return;
+            string text = ControlsText();
+            if (controls.text == text) return;
+            controls.text = text;
+            // The card fits its rows (the torch row comes and goes, labels may wrap).
+            float h = controls.GetPreferredValues(text, 630f, 0f).y;
+            controls.rectTransform.sizeDelta = new Vector2(630f, h);
+            controlsCard.sizeDelta = new Vector2(700f, 82f + h + 76f);
         }
 
         public void Close()
@@ -200,6 +257,8 @@ namespace AfterHours
         {
             var m = GameInput.Menu;
             if ((m.Back || m.Pause) && !SettingsPanel.IsOpen && !ChoiceMenu.IsOpen && Time.frameCount != ChoiceMenu.ClosedFrame) Close();
+            // Follow rebinds made in Settings and a switch between keyboard and pad.
+            if ((controlsRefresh -= GameTime.UnscaledDelta) <= 0f) { controlsRefresh = 0.25f; RefreshControls(); }
         }
     }
 
