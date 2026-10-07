@@ -990,6 +990,77 @@ Deferred: saving mid-night (every night's scripted events keep their state in lo
 so it means rewriting all seven nights' scripts), hints for missed secrets (the owner's call),
 and still WebGL, Windows and the art.
 
+## Round 8 scope (7 October 2026)
+
+Round 7 is merged. Its notes leave two things a player would run into, and one claim that was
+never tested where it matters. The title's case file lists the whole story after the ending, but
+not the ending itself: the epilogue, the part that depends most on what you did, is shown once
+and never again. A first-time player holding a can has no way to know it goes in the blue bin
+until a black one spits it back out ("Wrong bin"); nothing in the game says how the sorting
+works beforehand, and the bins differ only by colour. And "closing the game in the middle of a
+night asks first" has only been tested through the game's own quit request, not by a window
+manager closing the window, which is how players actually close it. A related question came up
+while planning: switching from fullscreen to windowed may leave a window as big as the screen.
+
+**Baseline (branch `improvements-8`, from `main` at 2a532ac).** The Linux build succeeds with 0
+errors; an `audit` AutoPilot run is under Round 8 results below.
+
+Not chosen: saving mid-night (each night's scripted events keep their state in local variables;
+rewriting all seven nights' scripts is a round of its own), hints for missed secrets and an off
+switch for the close question (the owner's calls), and everything left with the owner.
+
+### R8-1. Close the window from a real window manager
+
+`Tools/closetest.sh` runs a private KWin on a virtual screen (its own D-Bus session and config
+folders, so nothing touches the shared desktop or the real saves), starts the built player in it,
+and asks KWin to close the game's window the way the title bar's close button or Alt+F4 does.
+The game side is a `closetest` capture scenario that logs what happened. Both the native Wayland
+backend (what `AfterHours.sh` uses) and X11 (on the private KWin's Xwayland) are covered. If a
+close doesn't reach the game's question, that's fixed or, if it's inside Unity, documented.
+
+**Acceptance:** on the title, closing the window ends the game. On Night 1 the close is held:
+the game keeps running, paused, with "Quit the game?" showing; Never mind leaves the night paused
+where it was; a second close asks again, and Quit the game ends the process. Both backends.
+**Verify:** `Tools/closetest.sh` for title and night on Wayland and X11, its screenshot of the
+question; the real desktop and `~/.config/unity3d` checked unchanged.
+
+### R8-2. Windowed mode gets a window that fits
+
+Check in the private KWin what switching Fullscreen off in Settings does. If the window comes
+out as large as the screen (title bar off the top, edges off screen), leaving fullscreen opens
+a window at most about 80% of the screen, centred, and Unity keeps its size from then on. If
+Unity already does something sensible, this item is closed with the measurement and no change.
+
+**Acceptance:** from fullscreen at 1600×900 and 1920×1080, switching to windowed gives a window
+that fits inside the screen with its title bar visible. **Verify:** the window's size and
+position as KWin reports them, before and after.
+
+### R8-3. Which bin?
+
+While you're holding rubbish, the label under the reticle names it and the bin it goes in
+("SODA CAN · BLUE RECYCLING", "BANANA PEEL · BLACK BIN", "PAPER BALL · EITHER BIN"). With the
+reticle on a bin it says whether that bin takes it ("BLACK BIN ✓", or "BLACK BIN ✗ · THIS ONE
+GOES IN BLUE"). In words as well as colour. The label follows Text size like the rest of the HUD.
+
+**Acceptance:** the label always agrees with what the bin does when the item lands in it (every
+kind of rubbish against both bins); on Night 1 holding a cup shows its bin, aiming at a bin that
+doesn't take it says so and names the right one, aiming at the right one shows ✓; the throw that
+follows still lands. **Verify:** an EditMode test over every combination; AutoPilot checks on
+Night 1 (every route); screenshots.
+
+### R8-4. Read the ending again
+
+Once the story has ended, the title's Case file starts with **The ending** ("Tuesday morning ·
+The Meridian Daily", noting which ending it was). Reading it shows the newspaper, the ending's
+title, the whole epilogue and the stats at once, over the list; E, Esc, pad A or B close it.
+Nothing is saved, recorded or logged, and the title music keeps playing.
+
+**Acceptance:** after the ending, the case file's first entry is the ending; it shows exactly the
+headline, epilogue lines and stats the ending showed when it was reached; pad B and Esc close it
+back to the list with the ending still selected; the save's bytes don't change. Before the end
+there's no such entry. **Verify:** EditMode test (the list for a finished story); AutoPilot checks
+after the ending, every route (four endings across the five routes); screenshot.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
