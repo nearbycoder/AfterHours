@@ -107,6 +107,10 @@ namespace AfterHours
                 InspectMode.Screen => $"{key("E", "A")}  Close        {key("Q", "X")}  Switch off monitor",
                 _ => $"{key("E", "A")}  Close",
             };
+            // Text size (Settings) applies to the key hints under the paper.
+            float k = Settings.TextScale;
+            hints.rectTransform.localScale = Vector3.one * k;
+            hints.rectTransform.sizeDelta = new Vector2(Mathf.Min(1400f, (((RectTransform)Ui.Canvas.transform).rect.width - 80f) / k), 40f);
             GameRoot.Instance?.SetBlocked("inspect", true);
             PostFx.Instance?.SetInspect(true);
             Sfx.Duck = 0.45f;

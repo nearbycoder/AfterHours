@@ -210,6 +210,7 @@ namespace AfterHours
                 if (PauseMenu.IsOpen) PauseMenu.Instance.Close();
                 yield return WaitUnblocked(3f);
                 Check(!root.Blocked, "closing the pause menu hands control back");
+                yield return TextSizeChecks();
             }
             if (n > 1 && PadChecks)
             {
@@ -1105,6 +1106,66 @@ namespace AfterHours
             s.ToggleUse = false;
             GameInput.ReleaseUse();
             InputSystem.RemoveDevice(vmouse);
+        }
+
+        /// <summary>
+        /// HUD text size: at each size the prompt (holding something, so it's the longest one), a
+        /// long caption and a toast stay on screen and clear of the watch, and Largest is 1.5x Normal.
+        /// </summary>
+        IEnumerator TextSizeChecks()
+        {
+            var s = Settings.Current;
+            var hud = Ui.Canvas.transform.Find("HUD");
+            var item = FindObjectsByType<TrashItem>(FindObjectsSortMode.None).Where(t => !t.Binned)
+                .OrderBy(t => (t.transform.position - root.Player.transform.position).sqrMagnitude).FirstOrDefault();
+            var (itemPos, itemRot) = item != null ? (item.transform.position, item.transform.rotation) : default;
+            if (item != null) root.Hands.Grab(item);
+            float W = Screen.width, H = Screen.height;
+            Rect Corners(Vector3[] c) => Rect.MinMaxRect(c.Min(p => p.x), c.Min(p => p.y), c.Max(p => p.x), c.Max(p => p.y));
+            Rect Bounds(RectTransform rt) { var c = new Vector3[4]; rt.GetWorldCorners(c); return Corners(c); }
+            Rect TextBounds(TMPro.TextMeshProUGUI t)
+            {
+                var b = t.textBounds;
+                return Corners(new[] { t.rectTransform.TransformPoint(b.min), t.rectTransform.TransformPoint(b.max) });
+            }
+            Rect Union(System.Collections.Generic.IEnumerable<Rect> rs)
+            {
+                var list = rs.ToList();
+                return list.Count == 0 ? Rect.zero : Rect.MinMaxRect(list.Min(r => r.xMin), list.Min(r => r.yMin), list.Max(r => r.xMax), list.Max(r => r.yMax));
+            }
+            bool OnScreen(Rect r) => r.width > 0 && r.xMin >= -1 && r.yMin >= -1 && r.xMax <= W + 1 && r.yMax <= H + 1;
+            var watch = Bounds((RectTransform)hud.Find("Watch"));
+            float promptH0 = 0;
+            for (int size = 0; size <= 2; size++)
+            {
+                s.TextSize = size;
+                const string Long = "[The vacuum clunks against something wedged under the desk, and somewhere down the hall a phone rings twice, then stops]";
+                Hud.Instance.Toast("✓ Wipe Theo's, Priya's and Russ's desks", "Bonus", Ui.Good, 3f);
+                yield return Wait(0.4f);
+                // Night 1 has its own opening captions; show ours until it's the one on screen.
+                TMPro.TextMeshProUGUI captionLabel = null;
+                for (int tries = 0; tries < 8 && captionLabel?.text != Long; tries++)
+                {
+                    Hud.Instance.Caption(Long, 6f);
+                    yield return Wait(0.5f);
+                    captionLabel = hud.Find("Caption").GetComponent<TMPro.TextMeshProUGUI>();
+                }
+                var prompt = Union(hud.Find("Prompt").Cast<RectTransform>().Select(Bounds));
+                var caption = TextBounds(captionLabel);
+                Check(captionLabel.text == Long, "the HUD text check measures its own caption");
+                var toasts = Ui.Canvas.transform.Find("Toasts/Toasts").Cast<RectTransform>().Select(Bounds).ToList();
+                if (size == 0) promptH0 = prompt.height;
+                bool ok = OnScreen(prompt) && OnScreen(caption) && toasts.Count > 0 && toasts.All(OnScreen)
+                          && !toasts.Any(t => t.Overlaps(watch)) && !caption.Overlaps(prompt);
+                Check(ok, $"HUD text {Settings.TextSizes[size]} at {W}x{H}: the prompt ({prompt.width:F0}x{prompt.height:F0} px), a long caption ({caption.width:F0}x{caption.height:F0}) and {toasts.Count} toast(s) stay on screen, apart and clear of the watch");
+                if (size == 2) Check(Mathf.Abs(prompt.height / Mathf.Max(1f, promptH0) - 1.5f) < 0.05f, $"HUD text Largest is 1.5x Normal (prompt {promptH0:F0} → {prompt.height:F0} px)");
+                yield return Shot($"hud_text_{Settings.TextSizes[size].ToLowerInvariant()}");
+                yield return Wait(2.6f); // let the toasts go
+            }
+            s.TextSize = 0;
+            input.DropOnce = true;
+            yield return Wait(0.4f);
+            PutBack(item, itemPos, itemRot); // later checks expect it where the night left it
         }
 
         static void PutBack(Holdable item, Vector3 pos, Quaternion rot)

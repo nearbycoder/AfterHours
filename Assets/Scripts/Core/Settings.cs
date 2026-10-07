@@ -27,6 +27,8 @@ namespace AfterHours
         public bool Captions = true;
         public bool ReduceFlashing;
         public bool AimHighlight = true;
+        /// <summary>HUD text size: 0 normal, 1 large, 2 largest (see <see cref="TextScale"/>).</summary>
+        public int TextSize;
         /// <summary>Image brightness, 0 to 1; 0.5 is the game as designed (see <see cref="PostFx.GammaFor"/>).</summary>
         public float Brightness = 0.5f;
         /// <summary>The brightness page offered on first launch has been seen and closed.</summary>
@@ -68,6 +70,12 @@ namespace AfterHours
         public static void NotifyChanged() => Changed?.Invoke();
 
         public static readonly int[] FrameCaps = { 0, 30, 60, 120, 144 };
+
+        public static readonly string[] TextSizes = { "Normal", "Large", "Largest" };
+
+        /// <summary>How much the HUD's prompts, captions, toasts and labels are scaled.</summary>
+        public static float TextScaleOf(int size) => size switch { 1 => 1.25f, 2 => 1.5f, _ => 1f };
+        public static float TextScale => TextScaleOf(Current.TextSize);
 
         /// <summary>Fullscreen, VSync and frame cap, quality preset and render scale.</summary>
         public static void ApplyGraphics()

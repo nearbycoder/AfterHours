@@ -200,12 +200,37 @@ namespace AfterHours
             caption.alpha = 0;
         }
 
+        /// <summary>
+        /// Text size (Settings): prompts, captions, toasts and the labels under the reticle scale
+        /// about their anchors. Wide lines keep to the screen's width.
+        /// </summary>
+        void ApplyTextScale()
+        {
+            float k = Settings.TextScale;
+            var scale = Vector3.one * k;
+            toastRoot.localScale = scale;
+            targetLabel.rectTransform.localScale = scale;
+            if (toolNote != null)
+            {
+                toolNote.rectTransform.localScale = scale;
+                toolNote.rectTransform.anchoredPosition = new Vector2(0, -100f - (k - 1f) * 40f);
+            }
+            if (caption != null)
+            {
+                caption.rectTransform.localScale = scale;
+                caption.rectTransform.sizeDelta = new Vector2(Mathf.Min(1400f, (CanvasWidth - 80f) / k), 80f);
+            }
+        }
+
+        static float CanvasWidth => ((RectTransform)Ui.Canvas.transform).rect.width;
+
         void Update()
         {
             float dt = GameTime.UnscaledDelta;
             bool busy = GameRoot.Instance != null && GameRoot.Instance.Blocked;
+            ApplyTextScale();
             // Scale rather than deactivate: TMP can't measure labels built while inactive.
-            promptRoot.localScale = busy ? Vector3.zero : Vector3.one;
+            promptRoot.localScale = busy ? Vector3.zero : Vector3.one * Settings.TextScale;
             reticleRoot.gameObject.SetActive(!busy);
             var cc = cleaning;
             bool show = !busy && cc != null && cc.Target != null && !cc.Suspended;

@@ -266,6 +266,7 @@ namespace AfterHours
             Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
+            Widgets.Choice(right, "HUD text size", Settings.TextSizes, Mathf.Clamp(s.TextSize, 0, 2), i => s.TextSize = i, ColW);
             Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
 
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
