@@ -73,9 +73,9 @@ namespace AfterHours
             Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(1200, 30), new Vector2(0, 0));
 
             group.alpha = 0;
-            Tween.Run(1.2f, k => group.alpha = k, Ease.OutCubic);
+            Tween.Run(1.2f, k => { if (group) group.alpha = k; }, Ease.OutCubic); // Continue can close the title first
             float y0 = -140;
-            Tween.Run(1.6f, k => logo.rectTransform.anchoredPosition = new Vector2(120 + (1 - k) * -40, y0), Ease.OutCubic);
+            Tween.Run(1.6f, k => { if (logo) logo.rectTransform.anchoredPosition = new Vector2(120 + (1 - k) * -40, y0); }, Ease.OutCubic);
         }
 
         void NewGame()

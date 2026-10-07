@@ -252,7 +252,8 @@ namespace AfterHours
             if (Story.State.Inventory.Count > 0)
             {
                 var inv = Ui.Label(p, "In your locker: " + string.Join(", ", Story.State.Inventory.Select(id => Docs.Get(id)?.Title)), UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft, "Locker");
-                Ui.Place(inv.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, 60 + grow), new Vector2(0, 1));
+                // Up to two lines (more room at larger sizes), never past the bottom of the paper.
+                Ui.Place(inv.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, Mathf.Min(60 + grow, 840 + grow + y - 8)), new Vector2(0, 1));
                 Grey(inv, k);
             }
 
