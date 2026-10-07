@@ -116,6 +116,20 @@ namespace AfterHours
 
         public NightDef Secret(string id, string label) { Secrets.Add(new SecretDef { Id = id, Label = label }); return this; }
 
+        /// <summary>The morning chat's messages for this story state, as indices into <see cref="Chat"/> (a broken condition leaves its line out).</summary>
+        public List<int> MorningChat(StoryState s)
+        {
+            var lines = new List<int>();
+            for (int i = 0; i < Chat.Count; i++)
+            {
+                bool show;
+                try { show = Chat[i].When == null || Chat[i].When(s); }
+                catch (Exception e) { Debug.LogException(e); show = false; }
+                if (show) lines.Add(i);
+            }
+            return lines;
+        }
+
         public NightDef Say(string time, string who, string text, Func<StoryState, bool> when = null, string react = null)
         {
             Chat.Add(new ChatLine { Time = time, Who = who, Text = text, When = when, React = react });

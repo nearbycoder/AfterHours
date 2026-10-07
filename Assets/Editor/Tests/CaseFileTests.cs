@@ -54,6 +54,67 @@ namespace AfterHours.Tests
             Assert.AreEqual(new[] { 1, 2 }, loaded.Read.Select(r => r.Night).ToArray());
         }
 
+        static int Line(NightDef def, string text) => def.Chat.FindIndex(c => c.Text.StartsWith(text));
+
+        [Test]
+        public void TheMorningChatFollowsWhatYouDid()
+        {
+            var def = NightDefs.Get(1);
+            var toTheo = new StoryState { Night = 2 };
+            toTheo.SetFate("theo_note", Fate.Delivered, "theo");
+            var toDana = new StoryState { Night = 2 };
+            toDana.SetFate("theo_note", Fate.Delivered, "dana");
+            var a = def.MorningChat(toTheo);
+            var b = def.MorningChat(toDana);
+            Assert.Contains(Line(def, "Morning all!"), a, "unconditional lines always show");
+            Assert.Contains(Line(def, "who left this on my desk"), a);
+            Assert.IsFalse(a.Contains(Line(def, "Found a crumpled note")));
+            Assert.Contains(Line(def, "Found a crumpled note"), b);
+            Assert.IsFalse(b.Contains(Line(def, "who left this on my desk")));
+            Assert.AreEqual(a.OrderBy(i => i).ToArray(), a.ToArray(), "in the order they're written");
+        }
+
+        [Test]
+        public void ChatsAreKeptPerNightAndAReplayReplacesIt()
+        {
+            var s = new StoryState { Night = 3 };
+            s.NoteChat(1, new[] { 0, 1 });
+            s.NoteChat(2, new[] { 3 });
+            s.NoteChat(1, new[] { 0, 2 });   // night 1 replayed from Night Select
+            var loaded = JsonUtility.FromJson<StoryState>(JsonUtility.ToJson(s));
+            Assert.AreEqual(2, loaded.Chats.Count);
+            Assert.AreEqual(new[] { 0, 2 }, loaded.ChatFor(1).Lines.ToArray());
+            Assert.AreEqual(new[] { 3 }, loaded.ChatFor(2).Lines.ToArray());
+            Assert.IsNull(loaded.ChatFor(3));
+        }
+
+        [Test]
+        public void AnOldSaveGetsItsChatsFromTheSnapshots()
+        {
+            // A round 5 save on night 4: three nights played, no chats kept.
+            var old = new StoryState { Night = 4 };
+            for (int n = 1; n <= 3; n++) old.Results.Add(new NightResult { Night = n, Grade = "A" });
+            var json = JsonUtility.ToJson(old).Replace("\"Chats\":[],", "");
+            Assert.IsFalse(json.Contains("\"Chats\""), "the old file has no chats");
+            // Night 2's snapshot is the state night 1's chat was chosen from; night 4's is missing.
+            var snap2 = new StoryState { Night = 2 };
+            snap2.SetFate("theo_note", Fate.Delivered, "theo");
+            var snap3 = new StoryState { Night = 3 };
+            var snaps = new System.Collections.Generic.Dictionary<int, StoryState> { { 2, snap2 }, { 3, snap3 } };
+            var loaded = StoryState.Upgrade(JsonUtility.FromJson<StoryState>(json), n => snaps.TryGetValue(n, out var x) ? x : null);
+            Assert.AreEqual(NightDefs.Get(1).MorningChat(snap2), loaded.ChatFor(1).Lines);
+            Assert.AreEqual(NightDefs.Get(2).MorningChat(snap3), loaded.ChatFor(2).Lines);
+            Assert.IsNull(loaded.ChatFor(3), "no snapshot, no chat");
+            // A save that kept its chats isn't seeded again.
+            var kept = new StoryState { Night = 3 };
+            kept.Results.Add(new NightResult { Night = 1 });
+            kept.Results.Add(new NightResult { Night = 2 });
+            kept.NoteChat(1, new[] { 0 });
+            var again = StoryState.Upgrade(JsonUtility.FromJson<StoryState>(JsonUtility.ToJson(kept)), n => snaps.TryGetValue(n, out var x) ? x : null);
+            Assert.AreEqual(new[] { 0 }, again.ChatFor(1).Lines.ToArray());
+            Assert.IsNull(again.ChatFor(2));
+        }
+
         [Test]
         public void ANewSaveKeepsItsOwnList()
         {

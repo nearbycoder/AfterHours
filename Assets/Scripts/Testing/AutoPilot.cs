@@ -237,6 +237,7 @@ namespace AfterHours
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
                 if (n == 2) yield return CaseFileChecks();
+                if (n == 2) yield return ChatAgainChecks();
                 if (n == 2) yield return ClipboardLargeChecks();
                 if (n == 3) // the torch turns up during night 2
                 {
@@ -304,7 +305,14 @@ namespace AfterHours
             if (large) yield return ChatChecks(n);
             // The ending is read at the largest text size (its epilogue grows).
             if (PadChecks && n == NightDefs.Count) Settings.Current.TextSize = 2;
-            for (int i = 0; i < 40 && FindAnyObjectByType<ChatInterlude>() != null; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.25f); }
+            for (int i = 0; i < 40 && FindAnyObjectByType<ChatInterlude>() != null; i++)
+            {
+                // What the morning showed, for reading it again from the case file the next night.
+                var live = FindAnyObjectByType<ChatInterlude>();
+                if (live && !live.Review) morningTexts[n] = live.Content.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).Where(t => t.name == "Message").Select(t => t.text).ToList();
+                Interstitial.AutoAdvance = true;
+                yield return Wait(0.25f);
+            }
             Interstitial.AutoAdvance = false;
             if (large) Settings.Current.TextSize = 0;
             yield return Beat("end", n);
@@ -787,7 +795,7 @@ namespace AfterHours
             Check(cb.Open && cb.Page == Clipboard.CasePage, "d-pad right turns the clipboard to the case file");
             var night1 = Story.State.Read.Where(r => r.Night == 1).Select(r => r.Id).ToList();
             var expected = new[] { "dana_welcome", "walt_note_1", "theo_note", "screen_theo_email", "screen_remote" };
-            Check(expected.All(night1.Contains) && cb.CaseEntries.SequenceEqual(Story.State.Read.Select(r => r.Id)),
+            Check(expected.All(night1.Contains) && cb.CaseEntries.Where(e => !e.StartsWith(Clipboard.ChatPrefix)).SequenceEqual(Story.State.Read.Select(r => r.Id)),
                 $"the case file lists what was read on night 1 ({string.Join(", ", cb.CaseEntries)})");
             string theoFate = Story.State.FateLabel("theo_note", true);
             string wantFate = HandsOut ? "left for Priya" : Keeps ? "kept" : "left where it was";
@@ -1437,6 +1445,99 @@ namespace AfterHours
             yield return Wait(0.6f);
             Check(!cb.Large && note.gameObject.activeSelf && board.sizeDelta == new Vector2(760, 920), "back at Normal, the side note returns");
             cb.Close();
+            InputSystem.RemoveDevice(vkb);
+            InputSystem.RemoveDevice(pad);
+            GameInput.UsingPad = false;
+            yield return WaitUnblocked(3f);
+        }
+
+        // ---- the morning chats again, and replaying an earlier night (round 6) ----------------------
+
+        /// <summary>Each morning's messages as the chat showed them.</summary>
+        readonly System.Collections.Generic.Dictionary<int, System.Collections.Generic.List<string>> morningTexts = new();
+
+        static string StoryKey() => JsonUtility.ToJson(Story.State.Evidence) + JsonUtility.ToJson(new Wrap { Read = Story.State.Read, Chats = Story.State.Chats, Phrases = Story.State.Phrases, Inventory = Story.State.Inventory });
+        [Serializable] class Wrap { public System.Collections.Generic.List<ReadRecord> Read; public System.Collections.Generic.List<ChatRecord> Chats; public System.Collections.Generic.List<string> Phrases, Inventory; }
+
+        /// <summary>Night 2: Tuesday morning's chat is in the case file; reading it shows that morning, from the first message, and changes nothing.</summary>
+        IEnumerator ChatAgainChecks()
+        {
+            var cb = Clipboard.Instance;
+            var pad = InputSystem.AddDevice<Gamepad>("AutoPilotChatPad");
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotChatKeyboard");
+            IEnumerator PadPress(GamepadButton b)
+            {
+                InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(b));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(pad, new GamepadState());
+                yield return Wait(0.35f);
+            }
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.35f);
+            }
+            pad.MakeCurrent();
+            cb.Show(Clipboard.CasePage);
+            yield return Wait(0.5f);
+            string entry = Clipboard.ChatPrefix + "1";
+            int idx = cb.CaseEntries.IndexOf(entry);
+            int lastDoc = cb.CaseEntries.FindLastIndex(e => Story.State.Read.Any(r => r.Night == 1 && r.Id == e));
+            Check(idx >= 0 && idx == lastDoc + 1, $"the case file lists Tuesday morning's chat after night 1's documents (entry {idx}, last document {lastDoc})");
+            for (int i = 0; i < 30 && cb.Selected < idx; i++) yield return PadPress(GamepadButton.DpadDown);
+            var list = GameObject.Find("CaseFile")?.GetComponent<TMPro.TextMeshProUGUI>()?.text ?? "";
+            Check(cb.Selected == idx && list.Contains("Tuesday morning · #general"), $"the d-pad reaches it, listed as Tuesday morning · #general ({cb.Selected})");
+            yield return Shot("n2_case_file_chat");
+            string story = StoryKey();
+            yield return PadPress(GamepadButton.South);
+            yield return Wait(0.4f);
+            var chat = FindAnyObjectByType<ChatInterlude>();
+            var texts = chat ? chat.Content.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).Where(t => t.name == "Message").Select(t => t.text).ToList() : new System.Collections.Generic.List<string>();
+            morningTexts.TryGetValue(1, out var want);
+            Check(ChatInterlude.ReviewOpen && chat != null && chat.Review && want != null && texts.SequenceEqual(want),
+                $"pad A opens Tuesday morning's chat with the {texts.Count} messages shown that morning ({want?.Count ?? 0})");
+            var view = chat ? (RectTransform)chat.Content.parent : null;
+            var firstRow = chat && chat.Content.childCount > 0 ? (RectTransform)chat.Content.GetChild(0) : null;
+            Check(chat && chat.Scroll == 0f && firstRow && Inside(ScreenRect(firstRow), ScreenRect(view), 2f), "it opens at the first message");
+            yield return Shot("n2_chat_again");
+            if (chat && chat.MaxScroll > 1f)
+            {
+                yield return PadPress(GamepadButton.DpadDown);
+                Check(chat.Scroll > 0f, $"d-pad down scrolls it ({chat.Scroll:F0} of {chat.MaxScroll:F0} units)");
+            }
+            else Log($"the chat fits without scrolling ({texts.Count} messages)");
+            yield return PadPress(GamepadButton.East);
+            yield return Wait(0.3f);
+            Check(!ChatInterlude.ReviewOpen && cb.Open && cb.Page == Clipboard.CasePage && cb.Selected == idx && StoryKey() == story,
+                "pad B closes it, back on the case file, and nothing in the story changed");
+            vkb.MakeCurrent();
+            yield return Key(UnityEngine.InputSystem.Key.E);
+            yield return Wait(0.3f);
+            Check(ChatInterlude.ReviewOpen, "E opens it again");
+            yield return Key(UnityEngine.InputSystem.Key.Escape);
+            yield return Wait(0.3f);
+            Check(!ChatInterlude.ReviewOpen && cb.Open && !PauseMenu.IsOpen, "Esc closes it, the clipboard stays open and nothing pauses");
+            // At Largest the morning is longer than the window: S scrolls it on, W back to the top.
+            Settings.Current.TextSize = 2;
+            yield return Key(UnityEngine.InputSystem.Key.E);
+            yield return Wait(0.3f);
+            chat = FindAnyObjectByType<ChatInterlude>();
+            float max = chat && chat.Review ? chat.MaxScroll : 0f;
+            yield return Key(UnityEngine.InputSystem.Key.S);
+            yield return Wait(0.3f);
+            float down = chat ? chat.Scroll : 0f;
+            yield return Shot("n2_chat_again_largest");
+            for (int i = 0; i < 8 && chat && chat.Scroll > 0f; i++) yield return Key(UnityEngine.InputSystem.Key.W);
+            Check(chat && chat.Review && max > 0f && down > 0f && chat.Scroll == 0f,
+                $"at Largest it scrolls: S moves on ({down:F0} of {max:F0} units), W comes back to the first message");
+            yield return Key(UnityEngine.InputSystem.Key.Tab);
+            yield return Wait(0.3f);
+            Settings.Current.TextSize = 0;
+            Check(!ChatInterlude.ReviewOpen && cb.Open, "Tab closes it too, leaving the clipboard open");
+            yield return Key(UnityEngine.InputSystem.Key.Escape);
+            Check(!cb.Open && !PauseMenu.IsOpen, "Esc then closes the clipboard");
             InputSystem.RemoveDevice(vkb);
             InputSystem.RemoveDevice(pad);
             GameInput.UsingPad = false;

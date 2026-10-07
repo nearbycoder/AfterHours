@@ -464,6 +464,8 @@ namespace AfterHours
 
             int finished = Def.Number;
             Story.State.Night = finished + 1;
+            // The morning chat is chosen now, from the state the next night starts with, and kept for the case file.
+            Story.State.NoteChat(finished, Def.MorningChat(Story.State));
             Story.State.Save();
             Debug.Log($"[Night] ended night {finished}: grade {grade}, secrets {result.Secrets}/{result.SecretsTotal}, tasks {result.TasksDone}/{result.TasksTotal}, {Elapsed:F0}s");
             GameRoot.Instance.OnNightEnded(Def, result);

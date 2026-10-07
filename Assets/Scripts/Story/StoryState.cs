@@ -32,6 +32,14 @@ namespace AfterHours
         public int Night;
     }
 
+    /// <summary>Which of a night's morning chat messages showed (indices into <see cref="NightDef.Chat"/>).</summary>
+    [Serializable]
+    public class ChatRecord
+    {
+        public int Night;
+        public List<int> Lines = new();
+    }
+
     [Serializable]
     public class NightResult
     {
@@ -60,6 +68,7 @@ namespace AfterHours
         public List<string> Inventory = new();     // kept doc ids (in your pocket / locker)
         public List<string> SecretsFound = new();
         public List<ReadRecord> Read = new();       // every document read, in order (the case file)
+        public List<ChatRecord> Chats = new();      // each morning's chat as it was shown (the case file)
         public int Suspicion;
         public List<NightResult> Results = new();
         public string Ending;
@@ -124,6 +133,33 @@ namespace AfterHours
             }
         }
 
+        /// <summary>Remember the morning chat after <paramref name="night"/> (a replay of that night replaces it).</summary>
+        public void NoteChat(int night, IEnumerable<int> lines)
+        {
+            Chats ??= new List<ChatRecord>();
+            Chats.RemoveAll(c => c.Night == night);
+            Chats.Add(new ChatRecord { Night = night, Lines = lines.ToList() });
+        }
+
+        public ChatRecord ChatFor(int night) => Chats?.FirstOrDefault(c => c.Night == night);
+
+        /// <summary>
+        /// Saves from before the chats were kept: each finished night's chat was chosen from the
+        /// state the next night started with, which is that night's snapshot.
+        /// </summary>
+        public void SeedChatsFromSnapshots(Func<int, StoryState> snapshot)
+        {
+            Chats ??= new List<ChatRecord>();
+            for (int n = 1; n < Night && n < NightDefs.Count; n++)
+            {
+                if (ChatFor(n) != null || ResultFor(n) == null) continue;
+                var next = snapshot(n + 1);
+                var def = NightDefs.Get(n);
+                if (next != null && next.Night == n + 1 && def != null) NoteChat(n, def.MorningChat(next));
+            }
+            Chats.Sort((a, b) => a.Night.CompareTo(b.Night));
+        }
+
         // ---- flags & phrases ---------------------------------------------------------------------
 
         public bool Has(string flag) => Flags.Contains(flag);
@@ -176,14 +212,17 @@ namespace AfterHours
             catch (Exception e) { Debug.LogWarning("[Save] " + e.Message); }
         }
 
-        public static StoryState Load() => Upgrade(SaveIO.Load<StoryState>(SavePath));
+        public static StoryState Load() => Upgrade(SaveIO.Load<StoryState>(SavePath), RawSnapshot);
 
-        public static StoryState LoadSnapshot(int night) => Upgrade(SaveIO.Load<StoryState>(SnapPath(night)));
+        public static StoryState LoadSnapshot(int night) => Upgrade(SaveIO.Load<StoryState>(SnapPath(night)), RawSnapshot);
 
-        /// <summary>Fill in what older saves lack (the case file).</summary>
-        public static StoryState Upgrade(StoryState s)
+        static StoryState RawSnapshot(int night) => SaveIO.Load<StoryState>(SnapPath(night));
+
+        /// <summary>Fill in what older saves lack (the case file's documents, and its chats from the snapshots).</summary>
+        public static StoryState Upgrade(StoryState s, Func<int, StoryState> snapshot = null)
         {
             if (s != null && (s.Read == null || s.Read.Count == 0)) s.SeedReadFromEvidence();
+            if (s != null && snapshot != null && (s.Chats == null || s.Chats.Count == 0)) s.SeedChatsFromSnapshots(snapshot);
             return s;
         }
 

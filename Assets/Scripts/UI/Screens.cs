@@ -414,6 +414,14 @@ namespace AfterHours
 
         string doneHint = $"Press {GameInput.MenuKeyTag("E")} to clock in for the next night";
 
+        /// <summary>Reading a past morning again (from the case file): every message at once, from the top.</summary>
+        public bool Review { get; private set; }
+        static ChatInterlude reviewing;
+        /// <summary>A past morning is open from the case file (it has the keys until it closes).</summary>
+        public static bool ReviewOpen => reviewing != null;
+        /// <summary>The frame a reread chat closed on, so the key that closed it goes no further.</summary>
+        public static int ClosedFrame = -1;
+
         public static void Show(string dayLabel, List<ChatLine> chat, Action onDone, string doneHint = null)
         {
             var go = new GameObject("ChatInterlude");
@@ -422,6 +430,27 @@ namespace AfterHours
             if (doneHint != null) c.doneHint = doneHint;
             c.lines.AddRange(chat);
             c.Build(dayLabel);
+        }
+
+        /// <summary>Open a past morning's chat to read again: all its messages, scrolled to the first; any close key returns.</summary>
+        public static void ShowAgain(string dayLabel, List<ChatLine> chat, Action onClosed)
+        {
+            var go = new GameObject("ChatInterlude");
+            var c = go.AddComponent<ChatInterlude>();
+            c.Review = true;
+            reviewing = c;
+            // Like a document read again: it's waiting for you, so losing focus doesn't pause over it.
+            GameRoot.Instance?.SetBlocked("chat_again", true);
+            c.done = () => { c.EndReview(); onClosed?.Invoke(); };
+            c.lines.AddRange(chat);
+            c.Build(dayLabel);
+            foreach (var l in chat) c.AddLine(l, false);
+            c.shown = chat.Count;
+            c.finished = true;
+            Tween.Cancel(c.content);
+            c.Scroll = 0f;
+            c.content.anchoredPosition = Vector2.zero;
+            c.hint.text = $"{GameInput.MenuKeyTag("W / S")}  scroll   ·   {GameInput.MenuKeyTag("E")}  close";
         }
 
         void Build(string dayLabel)
@@ -462,7 +491,21 @@ namespace AfterHours
             nextAt = 1.0f;
         }
 
-        void AddLine(ChatLine l)
+        void EndReview()
+        {
+            if (reviewing != this) return;
+            reviewing = null;
+            ClosedFrame = Time.frameCount;
+            GameRoot.Instance?.SetBlocked("chat_again", false);
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            EndReview();
+        }
+
+        void AddLine(ChatLine l, bool live = true)
         {
             var who = l.Who;
             var col = Colors.TryGetValue(who, out var c) ? c : Color.gray;
@@ -490,14 +533,18 @@ namespace AfterHours
                 var e = Ui.Label(pill.rectTransform, l.React + " 2", UiFont.Sans, 18 * k, Palette.Hex("44506A"), TextAlignmentOptions.Center);
                 Ui.Stretch(e.rectTransform);
                 rowH += 36 * k;
-                pill.rectTransform.localScale = Vector3.zero;
-                Tween.Run(0.3f, k => { if (pill) pill.rectTransform.localScale = Vector3.one * k; }, Ease.OutBack, null, 0.5f);
+                if (live)
+                {
+                    pill.rectTransform.localScale = Vector3.zero;
+                    Tween.Run(0.3f, k => { if (pill) pill.rectTransform.localScale = Vector3.one * k; }, Ease.OutBack, null, 0.5f);
+                }
             }
             row.anchorMin = row.anchorMax = new Vector2(0, 1);
             row.pivot = new Vector2(0, 1);
             row.sizeDelta = new Vector2(x + colW + 10, rowH);
             row.anchoredPosition = new Vector2(0, -y);
             y += rowH + 6;
+            if (!live) return; // read again: all at once, no arrival
             var cg = row.gameObject.AddComponent<CanvasGroup>();
             cg.alpha = 0;
             Tween.Run(0.3f, k => { if (cg) { cg.alpha = k; row.anchoredPosition = new Vector2(Mathf.Lerp(20, 0, k), row.anchoredPosition.y); } }, Ease.OutCubic);
@@ -531,6 +578,12 @@ namespace AfterHours
             float wheel = Mouse.current != null ? Mouse.current.scroll.ReadValue().y : 0f;
             if (m.Up || wheel > 0.1f) ScrollBy(-1);
             else if (m.Down || wheel < -0.1f) ScrollBy(1);
+            if (Review)
+            {
+                // Read again from the case file: E, Esc, Tab (or a click) close it.
+                if (age > 0.3f && (Advance() || m.Back || m.Clipboard)) Finish();
+                return;
+            }
             bool adv = age > 0.8f && Advance();
             if (finished)
             {

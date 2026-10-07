@@ -209,7 +209,7 @@ namespace AfterHours
             Hud.Instance.SetVisible(false);
             ShiftReport.Show(def, result, Director, () =>
             {
-                var chat = def.Chat.Where(c => c.When == null || SafeWhen(c, Story.State)).ToList();
+                var chat = (Story.State.ChatFor(def.Number)?.Lines ?? def.MorningChat(Story.State)).Where(i => i >= 0 && i < def.Chat.Count).Select(i => def.Chat[i]).ToList();
                 string day = $"{NightDefs.MorningAfter(def.Number)} morning";
                 void next()
                 {
@@ -220,12 +220,6 @@ namespace AfterHours
                 if (chat.Count == 0) next();
                 else ChatInterlude.Show(day, chat, next, def.Number < NightDefs.Count ? null : $"Press {GameInput.MenuKeyTag("E")} to continue");
             });
-        }
-
-        static bool SafeWhen(ChatLine c, StoryState s)
-        {
-            try { return c.When(s); }
-            catch (Exception e) { Debug.LogException(e); return false; }
         }
 
         // =========================================================================================
