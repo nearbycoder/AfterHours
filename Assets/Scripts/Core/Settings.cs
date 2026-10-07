@@ -77,12 +77,25 @@ namespace AfterHours
         public static float TextScaleOf(int size) => size switch { 1 => 1.25f, 2 => 1.5f, _ => 1f };
         public static float TextScale => TextScaleOf(Current.TextSize);
 
-        /// <summary>Fullscreen (a borderless window over the whole screen) or a window.</summary>
+        /// <summary>
+        /// Fullscreen (a borderless window over the whole screen, at the screen's resolution) or a
+        /// window. Leaving fullscreen used to keep the screen's size, so the window's title bar
+        /// pushed its bottom edge off the screen; it now opens at <see cref="WindowedSize"/> and
+        /// the player can resize it from there.
+        /// </summary>
         public static void ApplyWindowMode(bool fullscreen)
         {
             var mode = fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
-            if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
+            if (Screen.fullScreenMode == mode) return;
+            int sw = Display.main.systemWidth, sh = Display.main.systemHeight;
+            if (sw <= 0 || sh <= 0) (sw, sh) = (Screen.currentResolution.width, Screen.currentResolution.height);
+            var (w, h) = fullscreen ? (sw, sh) : WindowedSize(sw, sh);
+            Screen.SetResolution(w, h, mode);
         }
+
+        /// <summary>The window opened on leaving fullscreen: four fifths of the screen, so it fits with its title bar and a panel.</summary>
+        public static (int w, int h) WindowedSize(int screenW, int screenH) =>
+            (Mathf.RoundToInt(screenW * 0.8f / 2f) * 2, Mathf.RoundToInt(screenH * 0.8f / 2f) * 2);
 
         /// <summary>Fullscreen, VSync and frame cap, quality preset and render scale.</summary>
         public static void ApplyGraphics()
