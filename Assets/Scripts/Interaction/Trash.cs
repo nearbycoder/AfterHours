@@ -72,7 +72,31 @@ namespace AfterHours
             return b;
         }
 
-        public bool Accepts(TrashKind k) => Kind == BinKind.Trash ? k != TrashKind.Recyclable : k != TrashKind.General;
+        public bool Accepts(TrashKind k) => Accepts(Kind, k);
+        public static bool Accepts(BinKind bin, TrashKind k) => bin == BinKind.Trash ? k != TrashKind.Recyclable : k != TrashKind.General;
+
+        const string Blue = "<color=#78AEFF>", Yes = "<color=#86E08F>", No = "<color=#FF7A6B>";
+
+        /// <summary>
+        /// The label under the reticle while a piece of rubbish is held: which bin it goes in, or,
+        /// with the reticle on a bin, whether that one takes it. Says it in words as well as colour.
+        /// </summary>
+        public static string HeldLabel(string item, TrashKind k, BinKind? aimed)
+        {
+            if (aimed is BinKind bin)
+            {
+                string name = bin == BinKind.Recycle ? $"{Blue}BLUE</color> RECYCLING" : "BLACK BIN";
+                if (Accepts(bin, k)) return $"{name}  {Yes}✓</color>";
+                return $"{name}  {No}✗</color>  ·  THIS ONE GOES IN {(k == TrashKind.Recyclable ? $"{Blue}BLUE</color>" : "BLACK")}";
+            }
+            string where = k switch
+            {
+                TrashKind.Recyclable => $"{Blue}BLUE</color> RECYCLING",
+                TrashKind.General => "BLACK BIN",
+                _ => "EITHER BIN",
+            };
+            return $"{item.ToUpperInvariant()}  ·  {where}";
+        }
 
         public void Receive(TrashItem t)
         {

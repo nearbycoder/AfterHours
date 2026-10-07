@@ -668,12 +668,15 @@ namespace AfterHours
                 yield return UseAt(cup.transform.position, 1.0f, new Vector3(13.4f, 0, 2.4f));
                 yield return Wait(0.4f);
                 Check(root.Hands.Holding == cup, "real input: E picks up a cup");
+                yield return BinLabelChecks(cup);
                 var anchor = o.Anchor("BIN_trash_reception_1").position;
                 var bin = root.Director.Furniture.Bins.OrderBy(b => (b.transform.position - anchor).sqrMagnitude).First();
                 var spot = ThrowSpot(bin, 3.6f) ?? ThrowSpot(bin, 2.8f) ?? ThrowSpot(bin, 2.2f);
                 Check(spot.HasValue, "a clear throwing spot exists near the reception bin");
                 root.Player.Teleport(spot ?? anchor + new Vector3(-2.2f, 0, 0), 0, 0);
                 yield return Aim(bin.transform.position + Vector3.up * bin.Height, 0.4f);
+                yield return Wait(0.2f);
+                Check(root.Hands.AimedBin == bin && HudLabel() == "BLACK BIN  ✓", $"aiming the cup at the black bin, the label says it takes it (\"{HudLabel()}\")");
                 // Solve once for the aim at which the cup, settled where the hands hold it at full
                 // charge (16 cm right of the camera), lands in the bin. The old check re-solved the
                 // pitch every frame from wherever the cup was, ignoring that offset: it often found
@@ -731,6 +734,41 @@ namespace AfterHours
             yield return Wait(1.0f);
             if (key != null) key.GetComponent<KeyPickup>().Interact(null);
             Check(Story.State.Has("has_key_fc2"), "the FC-2 key goes on the key ring");
+        }
+
+        static string HudLabel() => System.Text.RegularExpressions.Regex.Replace(Hud.Instance.TargetLabel.text, "<[^>]+>", "");
+
+        /// <summary>
+        /// With rubbish in hand the label under the reticle names the bin it goes in, and a bin
+        /// under the reticle says whether it takes it (round 8). Ends where it started.
+        /// </summary>
+        IEnumerator BinLabelChecks(TrashItem item)
+        {
+            var player = root.Player;
+            var (pos, yaw, pitch) = (player.transform.position, player.Yaw, player.Pitch);
+            player.Pitch = -80f; // at the ceiling: no bin
+            yield return Wait(0.5f);
+            string where = item.Kind == TrashKind.Recyclable ? "BLUE RECYCLING" : item.Kind == TrashKind.General ? "BLACK BIN" : "EITHER BIN";
+            Check(root.Hands.AimedBin == null && HudLabel() == $"{item.DisplayName.ToUpperInvariant()}  ·  {where}" && Hud.Instance.TargetLabel.alpha > 0.5f,
+                $"holding the {item.DisplayName}, the label under the reticle says which bin it goes in (\"{HudLabel()}\")");
+            player.Pitch = 10f;
+            yield return Wait(0.4f);
+            yield return Shot("n1_bin_label_held");
+            var wrong = root.Director.Furniture.Bins.Where(b => !b.Accepts(item.Kind)).OrderBy(b => (b.transform.position - pos).sqrMagnitude).FirstOrDefault();
+            var spot = wrong != null ? ThrowSpot(wrong, 1.8f) ?? ThrowSpot(wrong, 2.4f) : null;
+            Check(spot.HasValue, "a spot in view of a bin that doesn't take it");
+            if (spot.HasValue)
+            {
+                player.Teleport(spot.Value, 0, 0);
+                yield return Aim(wrong.transform.position + Vector3.up * wrong.Height * 0.6f, 0.4f);
+                yield return Wait(0.3f);
+                string expect = item.Kind == TrashKind.Recyclable ? "BLACK BIN  ✗  ·  THIS ONE GOES IN BLUE" : "BLUE RECYCLING  ✗  ·  THIS ONE GOES IN BLACK";
+                Check(root.Hands.AimedBin == wrong && HudLabel() == expect, $"aiming at the wrong bin, the label says so and which one it goes in (\"{HudLabel()}\")");
+                yield return Shot("n1_bin_label_wrong");
+            }
+            player.Teleport(pos, yaw, pitch);
+            yield return Wait(0.3f);
+            Check(root.Hands.Holding == item, "still holding it afterwards");
         }
 
         // ---- pad tool cycling and controller glyphs (night 1) ------------------------------------

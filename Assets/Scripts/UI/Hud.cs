@@ -51,7 +51,7 @@ namespace AfterHours
             Ui.Place(dot.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(7, 7));
 
             targetLabel = Ui.Label(root, "", UiFont.SansMedium, 21, Ui.Text, TextAlignmentOptions.Center, "TargetLabel");
-            Ui.Place(targetLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(600, 30));
+            Ui.Place(targetLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(900, 30));
             targetLabel.fontStyle = FontStyles.Normal;
             targetLabel.characterSpacing = 2f;
 
@@ -189,6 +189,9 @@ namespace AfterHours
             Tween.Run(0.6f, k => caption.alpha = 1 - k, Ease.InCubic, null, hold, caption.gameObject);
         }
 
+        /// <summary>The label under the reticle (for checks).</summary>
+        public TextMeshProUGUI TargetLabel => targetLabel;
+
         public bool CaptionShowing => caption != null && caption.alpha > 0.01f;
 
         /// <summary>Drop the current caption at once (a screen that covers the view is opening).</summary>
@@ -251,7 +254,12 @@ namespace AfterHours
                 var name = string.IsNullOrEmpty(cc.Target.DisplayName) ? cc.Target.Id : cc.Target.DisplayName;
                 targetLabel.text = cc.InReach ? $"{name.ToUpperInvariant()}  <color=#{ColorUtility.ToHtmlStringRGB(accent)}>{Mathf.FloorToInt(cc.Target.Completion * 100)}%</color>" : $"<alpha=#88>{name.ToUpperInvariant()} — get closer";
             }
-            targetLabel.alpha = Mathf.Lerp(targetLabel.alpha, show ? 0.9f : 0f, 1f - Mathf.Exp(-dt * 12f));
+            // Holding rubbish: which bin it goes in, or whether the bin under the reticle takes it.
+            var hands = Hands.Instance;
+            var rubbish = !busy && hands != null ? hands.Holding as TrashItem : null;
+            if (rubbish != null)
+                targetLabel.text = Bin.HeldLabel(rubbish.DisplayName, rubbish.Kind, hands.AimedBin != null ? hands.AimedBin.Kind : null);
+            targetLabel.alpha = Mathf.Lerp(targetLabel.alpha, show || rubbish != null ? 0.9f : 0f, 1f - Mathf.Exp(-dt * 12f));
         }
     }
 }

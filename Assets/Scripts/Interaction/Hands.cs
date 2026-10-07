@@ -14,6 +14,8 @@ namespace AfterHours
         public Holdable Holding { get; private set; }
         public float Charge { get; private set; }
         public bool Charging { get; private set; }
+        /// <summary>The bin under the reticle (up to 15 m away) while something is held, or null.</summary>
+        public Bin AimedBin { get; private set; }
 
         int heldLayer;
         Vector3 holdVel;
@@ -97,11 +99,14 @@ namespace AfterHours
         void Update()
         {
             var h = Holding;
+            AimedBin = null;
             if (h == null) { arc.positionCount = 0; return; }
             if (h == null || !h.gameObject.activeInHierarchy) { Holding = null; Cleaning.Suspended = false; Cleaning.Rig.Hidden = false; return; }
             var input = GameInput.Frame;
             float dt = Time.deltaTime;
             var cam = Player.Camera.transform;
+            if (Physics.Raycast(cam.position, cam.forward, out var aim, 15f, Layers.SolidMask, QueryTriggerInteraction.Ignore))
+                AimedBin = aim.collider.GetComponentInParent<Bin>();
 
             // Follow the hold point (spring), keep the object upright and facing the player.
             var target = HoldTarget(h, cam.position, cam.rotation, Charging ? Charge : 0f);
