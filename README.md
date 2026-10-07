@@ -71,7 +71,7 @@ chat reacts, the next night has changed, and on the seventh night you decide wha
 | <kbd>E</kbd> | A | interact: pick up, put back, tuck a chair, light switch, door, monitor, inbox tray, read |
 | <kbd>Q</kbd> | B | drop what you're holding |
 | <kbd>F</kbd> | d-pad up | UV torch (from Night 2) |
-| <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket; <kbd>A</kbd>/<kbd>D</kbd> (d-pad ◀ ▶) turns to the case file |
+| <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket; <kbd>A</kbd>/<kbd>D</kbd> (d-pad ◀ ▶) turns to the case file (what you've read, and each morning's chat) |
 | <kbd>1</kbd>–<kbd>4</kbd>, mouse wheel | d-pad left / right | pin a tool (otherwise the right tool comes up for the surface); the wheel and d-pad also step back to automatic |
 | <kbd>Esc</kbd> | Start / Menu | pause |
 
@@ -100,7 +100,10 @@ you read: documents (the paper grows with the text), the clipboard, choices, the
 the morning chat. At Large and Largest the clipboard becomes one wide sheet with three pages
 (shift sheet, notes, case file); <kbd>W</kbd>/<kbd>S</kbd> or the wheel show the rest of a long
 page. The morning chat scrolls back with <kbd>W</kbd>/<kbd>S</kbd>, the arrows, the wheel or the
-d-pad at any size. The title, pause and settings menus keep their size.
+d-pad at any size. The menus follow it too: the title, the pause menu (and its controls card),
+Night Select, the brightness page and the ending grow, and at Large and Largest Settings and the
+controls pages become one list that scrolls, keeping the row you're on in view (the wheel
+scrolls it too). Changing Text size lays Settings out again straight away.
 
 **A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
 clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
@@ -152,8 +155,8 @@ a UV torch shows invisible-ink marks left by the cleaner before you, and any gri
 
 - **Evidence.** Notes, emails, ledgers and printouts open in an inspect view. Keep them in your
   pocket, put them back, or throw them away. The clipboard's second page, the **case file**,
-  lists everything you've read, night by night, with what became of it, so you can read any of
-  it again before you decide.
+  lists everything you've read, night by night, with what became of it, and each morning's
+  office chat, so you can read any of it again before you decide.
 - **Deliveries.** Leave a document in someone's inbox tray and they find it in the morning. Feed it
   to a shredder. Or write an anonymous sticky note from the leads you've pieced together.
 - **Suspicion.** One office belongs to someone who notices when things move. Anything you take or
@@ -189,14 +192,16 @@ the cleaning closet) over seven nights. Spoiler-light:
 
 There are four endings, **The Audit**, **Clean Books**, **Loose Threads** and a secret one, each with
 personal epilogue variations. **Night Select** replays any night you've reached from the state you
-started it in, so you can try another road. Your records are kept apart from the story save: the
+started it in, so you can try another road. In the middle of a story it asks before taking you
+back to an earlier night, since Continue then picks up from there (the later nights stay in
+Night Select). Your records are kept apart from the story save: the
 best grade and most secrets for each night, and the endings you've found (shown on the title
 screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
 Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
 Settings, Restart this night, Quit to title; both of the last two ask first; and a card listing
 the controls as you have them bound) and settings in two
-columns: mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
+columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
 four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
 render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
 whatever you're aiming at, text size (Normal, Large, Largest), and pages for keyboard and
@@ -316,19 +321,29 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   checks the HUD at each text size stays on screen. It opens every document at Normal and Largest
   and checks the text stays on the paper and the paper on screen, and checks choices at Largest.
   The pause menu's controls card is checked against the bindings, after a rebind and with a
-  virtual pad and DualShock 4. Nights 1 and 2 end at Largest: the report's text must stay on the
+  virtual pad and DualShock 4. At each text size it measures the pause menu, its controls card
+  and the title menu (on screen, apart, the size they should be) and the brightness page; at
+  Largest it walks every row of Settings and both controls pages with the d-pad (each must
+  come into view), scrolls with the wheel and the arrow keys, and switches Text size from its
+  own row to check the page is laid out again around it. Nights 1 and 2 end at Largest: the report's text must stay on the
   paper and the morning chat is scrolled back to its first message with real key presses (and
   must hold new messages while scrolled back). Every shift report is checked against the
   numbers its grade came from. On Night 2 it opens the case file, reads documents again
-  with the pad and the keyboard and checks nothing in the story changed, turns the clipboard's
+  with the pad and the keyboard and checks nothing in the story changed, reads Tuesday
+  morning's chat again (the same messages as that morning, from the first; scrolled at Largest), turns the clipboard's
   three pages at Large and Largest and scrolls the long shift sheet, and checks the pause on
-  focus loss (through the game's focus handler) and on unplugging the pad in use. Automated runs
+  focus loss (through the game's focus handler) and on unplugging the pad in use. On Night 3 it
+  goes to the title and checks Night Select asks before an earlier night (backing out keeps the
+  save; pad A on Never mind doesn't also pick the card behind), that a confirmed replay moves
+  Continue, and that Night 3 in Night Select puts the story back. The ending is read at Largest
+  (its epilogue must fit), and Night Select's cards are checked at each size. Automated runs
   keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
   buttons and survive a save, the hold-or-toggle logic (including clean and spray), the case
-  file's reading list (including saves from before it existed), the grading and its hints, the
+  file's reading list and morning chats (including saves from before they existed, whose chats
+  come from the night snapshots), the grading and its hints, the
   brightness curve, the HUD text sizes and how far documents grow, and that settings files from
   earlier versions load.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
@@ -423,7 +438,9 @@ remapping, hold or toggle for crouch and brisk walk, and pausing on focus or pad
 brightness, hold or toggle for clean and spray, the grade breakdown on the shift report, HUD
 text size, and a question before Quit to title; round 5: text size for documents, the
 clipboard, choices, the report and the morning chat, scrolling back through the chat, and the
-controls in the pause menu) are listed in
+controls in the pause menu; round 6: text size for the menus, with Settings as a scrolling list
+at the larger sizes, the morning chats in the case file, and a question before Night Select
+takes a story in progress back to an earlier night) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -449,7 +466,8 @@ still rough or untested:
   (from about 86% of a dark view near-black to about 12%) was chosen by measuring screenshots,
   not by eye on different monitors or TVs. Text size was checked by measuring where text lands
   (on the paper, on screen, at 1.25× or 1.5×) at three window sizes, not by people reading it at a
-  distance. The title, pause and settings menus don't follow the text size.
+  distance. Since round 6 the menus follow it too, checked the same way; nobody has used the
+  scrolling Settings list at Largest with a real pad or mouse.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,

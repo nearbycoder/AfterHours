@@ -804,6 +804,65 @@ everything as it was. After the ending, or on the night you're on, it doesn't as
 Continue still on Night 3; confirming starts Night 1; after the ending the replay doesn't ask.
 **Verify:** AutoPilot checks on the title mid-run and in the existing after-ending replay.
 
+## Round 6 results (7 October 2026)
+
+All four items shipped on `improvements-6`, one commit each after the scope commit, plus a
+fix to one of the new checks and this update. The
+baseline `audit` run on `main` passed 404 checks with 0 failed. Screenshots are in
+[`docs/media/improvements/round6/`](media/improvements/round6/). Final build: **all five routes pass, 0 failed, no crashes** (audit 446 checks, loose 442,
+cleanbooks 442, spotless 417, marian 435; round 5 ended at 404, 400, 400, 375 and 393). The first
+attempt at the final run stopped after `audit`, whose new ending check failed because Night 7 has
+no morning chat, so the ending was built before the check switched to Largest; the check was
+fixed (its own commit) and all five routes were run again on the rebuilt game.
+EditMode tests 64/64 (61 before). The commits for R6-1, R6-1 and R6-2, and R6-1 to R6-3 were
+each compiled and tested on their own (61/61, 61/61, 64/64). Nights 1 to 3 were also run at
+1280×720 and 1024×768 (4:3), where every new check passed (see the throw below). The `menus`
+capture checked Settings, both controls pages and the brightness page at every text size at
+1600×900, 1280×720, 1920×1080, 1680×1050 and 1440×1080: 0 overlaps and nothing off screen in
+all 60 layouts. The real save and settings files under `~/.config/unity3d` were checksummed before and after:
+`save.json`, `prefs` and the night snapshots are unchanged (every automated run used an
+`-ahProfile` folder, removed afterwards). Load average from other sessions was about 13–32 during the item runs (with a spike to about 97 while building, when the
+input-driven runs waited) and 8–16 during the final run.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R6-1 | Title, pause menu, Night Select, brightness page and ending follow Text size | Done | AutoPilot on Night 1 at three window sizes, for each text size: the pause menu's buttons are 64, 80 and 96 units (1.5× at Largest on 16:9; 1.28× on 4:3, where the controls card keeps its Normal size beside them), the card grows as far as there's room (1.37× at 1600×900), both on screen, apart, the card's text inside; the title's buttons are 64, 80 and 96 units, below the tagline (34 units clear at Largest) and above the footer; the brightness page is 1.5× on 16:9 and 1.14× on 4:3 (it stops at 60% of the screen's width so the office stays in view). After the ending, Night Select at each size keeps every card's writing on its card with the grade line larger than Normal; the ending at Largest has its epilogue at 35 (30 at Normal; it grows as far as all six lines fit, 391 of 400 units) with all its lines inside the box above the stats; the title, built at Largest, follows the change back to Normal (96 → 64 units a button). The setting is now called Text size. |
+| R6-2 | Settings and the controls pages at larger text sizes | Done | AutoPilot at Largest at three window sizes: Settings is one list of 22 rows at 84 units (56 at Normal), the keyboard page 16 rows, the controller page 11, no overlaps, clear of the buttons and on screen; the d-pad walks every row from the first and on to Done, each row fully in view when selected; the down arrow walks the controls list too; the wheel scrolls (1565 → 1445 units); d-pad left on Text size lays the page out again at Large (70-unit rows), then at Normal (two columns), with the same row selected and in view. The `menus` capture: 60 layouts, 0 overlaps. |
+| R6-3 | Read the morning chats again | Done | 3 EditMode tests (which lines a state picks; chats kept per night, a replay replacing its night; an old save getting its chats from the snapshots, a missing snapshot giving none, a save with chats not seeded again). AutoPilot on Night 2, every route: the case file lists "Tuesday morning · #general" right after Night 1's documents; pad A opens it with exactly the messages the AutoPilot saw that morning (7 on `audit`), at the first message; pad B returns to the case file with nothing in the story changed; E opens it, Esc and Tab close it without closing the clipboard or pausing; at Largest S scrolls it on (240 of 250 units) and W comes back. |
+| R6-4 | Don't lose your place by replaying an earlier night | Done | AutoPilot on Night 3, every route: from the title, Night 1 asks; pad B backs out with the save on Night 3; pad A on Never mind (after the d-pad also moved Night Select's own selection) doesn't pick the card behind the question; confirming Night 2 starts it and Continue moves to Night 2; Night 3 (later than the save) doesn't ask and puts the story back at its start with both results and chats. The after-ending replay of Night 2 still doesn't ask. |
+
+Things fixed along the way:
+
+- **A question's answer could reach the button behind it.** Found while building R6-4: the
+  menus' input module sends pad A to the button the pad has selected as well as to an open
+  question (Restart, Quit to title, New Game, replaying a night). Behind Night Select that
+  could start a different night if the d-pad had moved the selection. Menu buttons and Night
+  Select cards now ignore presses while a question is open and on the frame it closes. The
+  R6-4 check covers the guard; the old behaviour wasn't reproduced on the old build.
+- The menus' hover lift reset a button's scale every frame, so buttons scaled for text size
+  (Done, Reset, the tabs) stayed at Normal; it now lifts from the button's own scale.
+
+Known limits:
+
+- The real-input throw check on Night 1 ("a charged throw lands the cup in the bin") failed in
+  2 of 5 runs at the smaller window sizes (1280×720 and 1024×768), both times with the held cup
+  at an unusual height so the AutoPilot's aim solver picked a different pitch (32° and 12.6°
+  rather than about 16°); re-runs at both sizes passed. The throw code didn't change this round;
+  it looks like an existing marginal check, not a game bug, but it hasn't been pinned down.
+- Night Select's Back button keeps its size: the second row of cards sits right above it.
+  The endings card's title, the chat's channel list and the title's logo and tagline also stay
+  (they're 26–120 units already, or decoration).
+- At Largest the controls page shows about five rows at a time above its note; the note itself
+  grows too. Nobody has used the scrolling lists with a real mouse or pad.
+- A save from before this round gets its chats from the night snapshots; if a night's snapshot
+  is missing (or was overwritten by a replay down another road), that morning isn't listed.
+- The Night 7 chat can't be read again: the case file lives on the clipboard, which only
+  exists during a night.
+
+Deferred: saving mid-night (every night's scripted events keep their state in local variables,
+so it means rewriting all seven nights' scripts), hints for missed secrets (the owner's call),
+and still WebGL, Windows and the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -827,7 +886,9 @@ published; no web build; licence, releases, tags and signing left to the owner. 
 7. **A look at brightness and text size on real screens**: both were checked by numbers and
    screenshots on one monitor. Since round 5, text size also covers documents, the clipboard,
    choices, the report and the morning chat; whether Largest is large enough on a TV across a
-   room, and whether the menus should follow it too, needs someone to look.
+   room needs someone to look. Since round 6 the menus follow it too (Settings and the controls
+   pages become a scrolling list at Large and Largest), which also wants a try with a real pad
+   and mouse.
 8. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
    dropping out have only met virtual devices. Ten minutes with a real Xbox and DualSense pad
    would settle it.
