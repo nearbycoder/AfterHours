@@ -425,22 +425,33 @@ namespace AfterHours
             });
         }
 
+        /// <summary>What the last night's grade was computed from, for the shift report.</summary>
+        public GradeParts LastGrade { get; private set; }
+
+        /// <summary>Tonight's tasks and surfaces, as the grade counts them (see <see cref="Grading"/>).</summary>
+        public GradeParts GradeParts()
+        {
+            var active = Office.Surfaces.Values.Where(s => s.gameObject.activeSelf).ToList();
+            return new GradeParts
+            {
+                ReqTotal = Def.Tasks.Count(t => !t.Optional), ReqDone = Def.Tasks.Count(t => !t.Optional && IsDone(t)),
+                OptTotal = Def.Tasks.Count(t => t.Optional), OptDone = Def.Tasks.Count(t => t.Optional && IsDone(t)),
+                Clean = active.Count > 0 ? active.Average(s => s.Completion) : 1f,
+            };
+        }
+
         public void EndNight()
         {
             if (!Running) return;
             RoomPhotos.Instance?.Snap(Def.Rooms, false);
             Running = false;
             Sfx.Play("punch_clock", null, 0.8f);
-            int reqTotal = Def.Tasks.Count(t => !t.Optional), reqDone = Def.Tasks.Count(t => !t.Optional && IsDone(t));
-            int optTotal = Def.Tasks.Count(t => t.Optional), optDone = Def.Tasks.Count(t => t.Optional && IsDone(t));
-            var active = Office.Surfaces.Values.Where(s => s.gameObject.activeSelf).ToList();
-            float clean = active.Count > 0 ? active.Average(s => s.Completion) : 1f;
-            float score = (reqTotal > 0 ? reqDone / (float)reqTotal : 1f) * 0.6f + (optTotal > 0 ? optDone / (float)optTotal : 1f) * 0.15f + clean * 0.25f;
-            string grade = reqDone == reqTotal && score >= 0.97f ? "S" : score >= 0.9f ? "A" : score >= 0.75f ? "B" : "C";
+            var parts = LastGrade = GradeParts();
+            string grade = Grading.Grade(parts);
             var result = new NightResult
             {
                 Night = Def.Number, Grade = grade, Secrets = secrets.Count, SecretsTotal = Def.Secrets.Count,
-                TasksDone = reqDone + optDone, TasksTotal = reqTotal + optTotal, Seconds = Elapsed, Completed = true,
+                TasksDone = parts.ReqDone + parts.OptDone, TasksTotal = parts.ReqTotal + parts.OptTotal, Seconds = Elapsed, Completed = true,
             };
             var prev = Story.State.ResultFor(Def.Number);
             if (prev != null) Story.State.Results.Remove(prev);

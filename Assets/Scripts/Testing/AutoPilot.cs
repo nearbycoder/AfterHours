@@ -264,6 +264,7 @@ namespace AfterHours
             Check(Story.State.ResultFor(n) != null, $"night {n}: clocking out records a result (grade {Story.State.ResultFor(n)?.Grade})");
             yield return Wait(3.2f);
             yield return Shot($"n{n}_report");
+            ReportChecks(n);
             yield return Beat("report", n);
             Interstitial.AutoAdvance = true;
             yield return Wait(9f);
@@ -1002,6 +1003,31 @@ namespace AfterHours
             vpad.MakeCurrent();
             root.Player.Teleport(root.Player.transform.position, 0f, 0f);
             yield return Wait(0.2f);
+        }
+
+        /// <summary>The shift report explains the grade with the numbers it was computed from, on the paper.</summary>
+        void ReportChecks(int n)
+        {
+            var parts = root.Director.LastGrade;
+            string grade = Story.State.ResultFor(n)?.Grade;
+            var paper = Ui.Canvas.transform.Find("ShiftReport")?.GetComponentsInChildren<RectTransform>(true).FirstOrDefault(t => t.name == "Paper");
+            var labels = paper ? paper.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true) : new TMPro.TextMeshProUGUI[0];
+            string Text(string name) => labels.FirstOrDefault(l => l.name == name)?.text;
+            Check(grade == Grading.Grade(parts) && Text("GradeBreakdown") == Grading.Summary(parts),
+                $"night {n}: the report explains grade {grade} ({Text("GradeBreakdown")})");
+            Check((grade == "S") == (Text("GradeHint") == null),
+                $"night {n}: a hint shows only below S ({Text("GradeHint") ?? "none"})");
+            if (!paper) return;
+            var corners = new Vector3[4];
+            paper.GetWorldCorners(corners);
+            float bottom = corners[0].y;
+            var low = labels.Where(l => l.enabled && !string.IsNullOrEmpty(l.text)).Select(l =>
+            {
+                var c = new Vector3[4];
+                l.rectTransform.GetWorldCorners(c);
+                return (l, y: Mathf.Min(c[0].y, c[3].y));
+            }).OrderBy(x => x.y).FirstOrDefault();
+            Check(low.l == null || low.y >= bottom - 2f, $"night {n}: every line of the report sits on the paper (lowest: {low.l?.name} at {low.y - bottom:F0} px above its edge)");
         }
 
         // ---- brightness (night 1, from the pause menu) ---------------------------------------------

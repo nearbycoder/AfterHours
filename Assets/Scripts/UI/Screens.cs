@@ -189,7 +189,10 @@ namespace AfterHours
             var sub = Ui.Label(p, $"Night {def.Number} · {def.Day} · {def.Title} · {Mathf.FloorToInt(r.Seconds / 60)}m {Mathf.FloorToInt(r.Seconds % 60):00}s on the clock", UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft);
             Ui.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(50, -100), new Vector2(700, 30), new Vector2(0, 1));
 
+            // Long sheets (Night 2 has 14 lines) close up so the grade breakdown still fits the paper.
             float y = -160;
+            float step = Mathf.Min(46f, (840f - 160f - 210f) / Mathf.Max(1, def.Tasks.Count));
+            float taskSize = Mathf.Min(34f, step * 0.78f);
             int i = 0;
             foreach (var t in def.Tasks)
             {
@@ -197,15 +200,32 @@ namespace AfterHours
                 var (d, n) = dir.Progress(t);
                 string mark = ok ? "<color=#2E8B57>✔</color>" : "<color=#B03A2E>✗</color>";
                 string extra = n > 1 && !ok ? $"  <size=80%><color=#888>{d}/{n}</color></size>" : "";
-                var line = Ui.Label(p, $"{mark}  {t.Label}{(t.Optional ? "  <size=75%><color=#8A7A5A>bonus</color></size>" : "")}{extra}", UiFont.Hand, 34, Ui.Ink, TextAlignmentOptions.TopLeft);
-                Ui.Place(line.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, 44), new Vector2(0, 1));
+                var line = Ui.Label(p, $"{mark}  {t.Label}{(t.Optional ? "  <size=75%><color=#8A7A5A>bonus</color></size>" : "")}{extra}", UiFont.Hand, taskSize, Ui.Ink, TextAlignmentOptions.TopLeft);
+                Ui.Place(line.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, step), new Vector2(0, 1));
                 line.alpha = 0;
                 int idx = i++;
                 Tween.Run(0.3f, k => { if (line) line.alpha = k; }, Ease.OutCubic, null, 0.4f + idx * 0.12f);
                 Tween.Delay(0.4f + idx * 0.12f, () => Sfx.Play("pen_scratch", null, 0.25f, 1.2f, 0.15f, AudioBus.Ui));
-                y -= 46;
+                y -= step;
             }
-            y -= 20;
+            y -= 14;
+            // What the grade is made of, and what an S would have taken.
+            var parts = dir.LastGrade;
+            var breakdown = Ui.Label(p, Grading.Summary(parts), UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft, "GradeBreakdown");
+            Ui.Place(breakdown.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(680, 30), new Vector2(0, 1));
+            y -= 32;
+            string hintText = Grading.Hint(parts);
+            if (hintText != null)
+            {
+                var gradeHint = Ui.Label(p, hintText, UiFont.Hand, 30, new Color(0.62f, 0.14f, 0.12f), TextAlignmentOptions.TopLeft, "GradeHint");
+                Ui.Place(gradeHint.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(680, 36), new Vector2(0, 1));
+                gradeHint.enableAutoSizing = true;
+                gradeHint.fontSizeMin = 22;
+                gradeHint.fontSizeMax = 30;
+                gradeHint.textWrappingMode = TextWrappingModes.NoWrap;
+                y -= 40;
+            }
+            y -= 6;
             var sec = Ui.Label(p, $"Secrets found   <b>{r.Secrets} / {r.SecretsTotal}</b>", UiFont.SansMedium, 28, Palette.Hex("6A3FA0"), TextAlignmentOptions.TopLeft);
             Ui.Place(sec.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, 40), new Vector2(0, 1));
             y -= 50;
