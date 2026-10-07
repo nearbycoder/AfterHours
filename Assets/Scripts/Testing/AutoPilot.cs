@@ -674,26 +674,30 @@ namespace AfterHours
                 Check(spot.HasValue, "a clear throwing spot exists near the reception bin");
                 root.Player.Teleport(spot ?? anchor + new Vector3(-2.2f, 0, 0), 0, 0);
                 yield return Aim(bin.transform.position + Vector3.up * bin.Height, 0.4f);
+                // Solve once for the aim at which the cup, settled where the hands hold it at full
+                // charge (16 cm right of the camera), lands in the bin. The old check re-solved the
+                // pitch every frame from wherever the cup was, ignoring that offset: it often found
+                // no solution and threw at whatever pitch the look at the bin had left.
+                var camT = root.Player.Camera.transform;
+                var aim = SolveHeldAim(cup, camT.position, root.Player.Yaw, bin, 1f);
+                Check(aim.HasValue, $"the throw has a solution from this spot (pitch {aim?.pitch.ToString("F1") ?? "none"}°, yaw {aim?.yaw.ToString("F1") ?? "-"}° against {root.Player.Yaw:F1}° looking at the bin)");
+                if (aim.HasValue) { root.Player.Pitch = aim.Value.pitch; root.Player.Yaw = aim.Value.yaw; }
                 // Hold LMB to full charge (charge clamps at 1, so the throw doesn't depend on frame
-                // timing), keep the solved pitch while the held cup settles, then release.
+                // timing) at that pitch, let the held cup settle, then release.
                 input.Use = true;
-                for (float t = 0; t < 0.9f; t += Time.deltaTime)
-                {
-                    if (SolvePitch(cup.transform.position, bin, 1f) is float p) root.Player.Pitch = p;
-                    yield return null;
-                }
+                for (float t = 0; t < 0.9f; t += Time.deltaTime) yield return null;
                 var arcLine = GameObject.Find("ThrowArc")?.GetComponent<LineRenderer>();
                 Check(arcLine != null && arcLine.positionCount > 4, $"charging a throw draws the arc preview ({arcLine?.positionCount} points)");
                 yield return Shot("n1_throw_arc");
-                for (int f = 0; f < 20; f++)
-                {
-                    if (SolvePitch(cup.transform.position, bin, 1f) is float p) root.Player.Pitch = p;
+                var expect = Hands.HoldTarget(cup, camT.position, Quaternion.Euler(root.Player.Pitch, root.Player.Yaw, 0), 1f);
+                for (float t = 0; t < 1.5f && ((cup.transform.position - expect).magnitude > 0.003f || cup.Body.linearVelocity.sqrMagnitude > 1e-4f); t += Time.deltaTime)
                     yield return null;
-                }
+                float settle = (cup.transform.position - expect).magnitude;
                 input.Use = false;
                 float solved = root.Player.Pitch;
                 yield return null;
-                Log($"throw: pitch {solved:F1} from {cup.transform.position} v={cup.Body.linearVelocity} bin {bin.transform.position} h={bin.Height}");
+                Log($"throw: pitch {solved:F1} from {cup.transform.position} (expected {expect}, {settle * 100f:F1} cm off) v={cup.Body.linearVelocity} bin {bin.transform.position} h={bin.Height}, {1f / Mathf.Max(1e-4f, Time.smoothDeltaTime):F0} fps");
+                Check(settle < 0.02f, $"the held cup settles where the solve expected it ({settle * 100f:F1} cm off)");
                 float closest = float.MaxValue;
                 for (float t = 0; t < 2f && !cup.Binned; t += Time.deltaTime)
                 {
@@ -2577,6 +2581,32 @@ namespace AfterHours
                 return pos;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Camera pitch and yaw for which a held item, settled where the hands hold it at charge
+        /// <paramref name="c"/> for that aim (a little right of and below the camera), is thrown into
+        /// the bin (same maths as <see cref="Hands"/>). Yaw is searched near <paramref name="yaw0"/>.
+        /// </summary>
+        protected (float pitch, float yaw)? SolveHeldAim(Holdable h, Vector3 camPos, float yaw0, Bin bin, float c)
+        {
+            var target = bin.transform.position;
+            float targetY = target.y + bin.Height, g = -Physics.gravity.y;
+            float best = float.MaxValue, bestPitch = 0, bestYaw = yaw0;
+            for (float yaw = yaw0 - 10f; yaw <= yaw0 + 10f; yaw += 0.1f)
+                for (float pitch = -45f; pitch <= 70f; pitch += 0.1f)
+                {
+                    var rot = Quaternion.Euler(pitch, yaw, 0);
+                    var from = Hands.HoldTarget(h, camPos, rot, c);
+                    var v = rot * Vector3.forward * Mathf.Lerp(3.2f, 10f, c * c) + Vector3.up * Mathf.Lerp(0.8f, 1.6f, c);
+                    float dy = from.y - targetY, disc = v.y * v.y + 2f * g * dy;
+                    if (disc < 0) continue;
+                    float t = (v.y + Mathf.Sqrt(disc)) / g;
+                    var land = from + new Vector3(v.x, 0, v.z) * t;
+                    float miss = new Vector2(land.x - target.x, land.z - target.z).magnitude;
+                    if (miss < best) { best = miss; bestPitch = pitch; bestYaw = yaw; }
+                }
+            return best < 0.05f ? (bestPitch, bestYaw) : null;
         }
 
         /// <summary>Camera pitch for which a throw at charge <paramref name="c"/> from <paramref name="from"/> drops into the bin (same maths as <see cref="Hands"/>).</summary>

@@ -65,10 +65,14 @@ namespace AfterHours
             foreach (Transform c in go.transform) SetLayer(c.gameObject, layer);
         }
 
-        Vector3 HoldPoint(Holdable h)
+        /// <summary>
+        /// Where a held object settles in front of a camera at <paramref name="camPos"/> turned
+        /// <paramref name="camRot"/>, drawn back a little while a throw charges to <paramref name="charge"/>.
+        /// </summary>
+        public static Vector3 HoldTarget(Holdable h, Vector3 camPos, Quaternion camRot, float charge)
         {
-            var cam = Player.Camera.transform;
-            return cam.position + cam.forward * (h.HoldDistance + 0.05f) - cam.up * 0.2f + cam.right * 0.16f;
+            Vector3 f = camRot * Vector3.forward, u = camRot * Vector3.up, r = camRot * Vector3.right;
+            return camPos + f * (h.HoldDistance + 0.05f - 0.08f * charge) + u * (-0.2f + 0.04f * charge) + r * 0.16f;
         }
 
         void Release(bool keepPhysics = true)
@@ -100,8 +104,7 @@ namespace AfterHours
             var cam = Player.Camera.transform;
 
             // Follow the hold point (spring), keep the object upright and facing the player.
-            var target = HoldPoint(h);
-            if (Charging) target -= cam.forward * (0.08f * Charge) - cam.up * 0.04f * Charge;
+            var target = HoldTarget(h, cam.position, cam.rotation, Charging ? Charge : 0f);
             var pos = h.transform.position;
             holdVel += ((target - pos) * 420f - holdVel * 38f) * dt;
             pos += holdVel * dt;

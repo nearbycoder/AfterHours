@@ -306,6 +306,7 @@ Tools/.venv/bin/python Tools/audio/build_music.py
 - `Tools/autopilot.sh [outdir] [nightN|all] [route]` runs the built game with no human: it starts at
   the title and plays all seven nights through the real components (brush maths on every dirty
   surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up, a charged throw
+  (aimed once for where the hands hold the cup, which must settle there before it's released)
   and the vacuum, a virtual gamepad for the menus), then checks the chosen route reaches its
   ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`. It also checks every
   night for props overlapping, sunk into furniture or floating. On Night 1 it loses a can out of
