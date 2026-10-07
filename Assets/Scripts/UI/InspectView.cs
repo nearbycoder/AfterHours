@@ -107,10 +107,13 @@ namespace AfterHours
                 InspectMode.Screen => $"{key("E", "A")}  Close        {key("Q", "X")}  Switch off monitor",
                 _ => $"{key("E", "A")}  Close",
             };
-            // Text size (Settings) applies to the key hints under the paper.
+            // Text size (Settings) applies to the header and the key hints around the paper.
             float k = Settings.TextScale;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
             hints.rectTransform.localScale = Vector3.one * k;
-            hints.rectTransform.sizeDelta = new Vector2(Mathf.Min(1400f, (((RectTransform)Ui.Canvas.transform).rect.width - 80f) / k), 40f);
+            hints.rectTransform.sizeDelta = new Vector2(Mathf.Min(1400f, (canvasW - 80f) / k), 40f);
+            header.rectTransform.localScale = Vector3.one * k;
+            header.rectTransform.sizeDelta = new Vector2(Mathf.Min(1200f, (canvasW - 80f) / k), 34f);
             GameRoot.Instance?.SetBlocked("inspect", true);
             PostFx.Instance?.SetInspect(true);
             Sfx.Duck = 0.45f;
@@ -159,13 +162,41 @@ namespace AfterHours
                     paperCol = Palette.Hex("15181C");
                 }
             }
-            card.sizeDelta = size;
+            card.sizeDelta = Grow(size, Settings.TextScale, screen);
             paper.color = paperCol;
             body.font = Ui.Font(f);
             body.fontSize = fs;
+            // Larger text sizes: the paper grows (above) and the text grows with it, up to the
+            // setting's scale. At any size, text that would run past the paper (a few sticky notes
+            // at Normal) shrinks a little to fit instead.
+            float k = Settings.TextScale;
+            body.enableAutoSizing = true;
+            body.fontSizeMin = fs * 0.8f;
+            body.fontSizeMax = fs * k;
             body.color = ink;
             body.text = GameInput.ExpandKeys(d.Body);
             body.margin = d.Style == DocStyle.Sticky ? new Vector4(20, 20, 20, 20) : Vector4.zero;
+        }
+
+        /// <summary>
+        /// The paper's size at text scale <paramref name="k"/>: up to k times the designed size,
+        /// within the screen's width and the height between the header and the key hints (both
+        /// also scaled). Wider paper makes room for the larger text even where the height can't
+        /// grow. Normal (k = 1) keeps the designed size; pictures keep their aspect.
+        /// </summary>
+        public static Vector2 Grow(Vector2 size, float k, bool keepAspect) =>
+            Grow(size, k, keepAspect, k <= 1f ? 1920f : ((RectTransform)Ui.Canvas.transform).rect.width);
+
+        /// <summary>As above, on a canvas <paramref name="canvasW"/> units wide (1080 tall).</summary>
+        public static Vector2 Grow(Vector2 size, float k, bool keepAspect, float canvasW)
+        {
+            if (k <= 1f) return size;
+            // The card sits 10 units above centre on a 1080-unit canvas; leave 20 units of air.
+            float top = 60f + 34f * k + 20f, bottom = 46f + 40f * k + 20f;
+            float maxH = 2f * Mathf.Min(530f - top, 550f - bottom);
+            float maxW = canvasW - 160f;
+            if (keepAspect) return size * Mathf.Max(1f, Mathf.Min(k, Mathf.Min(maxW / size.x, maxH / size.y)));
+            return new Vector2(Mathf.Max(size.x, Mathf.Min(size.x * k, maxW)), Mathf.Min(size.y * k, maxH));
         }
 
         void Update()

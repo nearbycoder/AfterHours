@@ -169,7 +169,9 @@ namespace AfterHours
             var board = Ui.Panel(root, "Clipboard", Palette.Hex("8A5A34"), 22);
             var brt = board.rectTransform;
             bool photos = RoomPhotos.Instance != null && RoomPhotos.Instance.After.Count > 0;
-            Ui.Place(brt, new Vector2(0.5f, 0.5f), new Vector2(photos ? -330 : 0, -10), new Vector2(860, 940));
+            // Larger text sizes: the grey lines grow, and the board grows upwards to make room for them.
+            float k = Settings.TextScale, grow = (k - 1f) * 100f;
+            Ui.Place(brt, new Vector2(0.5f, 0.5f), new Vector2(photos ? -330 : 0, -10 + grow / 2f), new Vector2(860, 940 + grow));
             if (photos) PolaroidWipe.Create(root, def);
             // Clipboard and polaroid need ~1700 units across; narrower screens (4:3 is 1440) shrink both.
             float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
@@ -181,17 +183,28 @@ namespace AfterHours
             var clip = Ui.Panel(brt, "Clip", Palette.Hex("B9C0C7"), 10);
             Ui.Place(clip.rectTransform, new Vector2(0.5f, 1), new Vector2(0, 26), new Vector2(260, 70), new Vector2(0.5f, 1));
             var paper = Ui.Panel(brt, "Paper", Ui.Paper, 6);
-            Ui.Place(paper.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -20), new Vector2(780, 840));
+            Ui.Place(paper.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -20), new Vector2(780, 840 + grow));
             var p = paper.rectTransform;
+            // Small grey lines: Normal size, or up to the text size's scale where the line has room.
+            static void Grey(TextMeshProUGUI l, float k)
+            {
+                if (k <= 1f) return;
+                l.enableAutoSizing = true;
+                l.fontSizeMin = l.fontSize;
+                l.fontSizeMax = l.fontSize * k;
+            }
 
             var title = Ui.Label(p, "SHIFT REPORT", UiFont.Type, 46, Ui.Ink, TextAlignmentOptions.TopLeft);
             Ui.Place(title.rectTransform, new Vector2(0, 1), new Vector2(50, -40), new Vector2(680, 60), new Vector2(0, 1));
-            var sub = Ui.Label(p, $"Night {def.Number} · {def.Day} · {def.Title} · {Mathf.FloorToInt(r.Seconds / 60)}m {Mathf.FloorToInt(r.Seconds % 60):00}s on the clock", UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft);
-            Ui.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(50, -100), new Vector2(700, 30), new Vector2(0, 1));
+            var sub = Ui.Label(p, $"Night {def.Number} · {def.Day} · {def.Title} · {Mathf.FloorToInt(r.Seconds / 60)}m {Mathf.FloorToInt(r.Seconds % 60):00}s on the clock", UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft, "NightLine");
+            Ui.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(50, -100), new Vector2(700, 30 * k), new Vector2(0, 1));
+            sub.textWrappingMode = TextWrappingModes.NoWrap;
+            Grey(sub, k);
 
             // Long sheets (Night 2 has 14 lines) close up so the grade breakdown still fits the paper.
-            float y = -160;
-            float step = Mathf.Min(46f, (840f - 160f - 210f) / Mathf.Max(1, def.Tasks.Count));
+            // At larger text sizes the night line moves under the tasks, clear of the grade stamp.
+            float y = k > 1f ? -110 : -160;
+            float step = Mathf.Min(46f, (840f - 160f - 210f) / Mathf.Max(1, def.Tasks.Count)); // the same at every text size
             float taskSize = Mathf.Min(34f, step * 0.78f);
             int i = 0;
             foreach (var t in def.Tasks)
@@ -209,11 +222,18 @@ namespace AfterHours
                 y -= step;
             }
             y -= 14;
+            if (k > 1f)
+            {
+                Ui.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(680, 30 * k), new Vector2(0, 1));
+                y -= 30 * k + 4;
+            }
             // What the grade is made of, and what an S would have taken.
             var parts = dir.LastGrade;
             var breakdown = Ui.Label(p, Grading.Summary(parts), UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft, "GradeBreakdown");
-            Ui.Place(breakdown.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(680, 30), new Vector2(0, 1));
-            y -= 32;
+            Ui.Place(breakdown.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(680, 30 * k), new Vector2(0, 1));
+            breakdown.textWrappingMode = TextWrappingModes.NoWrap;
+            Grey(breakdown, k);
+            y -= 30 * k + 2;
             string hintText = Grading.Hint(parts);
             if (hintText != null)
             {
@@ -231,8 +251,9 @@ namespace AfterHours
             y -= 50;
             if (Story.State.Inventory.Count > 0)
             {
-                var inv = Ui.Label(p, "In your locker: " + string.Join(", ", Story.State.Inventory.Select(id => Docs.Get(id)?.Title)), UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft);
-                Ui.Place(inv.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, 60), new Vector2(0, 1));
+                var inv = Ui.Label(p, "In your locker: " + string.Join(", ", Story.State.Inventory.Select(id => Docs.Get(id)?.Title)), UiFont.Sans, 22, new Color(0.3f, 0.32f, 0.38f), TextAlignmentOptions.TopLeft, "Locker");
+                Ui.Place(inv.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(660, 60 + grow), new Vector2(0, 1));
+                Grey(inv, k);
             }
 
             // Grade stamp
@@ -253,8 +274,18 @@ namespace AfterHours
                 Tween.Run(0.3f, k => { if (brt) brt.anchoredPosition = new Vector2(bx + Mathf.Sin(k * 50) * 8 * (1 - k), -10); }, Ease.Linear, null, 0.2f);
             });
 
-            var hint = Ui.Label(root, $"Press {GameInput.MenuKeyTag("E")} to see what happened in the morning", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
+            var hint = Ui.Label(root, $"Press {GameInput.MenuKeyTag("E")} to see what happened in the morning", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center, "Hint");
             Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1000, 40), new Vector2(0.5f, 0));
+            hint.rectTransform.localScale = Vector3.one * k;
+            if (k > 1f)
+            {
+                // Larger, it would run into the clipboard: it goes in the free space to the right
+                // (under the polaroid), wrapping if it must.
+                float right = (photos ? -330f : 0f) * fit + 430f * fit, half = canvasW / 2f;
+                float x = photos ? 520f * fit : (right + half) / 2f, w = photos ? 700f * fit : half - right - 20f;
+                Ui.Place(hint.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(x, photos ? -330f * fit : 0f), new Vector2(w / k, 80), new Vector2(0.5f, 1f));
+                hint.alignment = TextAlignmentOptions.Top;
+            }
             AudioDirector.Instance?.PlayMusic("music_daylight", 0.4f);
         }
 
@@ -364,6 +395,21 @@ namespace AfterHours
         float y;
         TextMeshProUGUI typing, hint;
         bool finished;
+        // Text size (Settings); the message column's width and the viewport's height in units.
+        float k = 1f, colW = 780f;
+        const float ViewH = 740f;
+        /// <summary>How far the chat is scrolled down (0 shows the first message).</summary>
+        public float Scroll { get; private set; }
+        /// <summary>The furthest it can scroll: the newest message at the bottom.</summary>
+        public float MaxScroll => Mathf.Max(0f, y - ViewH);
+        /// <summary>Following the newest message; scrolled back, new messages wait.</summary>
+        public bool AtBottom => Scroll >= MaxScroll - 1f;
+        /// <summary>Messages shown so far, of how many this morning, and whether all are in.</summary>
+        public int Shown => shown;
+        public int Count => lines.Count;
+        public bool Finished => finished;
+        /// <summary>The message rows, oldest first, and the area they scroll in (for checks).</summary>
+        public RectTransform Content => content;
 
         string doneHint = $"Press {GameInput.MenuKeyTag("E")} to clock in for the next night";
 
@@ -380,9 +426,14 @@ namespace AfterHours
         void Build(string dayLabel)
         {
             Setup("Chat", 70, new Color(0.86f, 0.88f, 0.91f, 1f));
+            // Larger text sizes widen the window as far as the screen allows; the text scales with k.
+            k = Settings.TextScale;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            float winW = Mathf.Max(1180f, Mathf.Min(1180f + (k - 1f) * 600f, canvasW - 80f));
+            colW = winW - 330f - 70f * k; // 780 at Normal; rows stay inside the scrolling area
             var win = Ui.Panel(root, "Window", Color.white, 18);
             var w = win.rectTransform;
-            Ui.Place(w, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(1180, 900));
+            Ui.Place(w, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(winW, 900));
             var side = Ui.Panel(w, "Side", Palette.Hex("2B2F3A"), 18);
             Ui.Place(side.rectTransform, new Vector2(0, 0.5f), Vector2.zero, new Vector2(270, 900), new Vector2(0, 0.5f));
             var org = Ui.Label(side.rectTransform, "Halvorsen Freight", UiFont.SansBold, 26, Color.white, TextAlignmentOptions.TopLeft);
@@ -394,18 +445,19 @@ namespace AfterHours
                 Ui.Place(c.rectTransform, new Vector2(0, 1), new Vector2(26, -100 - i * 40), new Vector2(230, 30), new Vector2(0, 1));
             }
             var header = Ui.Label(w, $"# general  <size=70%><color=#8A90A0>{dayLabel}</color></size>", UiFont.SansBold, 30, Palette.Hex("1E2430"), TextAlignmentOptions.TopLeft);
-            Ui.Place(header.rectTransform, new Vector2(0, 1), new Vector2(300, -26), new Vector2(840, 40), new Vector2(0, 1));
+            Ui.Place(header.rectTransform, new Vector2(0, 1), new Vector2(300, -26), new Vector2(winW - 340, 40), new Vector2(0, 1));
             var line = Ui.Image(w, "Rule", new Color(0, 0, 0, 0.08f));
-            Ui.Place(line.rectTransform, new Vector2(0, 1), new Vector2(270, -80), new Vector2(910, 2), new Vector2(0, 1));
+            Ui.Place(line.rectTransform, new Vector2(0, 1), new Vector2(270, -80), new Vector2(winW - 270, 2), new Vector2(0, 1));
             var viewport = Ui.Rect(w, "Viewport");
-            Ui.Place(viewport, new Vector2(0, 1), new Vector2(290, -90), new Vector2(870, 740), new Vector2(0, 1));
+            Ui.Place(viewport, new Vector2(0, 1), new Vector2(290, -90), new Vector2(winW - 310, ViewH), new Vector2(0, 1));
             viewport.gameObject.AddComponent<RectMask2D>();
             content = Ui.Rect(viewport, "Content");
-            Ui.Place(content, new Vector2(0, 1), Vector2.zero, new Vector2(870, 10), new Vector2(0, 1));
-            typing = Ui.Label(w, "", UiFont.Sans, 20, new Color(0.4f, 0.42f, 0.48f), TextAlignmentOptions.TopLeft);
-            Ui.Place(typing.rectTransform, new Vector2(0, 0), new Vector2(300, 30), new Vector2(800, 30), new Vector2(0, 0));
-            hint = Ui.Label(root, "", UiFont.SansMedium, 22, new Color(0.25f, 0.28f, 0.35f), TextAlignmentOptions.Center);
-            Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1000, 40), new Vector2(0.5f, 0));
+            Ui.Place(content, new Vector2(0, 1), Vector2.zero, new Vector2(winW - 310, 10), new Vector2(0, 1));
+            typing = Ui.Label(w, "", UiFont.Sans, 20 * k, new Color(0.4f, 0.42f, 0.48f), TextAlignmentOptions.TopLeft, "Typing");
+            Ui.Place(typing.rectTransform, new Vector2(0, 0), new Vector2(300, 30), new Vector2(colW, 30 * k), new Vector2(0, 0));
+            hint = Ui.Label(root, "", UiFont.SansMedium, 22, new Color(0.25f, 0.28f, 0.35f), TextAlignmentOptions.Center, "Hint");
+            Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(Mathf.Min(1400f, (canvasW - 80f) / k), 40), new Vector2(0.5f, 0));
+            hint.rectTransform.localScale = Vector3.one * k;
             nextAt = 1.0f;
         }
 
@@ -415,54 +467,77 @@ namespace AfterHours
             var col = Colors.TryGetValue(who, out var c) ? c : Color.gray;
             var row = Ui.Rect(content, "Msg");
             var avatar = Ui.Image(row, "Avatar", col, Ui.Rounded(12));
-            Ui.Place(avatar.rectTransform, new Vector2(0, 1), new Vector2(0, 0), new Vector2(54, 54), new Vector2(0, 1));
-            var init = Ui.Label(avatar.rectTransform, People.Short.TryGetValue(who, out var nm) ? nm.Substring(0, 1).ToUpperInvariant() : "?", UiFont.SansBold, 28, Color.white, TextAlignmentOptions.Center);
+            Ui.Place(avatar.rectTransform, new Vector2(0, 1), new Vector2(0, 0), new Vector2(54, 54) * k, new Vector2(0, 1));
+            var init = Ui.Label(avatar.rectTransform, People.Short.TryGetValue(who, out var nm) ? nm.Substring(0, 1).ToUpperInvariant() : "?", UiFont.SansBold, 28 * k, Color.white, TextAlignmentOptions.Center);
             Ui.Stretch(init.rectTransform);
             string name = People.Name.TryGetValue(who, out var full) ? full : who;
-            var head = Ui.Label(row, $"<b>{name}</b>  <size=75%><color=#9AA0AE>{l.Time}</color></size>", UiFont.Sans, 22, Palette.Hex("1E2430"), TextAlignmentOptions.TopLeft);
-            Ui.Place(head.rectTransform, new Vector2(0, 1), new Vector2(70, 0), new Vector2(780, 28), new Vector2(0, 1));
-            var body = Ui.Label(row, l.Text, UiFont.Sans, 24, Palette.Hex("2A2F3A"), TextAlignmentOptions.TopLeft);
+            float x = 70 * k, headH = 30 * k;
+            var head = Ui.Label(row, $"<b>{name}</b>  <size=75%><color=#9AA0AE>{l.Time}</color></size>", UiFont.Sans, 22 * k, Palette.Hex("1E2430"), TextAlignmentOptions.TopLeft, "Name");
+            Ui.Place(head.rectTransform, new Vector2(0, 1), new Vector2(x, 0), new Vector2(colW, 28 * k), new Vector2(0, 1));
+            var body = Ui.Label(row, l.Text, UiFont.Sans, 24 * k, Palette.Hex("2A2F3A"), TextAlignmentOptions.TopLeft, "Message");
             body.rectTransform.anchorMin = body.rectTransform.anchorMax = new Vector2(0, 1);
             body.rectTransform.pivot = new Vector2(0, 1);
-            body.rectTransform.anchoredPosition = new Vector2(70, -30);
-            body.rectTransform.sizeDelta = new Vector2(780, 30);
-            float h = Mathf.Max(30, body.GetPreferredValues(l.Text, 780, 0).y);
-            body.rectTransform.sizeDelta = new Vector2(780, h);
-            float rowH = 30 + h + 14;
+            body.rectTransform.anchoredPosition = new Vector2(x, -headH);
+            body.rectTransform.sizeDelta = new Vector2(colW, 30 * k);
+            float h = Mathf.Max(30 * k, body.GetPreferredValues(l.Text, colW, 0).y);
+            body.rectTransform.sizeDelta = new Vector2(colW, h);
+            float rowH = headH + h + 14;
             if (!string.IsNullOrEmpty(l.React))
             {
                 var pill = Ui.Panel(row, "React", new Color(0.92f, 0.94f, 0.98f), 12);
-                Ui.Place(pill.rectTransform, new Vector2(0, 1), new Vector2(70, -30 - h - 6), new Vector2(64, 30), new Vector2(0, 1));
-                var e = Ui.Label(pill.rectTransform, l.React + " 2", UiFont.Sans, 18, Palette.Hex("44506A"), TextAlignmentOptions.Center);
+                Ui.Place(pill.rectTransform, new Vector2(0, 1), new Vector2(x, -headH - h - 6), new Vector2(64, 30) * k, new Vector2(0, 1));
+                var e = Ui.Label(pill.rectTransform, l.React + " 2", UiFont.Sans, 18 * k, Palette.Hex("44506A"), TextAlignmentOptions.Center);
                 Ui.Stretch(e.rectTransform);
-                rowH += 36;
+                rowH += 36 * k;
                 pill.rectTransform.localScale = Vector3.zero;
                 Tween.Run(0.3f, k => { if (pill) pill.rectTransform.localScale = Vector3.one * k; }, Ease.OutBack, null, 0.5f);
             }
             row.anchorMin = row.anchorMax = new Vector2(0, 1);
             row.pivot = new Vector2(0, 1);
-            row.sizeDelta = new Vector2(860, rowH);
+            row.sizeDelta = new Vector2(x + colW + 10, rowH);
             row.anchoredPosition = new Vector2(0, -y);
             y += rowH + 6;
             var cg = row.gameObject.AddComponent<CanvasGroup>();
             cg.alpha = 0;
             Tween.Run(0.3f, k => { if (cg) { cg.alpha = k; row.anchoredPosition = new Vector2(Mathf.Lerp(20, 0, k), row.anchoredPosition.y); } }, Ease.OutCubic);
-            // Scroll so the newest message is visible.
-            float overflow = Mathf.Max(0, y - 740);
-            var from = content.anchoredPosition.y;
-            Tween.Run(0.3f, k => { if (content) content.anchoredPosition = new Vector2(0, Mathf.Lerp(from, overflow, k)); }, Ease.OutCubic, owner: content);
+            ScrollTo(MaxScroll); // the newest message comes into view
             Sfx.Play("notify", null, 0.25f, 1f + UnityEngine.Random.Range(-0.05f, 0.05f), 0f, AudioBus.Ui);
+        }
+
+        void ScrollTo(float to)
+        {
+            to = Mathf.Clamp(to, 0f, MaxScroll);
+            var from = content.anchoredPosition.y;
+            Scroll = to;
+            Tween.Cancel(content);
+            Tween.Run(0.25f, t => { if (content) content.anchoredPosition = new Vector2(0, Mathf.Lerp(from, to, t)); }, Ease.OutCubic, owner: content);
+        }
+
+        /// <summary>Scroll back (negative) or on, in steps of about two messages.</summary>
+        public void ScrollBy(int steps)
+        {
+            float to = Mathf.Clamp(Scroll + steps * 160f * k, 0f, MaxScroll);
+            if (Mathf.Abs(to - Scroll) < 0.5f) return;
+            ScrollTo(to);
+            Sfx.Play("ui_click", null, 0.2f, 1.2f, 0.05f, AudioBus.Ui);
         }
 
         void Update()
         {
             if (done == null) return;
+            // W/S, the arrows, the d-pad, the stick or the wheel scroll back through the morning.
+            var m = GameInput.Menu;
+            float wheel = Mouse.current != null ? Mouse.current.scroll.ReadValue().y : 0f;
+            if (m.Up || wheel > 0.1f) ScrollBy(-1);
+            else if (m.Down || wheel < -0.1f) ScrollBy(1);
             bool adv = age > 0.8f && Advance();
             if (finished)
             {
                 if (adv) Finish();
                 return;
             }
+            // Scrolled back, the next message waits (a press still brings it, and scrolls down).
+            if (!AtBottom && !adv) { nextAt = Mathf.Max(nextAt, age + 0.6f); return; }
             if (shown < lines.Count)
             {
                 var next = lines[shown];

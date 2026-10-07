@@ -211,6 +211,7 @@ namespace AfterHours
                 yield return WaitUnblocked(3f);
                 Check(!root.Blocked, "closing the pause menu hands control back");
                 yield return TextSizeChecks();
+                yield return ReadingTextChecks();
             }
             if (n > 1 && PadChecks)
             {
@@ -253,6 +254,9 @@ namespace AfterHours
             sampling = false;
             LogFrameStats(n);
 
+            // Nights 1 and 2 end at the largest text size: the report and the morning chat grow.
+            bool large = PadChecks && n <= 2;
+            if (large) Settings.Current.TextSize = 2;
             // Clock out at the punch clock.
             yield return Beat("clockout", n);
             root.Player.Teleport(new Vector3(16.0f, 0, 2.5f), -90f, 0);
@@ -267,12 +271,15 @@ namespace AfterHours
             yield return Wait(3.2f);
             yield return Shot($"n{n}_report");
             ReportChecks(n);
+            if (large) ReportTextChecks(n);
             yield return Beat("report", n);
             Interstitial.AutoAdvance = true;
             yield return Wait(9f);
             yield return Shot($"n{n}_chat");
+            if (large) yield return ChatChecks(n);
             for (int i = 0; i < 40 && FindAnyObjectByType<ChatInterlude>() != null; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.25f); }
             Interstitial.AutoAdvance = false;
+            if (large) Settings.Current.TextSize = 0;
             yield return Beat("end", n);
             yield return Wait(1.0f);
         }
@@ -1166,6 +1173,161 @@ namespace AfterHours
             input.DropOnce = true;
             yield return Wait(0.4f);
             PutBack(item, itemPos, itemRot); // later checks expect it where the night left it
+        }
+
+        // ---- text size for what you read (round 5) ----------------------------------------------
+
+        static Rect ScreenRect(RectTransform rt)
+        {
+            var c = new Vector3[4];
+            rt.GetWorldCorners(c);
+            return Rect.MinMaxRect(c.Min(p => p.x), c.Min(p => p.y), c.Max(p => p.x), c.Max(p => p.y));
+        }
+
+        static Rect TextRect(TMPro.TextMeshProUGUI t)
+        {
+            var b = t.textBounds;
+            var a = t.rectTransform.TransformPoint(b.min);
+            var z = t.rectTransform.TransformPoint(b.max);
+            return Rect.MinMaxRect(Mathf.Min(a.x, z.x), Mathf.Min(a.y, z.y), Mathf.Max(a.x, z.x), Mathf.Max(a.y, z.y));
+        }
+
+        static bool Inside(Rect inner, Rect outer, float slack = 2f) =>
+            inner.xMin >= outer.xMin - slack && inner.yMin >= outer.yMin - slack && inner.xMax <= outer.xMax + slack && inner.yMax <= outer.yMax + slack;
+
+        static Rect ScreenArea => new(0, 0, Screen.width, Screen.height);
+
+        /// <summary>
+        /// Every document at Normal and Largest: text on the paper, paper on the screen, text at
+        /// least its Normal size; then a short and a long choice panel.
+        /// </summary>
+        IEnumerator ReadingTextChecks()
+        {
+            var s = Settings.Current;
+            var docs = Docs.All.Values.ToList();
+            var normal = new System.Collections.Generic.Dictionary<string, (float font, Vector2 card)>();
+            float W = Screen.width, H = Screen.height;
+            foreach (int size in new[] { 0, 2 })
+            {
+                s.TextSize = size;
+                int ok = 0, bigger = 0, full = 0;
+                var bad = new System.Collections.Generic.List<string>();
+                foreach (var d in docs)
+                {
+                    InspectView.Show(d, InspectMode.Read, null, reread: true);
+                    yield return Wait(0.55f);
+                    var view = GameObject.Find("Inspect").transform;
+                    var card = (RectTransform)view.Find("Card");
+                    var body = view.Find("Card/Body").GetComponent<TMPro.TextMeshProUGUI>();
+                    var shot = view.Find("Card/Screen").GetComponent<UnityEngine.UI.Image>();
+                    body.ForceMeshUpdate();
+                    var paper = ScreenRect(card);
+                    bool fits = Inside(paper, ScreenArea);
+                    if (body.enabled) fits &= !body.isTextOverflowing && (string.IsNullOrWhiteSpace(body.text) || Inside(TextRect(body), paper));
+                    if (size == 0) normal[d.Id] = (body.fontSize, card.sizeDelta);
+                    else if (normal.TryGetValue(d.Id, out var n0))
+                    {
+                        float ratio = body.enabled ? body.fontSize / n0.font : card.sizeDelta.x / n0.card.x;
+                        fits &= ratio >= 0.999f;
+                        if (ratio > 1.01f) bigger++;
+                        if (ratio > 1.49f) full++;
+                    }
+                    if (fits) ok++; else bad.Add($"{d.Id} ({(body.enabled ? (body.isTextOverflowing ? "overflows" : "off the paper") : "picture")}, paper {paper.width:F0}x{paper.height:F0})");
+                    InspectView.AutoChoice = InspectChoice.Close;
+                    yield return Wait(0.3f);
+                }
+                Check(ok == docs.Count, $"documents at {Settings.TextSizes[size]}, {W}x{H}: {ok}/{docs.Count} keep their text on the paper and the paper on screen{(size > 0 ? $", none smaller than Normal; {bigger} larger, {full} at 1.5x" : "")}{(bad.Count > 0 ? " — " + string.Join("; ", bad) : "")}");
+                if (size == 2) Check(full >= docs.Count / 2, $"at Largest most documents' text is 1.5x ({full}/{docs.Count})");
+            }
+            // One document at Largest for the screenshot: Theo's crumpled note.
+            InspectView.Show(Docs.Get("theo_note") ?? docs[0], InspectMode.Read, null, reread: true);
+            yield return Wait(0.6f);
+            yield return Shot("largest_document");
+            InspectView.AutoChoice = InspectChoice.Close;
+            yield return Wait(0.4f);
+
+            // Choices: a short list grows 1.5x; a long one (every lead, as at a tray's sticky note) still fits.
+            foreach (int count in new[] { 2, 10 })
+            {
+                var opts = Enumerable.Range(1, count).Select(i => new ChoiceMenu.Option($"Option {i}", i % 2 == 0 ? "A line under it" : null, null)).ToList();
+                ChoiceMenu.Show("A question at the largest text size", "Whatever you leave here, they find in the morning.", opts);
+                yield return Wait(0.5f);
+                var panel = (RectTransform)Ui.Canvas.transform.Find("Choice/Panel");
+                var r = ScreenRect(panel);
+                bool want15 = count == 2;
+                Check(Inside(r, ScreenArea) && (!want15 || Mathf.Abs(ChoiceMenu.Scale - 1.5f) < 0.01f) && ChoiceMenu.Scale >= 1f,
+                    $"a choice with {count + 1} options at Largest is {ChoiceMenu.Scale:F2}x and on screen ({r.width:F0}x{r.height:F0} px of {W}x{H})");
+                if (want15) yield return Shot("largest_choice");
+                ChoiceMenu.AutoPick = 99;
+                yield return Wait(0.4f);
+            }
+            s.TextSize = 0;
+            yield return WaitUnblocked(3f);
+        }
+
+        /// <summary>At Largest, the report's grey lines grow and everything stays on the paper.</summary>
+        void ReportTextChecks(int n)
+        {
+            var paper = Ui.Canvas.transform.Find("ShiftReport")?.GetComponentsInChildren<RectTransform>(true).FirstOrDefault(t => t.name == "Paper");
+            if (!paper) { Check(false, $"night {n}: the report's paper is there"); return; }
+            var labels = paper.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).Where(l => l.enabled && !string.IsNullOrEmpty(l.text)).ToList();
+            var pr = ScreenRect(paper);
+            var off = labels.Where(l => !Inside(TextRect(l), pr, 3f)).Select(l => l.name).ToList();
+            var grey = labels.Where(l => l.name == "NightLine" || l.name == "GradeBreakdown").ToList();
+            Check(off.Count == 0 && grey.Count == 2 && grey.All(l => l.fontSize > 22.5f) && Inside(pr, ScreenArea),
+                $"night {n} at Largest: the report's text stays on the paper{(off.Count > 0 ? " (off: " + string.Join(", ", off) + ")" : "")} and its grey lines grow ({string.Join(", ", grey.Select(l => $"{l.name} {l.fontSize:F0}"))}, Normal 22)");
+            var report = Ui.Canvas.transform.Find("ShiftReport");
+            var hint = report.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).FirstOrDefault(l => l.name == "Hint");
+            var board = (RectTransform)report.Find("Clipboard");
+            var ring = paper.GetComponentsInChildren<RectTransform>(true).FirstOrDefault(t => t.name == "Ring");
+            var night = labels.FirstOrDefault(l => l.name == "NightLine");
+            var hr = hint ? TextRect(hint) : Rect.zero;
+            Check(hint && Inside(hr, ScreenArea) && !hr.Overlaps(ScreenRect(board)) && (ring == null || night == null || !TextRect(night).Overlaps(ScreenRect(ring))),
+                $"night {n} at Largest: the hint to go on is on screen and clear of the clipboard, and the night line clear of the grade stamp");
+        }
+
+        /// <summary>At Largest, the chat's messages are 1.5x; scrolled back, new ones wait; it scrolls back to the first.</summary>
+        IEnumerator ChatChecks(int n)
+        {
+            var chat = FindAnyObjectByType<ChatInterlude>();
+            if (chat == null) { Log($"night {n}: no morning chat"); yield break; }
+            Interstitial.AutoAdvance = false;
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotChatKeyboard");
+            vkb.MakeCurrent();
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.3f);
+            }
+            var msg = chat.Content.GetComponentsInChildren<TMPro.TextMeshProUGUI>().FirstOrDefault(t => t.name == "Message");
+            Check(msg != null && Mathf.Abs(msg.fontSize - 36f) < 0.5f, $"night {n} at Largest: chat messages are 1.5x ({msg?.fontSize:F0}, Normal 24)");
+            // Bring messages one at a time until they overflow the window.
+            for (int i = 0; i < 40 && !chat.Finished && chat.MaxScroll <= 0f; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.35f); }
+            if (chat.MaxScroll > 0f && !chat.Finished)
+            {
+                yield return Key(UnityEngine.InputSystem.Key.UpArrow);
+                int shown = chat.Shown;
+                yield return Wait(3f); // longer than the slowest message
+                Check(!chat.AtBottom && chat.Shown == shown, $"night {n}: scrolled back, the next message waits ({shown} of {chat.Count} shown, still {chat.Shown} after 3 s)");
+                for (int i = 0; i < 20 && !chat.AtBottom; i++) yield return Key(UnityEngine.InputSystem.Key.DownArrow);
+                Check(chat.AtBottom, "the down arrow scrolls back to the newest message");
+            }
+            for (int i = 0; i < 40 && !chat.Finished; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.35f); }
+            yield return Wait(0.4f);
+            float max = chat.MaxScroll;
+            if (max > 0f)
+            {
+                for (int i = 0; i < 30 && chat.Scroll > 0.5f; i++) yield return Key(i % 2 == 0 ? UnityEngine.InputSystem.Key.UpArrow : UnityEngine.InputSystem.Key.W);
+                yield return Wait(0.4f);
+                var first = (RectTransform)chat.Content.GetChild(0);
+                var view = ScreenRect((RectTransform)chat.Content.parent);
+                Check(chat.Scroll < 0.5f && Inside(ScreenRect(first), view, 3f), $"night {n}: W and the up arrow scroll the chat back to its first message ({chat.Count} messages, {max:F0} units more than fit)");
+                yield return Shot($"n{n}_chat_scrolled_back");
+            }
+            else Log($"night {n}: the whole chat fits at Largest ({chat.Count} messages)");
+            InputSystem.RemoveDevice(vkb);
         }
 
         static void PutBack(Holdable item, Vector3 pos, Quaternion rot)

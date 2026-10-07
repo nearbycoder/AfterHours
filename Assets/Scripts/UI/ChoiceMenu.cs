@@ -112,14 +112,26 @@ namespace AfterHours
                 y += h + 8;
             }
             panel.sizeDelta = new Vector2(760, 140 + y);
+            float scale = Scale = ScaleFor(panel.sizeDelta, Settings.TextScale);
             selected = 0;
             open = true;
             openedAt = GameTime.Unscaled;
             group.blocksRaycasts = true;
             GameRoot.Instance?.SetBlocked("choice", true, true);
             Sfx.Play("ui_click", null, 0.4f, 1f, 0f, AudioBus.Ui);
-            panel.localScale = Vector3.one * 0.9f;
-            Tween.Run(0.25f, k => { group.alpha = k; panel.localScale = Vector3.one * Mathf.LerpUnclamped(0.9f, 1f, k); }, Ease.OutBack, owner: this);
+            panel.localScale = Vector3.one * 0.9f * scale;
+            Tween.Run(0.25f, k => { group.alpha = k; panel.localScale = Vector3.one * Mathf.LerpUnclamped(0.9f, 1f, k) * scale; }, Ease.OutBack, owner: this);
+        }
+
+        /// <summary>The open panel's scale (text size, kept on screen).</summary>
+        public static float Scale { get; private set; } = 1f;
+
+        /// <summary>Text size (Settings) scales the whole panel, as far as it fits on screen; never below 1.</summary>
+        static float ScaleFor(Vector2 size, float k)
+        {
+            if (k <= 1f) return 1f;
+            var canvas = ((RectTransform)Ui.Canvas.transform).rect;
+            return Mathf.Max(1f, Mathf.Min(k, Mathf.Min((canvas.width - 80f) / size.x, (canvas.height - 60f) / size.y)));
         }
 
         void Update()
