@@ -62,6 +62,9 @@ namespace AfterHours
                 Widgets.Button(menu, $"Continue  ·  Night {st.Night}", () => Begin(st.Night), 460, 70, 30, true);
             Widgets.Button(menu, "New Game", NewGame, 460, 64, 30, !canContinue);
             Widgets.Button(menu, "Night Select", () => NightSelect.Show(), 460, 64);
+            // Everything read so far, to look back over between sessions and after the ending.
+            if (CaseFilePanel.HasEntries(StoryState.Load()))
+                Widgets.Button(menu, "Case file", () => CaseFilePanel.Show(StoryState.Load()), 460, 64);
             Widgets.Button(menu, "Settings", () => SettingsPanel.Show(), 460, 64);
             Widgets.Button(menu, "Quit", Application.Quit, 460, 64);
             MenuFocus.AttachAll(menu.gameObject);
@@ -79,9 +82,14 @@ namespace AfterHours
             Tween.Run(1.6f, k => { if (logo) logo.rectTransform.anchoredPosition = new Vector2(120 + (1 - k) * -40, y0); }, Ease.OutCubic);
         }
 
+        /// <summary>The menu's scale: the text size's, unless six buttons at Largest would reach the tagline.</summary>
+        public float MenuScale { get; private set; } = 1f;
+
         /// <summary>
         /// The menu and footer at the current text size. Larger sizes scale the buttons from their
         /// bottom edge, so they grow up towards the tagline; the logo and tagline are already large.
+        /// With a sixth button (Case file) at Largest, the menu first moves down towards the footer,
+        /// then grows only as far as there's room below the tagline.
         /// </summary>
         void Layout()
         {
@@ -89,9 +97,17 @@ namespace AfterHours
             float colH = 0;
             foreach (RectTransform c in menu) colH += c.sizeDelta.y;
             colH += 14 * Mathf.Max(0, menu.childCount - 1);
-            float top = k > 1f ? Mathf.Max(520f, 138f + colH * k) : 520f;
+            const float TaglineBottom = 740f, Gap = 24f;
+            float bottom = 138f, km = k;
+            if (k > 1f && bottom + colH * k > TaglineBottom - Gap)
+            {
+                bottom = 40f + 30f * k + Gap; // just above the footer
+                km = Mathf.Clamp((TaglineBottom - Gap - bottom) / colH, 1f, k);
+            }
+            MenuScale = km;
+            float top = Mathf.Max(520f, bottom + colH * km);
             Ui.Place(menu, new Vector2(0, 0), new Vector2(120, top), new Vector2(460, colH), new Vector2(0, 1));
-            menu.localScale = Vector3.one * k;
+            menu.localScale = Vector3.one * km;
             float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
             foot.fontSize = 18 * k;
             Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(k > 1f ? canvasW - 124 - 60 : 1200, 30 * k), new Vector2(0, 0));
@@ -140,7 +156,7 @@ namespace AfterHours
             logo.alpha = f > 0.12f ? 1f : 0.55f;
             if (laidOut != Settings.TextScale && !SettingsPanel.IsOpen) Layout();
             var kb = Keyboard.current;
-            if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen)
+            if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen && !CaseFilePanel.IsOpen)
                 Begin(Story.State.Night >= 1 && Story.State.Night <= NightDefs.Count ? Story.State.Night : 1);
         }
     }

@@ -156,7 +156,9 @@ a UV torch shows invisible-ink marks left by the cleaner before you, and any gri
 - **Evidence.** Notes, emails, ledgers and printouts open in an inspect view. Keep them in your
   pocket, put them back, or throw them away. The clipboard's second page, the **case file**,
   lists everything you've read, night by night, with what became of it, and each morning's
-  office chat, so you can read any of it again before you decide.
+  office chat, so you can read any of it again before you decide. The title's **Case file**
+  shows the same list for your saved story, so you can look back over it between sessions and
+  after the ending.
 - **Deliveries.** Leave a document in someone's inbox tray and they find it in the morning. Feed it
   to a shredder. Or write an anonymous sticky note from the leads you've pieced together.
 - **Suspicion.** One office belongs to someone who notices when things move. Anything you take or
@@ -198,7 +200,8 @@ Night Select). Your records are kept apart from the story save: the
 best grade and most secrets for each night, and the endings you've found (shown on the title
 screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
-Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
+Menus: title (Continue, New Game, Night Select, Case file once you've read something, Settings,
+Quit), pause (Resume, Shift sheet,
 Settings, Restart this night, Quit to title; both of the last two ask first; and a card listing
 the controls as you have them bound) and settings in two
 columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
@@ -333,17 +336,20 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   morning's chat again (the same messages as that morning, from the first; scrolled at Largest), turns the clipboard's
   three pages at Large and Largest and scrolls the long shift sheet, and checks the pause on
   focus loss (through the game's focus handler) and on unplugging the pad in use. On Night 3 it
-  goes to the title and checks Night Select asks before an earlier night (backing out keeps the
+  goes to the title and opens the Case file (the save's list, the clipboard's less that night's
+  reads), reads a document and a morning again over it with the pad and the keyboard, checks the
+  save file's bytes didn't change, walks it at Largest, and checks Night Select asks before an earlier night (backing out keeps the
   save; pad A on Never mind doesn't also pick the card behind), that a confirmed replay moves
   Continue, and that Night 3 in Night Select puts the story back. The ending is read at Largest
-  (its epilogue must fit), and Night Select's cards are checked at each size. Automated runs
+  (its epilogue must fit), the title's Case file must then start with Night 7's documents, and
+  Night Select's cards are checked at each size. Automated runs
   keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
   buttons and survive a save, the hold-or-toggle logic (including clean and spray), the case
   file's reading list and morning chats (including saves from before they existed, whose chats
-  come from the night snapshots), the grading and its hints, the
+  come from the night snapshots) and the title's list for a saved or finished story, the grading and its hints, the
   brightness curve, the HUD text sizes and how far documents grow, and that settings files from
   earlier versions load.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),

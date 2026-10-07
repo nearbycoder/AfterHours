@@ -868,11 +868,11 @@ and still WebGL, Windows and the art.
 Round 6 is merged. Its notes leave three things open that a player or the next round would run
 into. The case file (every document and morning chat you've read) lives on the clipboard, so it
 only exists during a night: after the ending, or between sessions, the story can't be looked
-back over, and Night 7's documents and its morning chat can't be read again at all. Closing the
-window in the middle of a night (the window's close button, Alt+F4, the taskbar) throws the
-night away without a word, while Quit to title has asked since round 4. And the AutoPilot's old
-Night 1 throw check failed 2 of 5 runs at the smaller window sizes in round 6, which makes every
-verification of the game less trustworthy.
+back over, and Night 7's documents can't be read again at all (Night 7 has no morning chat).
+Closing the window in the middle of a night (the window's close button, Alt+F4, the taskbar)
+throws the night away without a word, while Quit to title has asked since round 4. And the
+AutoPilot's old Night 1 throw check failed 2 of 5 runs at the smaller window sizes in round 6,
+which makes every verification of the game less trustworthy.
 
 **Baseline (branch `improvements-7`, from `main` at 56d2d4a).** The Linux build succeeds with 0
 errors; an `audit` AutoPilot run is under Round 7 results below.
@@ -886,21 +886,20 @@ owner's call), and everything left with the owner.
 When the save has anything in its case file, the title gets a **Case file** button (under Night
 Select). It opens the same list as the clipboard's case file (newest night first, each night's
 documents with what became of them, then the next morning's chat) as a menu: the d-pad, the
-arrows, the mouse wheel and a click move through it, and it scrolls. Pad A, E, Enter or a click
-reads an entry again over the menu; pad B, E or Esc close it back to the list; pad B or Esc close
-the list. It's built from the save on disk, so it shows the story Continue would carry on (and,
-after the ending, the whole story, Night 7 and its morning included). Reading never changes the
-story or the save. The rows follow Text size.
+arrows, the mouse wheel and a click move through it, and it scrolls. Pad A, Enter or a click
+reads an entry again over the menu; pad B, E, Esc or a click close it back to the list; pad B or
+Esc close the list. It's built from the save on disk, so it shows the story Continue would carry
+on (and, after the ending, the whole story, Night 7's documents included). Reading never changes
+the story or the save. The rows follow Text size.
 
-**Acceptance:** mid-story (on Night 3), the title has Case file, and its entries are exactly
-the clipboard's for that save; a document read again shows above the list, and closing it
-returns to the list with the save unchanged (same bytes); a morning chat opens and closes the
-same way; Esc closes the list without starting a night; after the ending the list includes Night
-7's documents and its morning chat (when there was one). At Largest the rows are 1.5× and the
-d-pad walks every row in view, at 1600×900, 1280×720 and 1024×768. With no save there's no button.
-**Verify:** EditMode tests (the entry list from a saved state, including the ended story and an
-empty save); AutoPilot checks on the Night 3 title visit and after the ending, every route;
-screenshots.
+**Acceptance:** mid-story (on Night 3), the title has Case file, and its entries are exactly the
+clipboard's for that save; a document read again shows above the list, and closing it returns to
+the list with the save unchanged (same bytes); a morning chat opens and closes the same way; Esc
+closes the list without starting a night; after the ending the list starts with Night 7's
+documents. At Largest the rows are 1.5× and the d-pad walks every row in view, at 1600×900,
+1280×720 and 1024×768. With no save there's no button. **Verify:** EditMode tests (the entry
+list from a saved state, including the ended story and an empty save); AutoPilot checks on the
+Night 3 title visit and after the ending, every route; screenshots.
 
 ### R7-2. Ask before the game closes in the middle of a night
 

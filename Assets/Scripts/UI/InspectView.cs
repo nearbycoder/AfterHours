@@ -83,12 +83,18 @@ namespace AfterHours
         /// Open a document. Everything shown goes into the case file, except when the case file
         /// itself is showing it again (<paramref name="reread"/>).
         /// </summary>
-        public static void Show(DocDef d, InspectMode mode, Action<InspectChoice> done, bool reread = false)
+        /// <param name="overMenus">Read from a menu (the title's case file): drawn above the menus, and a click also closes it.</param>
+        public static void Show(DocDef d, InspectMode mode, Action<InspectChoice> done, bool reread = false, bool overMenus = false)
         {
             if (d == null) return;
             if (!reread) Story.State.NoteRead(d.Id);
-            Instance.Open(d, mode, done);
+            var v = Instance;
+            v.overMenus = overMenus;
+            v.root.GetComponent<Canvas>().sortingOrder = overMenus ? 75 : 40;
+            v.Open(d, mode, done);
         }
+
+        bool overMenus;
 
         void Open(DocDef d, InspectMode m, Action<InspectChoice> done)
         {
@@ -208,7 +214,7 @@ namespace AfterHours
             var f = GameInput.Frame;
             var menu = GameInput.Menu;
             bool e = f.Interact || menu.Confirm;
-            bool esc = menu.Back || (mouse != null && mouse.rightButton.wasPressedThisFrame);
+            bool esc = menu.Back || (mouse != null && (mouse.rightButton.wasPressedThisFrame || overMenus && mouse.leftButton.wasPressedThisFrame));
             bool tab = menu.Keep || f.Clipboard;
             bool x = menu.Alt;
             bool q = Controls.Pressed(Act.Drop) || menu.Alt;

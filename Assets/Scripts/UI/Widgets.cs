@@ -283,6 +283,8 @@ namespace AfterHours
 
         /// <summary>The menu this list belongs to; the wheel only scrolls it while that menu is in front.</summary>
         public MenuFocus Focus;
+        /// <summary>For a selected row, something just above it to bring into view as well (its heading), or null.</summary>
+        public Func<RectTransform, RectTransform> Above;
         /// <summary>The column's height in viewport units (its rows at their scale).</summary>
         public float ContentHeight
         {
@@ -324,7 +326,12 @@ namespace AfterHours
             {
                 // A new selection (or the first frame, once the layout exists) is brought into view.
                 if (!settled) LayoutRebuilder.ForceRebuildLayoutImmediate(content);
-                if (sel != null && sel.transform.IsChildOf(content)) Reveal((RectTransform)sel.transform);
+                if (sel != null && sel.transform.IsChildOf(content))
+                {
+                    var above = Above?.Invoke((RectTransform)sel.transform);
+                    if (above != null) Reveal(above);
+                    Reveal((RectTransform)sel.transform); // the row itself wins if both don't fit
+                }
                 lastSelected = sel;
                 settled = true;
             }

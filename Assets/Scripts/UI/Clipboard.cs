@@ -238,46 +238,21 @@ namespace AfterHours
 
         // ---- the case file ---------------------------------------------------------------------------
 
-        /// <summary>Every document read so far that still exists, newest night first, in reading order within a night.</summary>
-        static List<ReadRecord> Reads() => (Story.State.Read ?? new List<ReadRecord>())
-            .Where(r => Docs.Get(r.Id) != null)
-            .Select((r, i) => (r, i)).OrderByDescending(x => x.r.Night).ThenBy(x => x.i).Select(x => x.r).ToList();
-
         /// <summary>Case-file entries for a morning's chat are "chat:N", N the night before it.</summary>
-        public const string ChatPrefix = "chat:";
-
-        /// <summary>The nights before tonight whose morning chat was kept and had messages, newest first.</summary>
-        static List<int> Mornings() => (Story.State.Chats ?? new List<ChatRecord>())
-            .Where(c => c.Night < Story.State.Night && c.Lines != null && c.Lines.Count > 0 && NightDefs.Get(c.Night) != null)
-            .Select(c => c.Night).Distinct().OrderByDescending(n => n).ToList();
+        public const string ChatPrefix = CaseFile.ChatPrefix;
 
         /// <summary>A past morning's messages, as they were shown.</summary>
-        public static List<ChatLine> MorningLines(int night)
-        {
-            var def = NightDefs.Get(night);
-            var rec = Story.State.ChatFor(night);
-            if (def == null || rec == null) return new List<ChatLine>();
-            return rec.Lines.Where(i => i >= 0 && i < def.Chat.Count).Select(i => def.Chat[i]).ToList();
-        }
+        public static List<ChatLine> MorningLines(int night) => CaseFile.MorningLines(Story.State, night);
 
-        public static string MorningLabel(int night) => $"{NightDefs.MorningAfter(night)} morning";
+        public static string MorningLabel(int night) => CaseFile.MorningLabel(night);
 
         void RefreshCaseFile()
         {
-            var reads = Reads();
-            var mornings = Mornings();
-            // Each night: the documents read that night, then the next morning's chat.
-            var entries = new List<(int night, string id)>();
-            foreach (int n in reads.Select(r => r.Night).Concat(mornings).Distinct().OrderByDescending(n => n))
-            {
-                entries.AddRange(reads.Where(r => r.Night == n).Select(r => (n, r.Id)));
-                if (mornings.Contains(n)) entries.Add((n, ChatPrefix + n));
-            }
+            var entries = CaseFile.Entries(Story.State);
             CaseEntries.Clear();
             CaseEntries.AddRange(entries.Select(e => e.id));
             Selected = CaseEntries.Count == 0 ? 0 : Mathf.Clamp(Selected, 0, CaseEntries.Count - 1);
-            string docs = reads.Count == 1 ? "One document" : reads.Count + " documents";
-            header.text = $"CASE FILE\n<size=60%>{docs} you've read{(mornings.Count > 0 ? $", {(mornings.Count == 1 ? "one morning" : mornings.Count + " mornings")} of chat" : "")}</size>";
+            header.text = $"CASE FILE\n<size=60%>{CaseFile.Summary(Story.State)}</size>";
             if (entries.Count == 0)
             {
                 files.text = "<color=#8A7A5A>Nothing yet. Notes, letters and screens you read end up here, so you can read them again.</color>";
@@ -295,19 +270,8 @@ namespace AfterHours
                     var nd = NightDefs.Get(night);
                     lines.Add($"<size=62%><color=#8A7A5A>NIGHT {night}{(nd != null ? " · " + nd.Day.ToUpperInvariant() : "")}</color></size>");
                 }
-                string title, tail;
-                if (id.StartsWith(ChatPrefix))
-                {
-                    title = MorningLabel(night) + " · #general";
-                    tail = $"  <size=68%><color=#86765A>the office chat</color></size>";
-                }
-                else
-                {
-                    var d = Docs.Get(id);
-                    string fate = Story.State.FateLabel(d.Id, d.Evidence);
-                    title = d.Title;
-                    tail = fate != null ? $"  <size=68%><color=#86765A>{fate}</color></size>" : "";
-                }
+                var (title, note) = CaseFile.Describe(Story.State, id);
+                string tail = note != null ? $"  <size=68%><color=#86765A>{note}</color></size>" : "";
                 if (i == Selected) { selLine = lines.Count; lines.Add($"<mark=#FFC85766 padding=\"8,8,2,2\">▸ {title}</mark>{tail}"); }
                 else lines.Add($"   {title}{tail}");
             }
@@ -360,7 +324,8 @@ namespace AfterHours
         public void ReadSelected()
         {
             if (Page != CasePage || Selected < 0 || Selected >= CaseEntries.Count) return;
-            if (CaseEntries[Selected].StartsWith(ChatPrefix) && int.TryParse(CaseEntries[Selected].Substring(ChatPrefix.Length), out int night))
+            int night = CaseFile.ChatNight(CaseEntries[Selected]);
+            if (night >= 0)
             {
                 Sfx.Play("notify", null, 0.3f);
                 ChatInterlude.ShowAgain(MorningLabel(night), MorningLines(night), null);

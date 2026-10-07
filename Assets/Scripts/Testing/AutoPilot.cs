@@ -114,6 +114,7 @@ namespace AfterHours
                 Check(Mathf.Abs(before - 96f) < 2f && Mathf.Abs(after - 64f) < 2f, $"the title follows a change of text size ({before:F0} → {after:F0} units a button)");
             }
             int secretsFound = Story.State.Results.Sum(r => r.Secrets);
+            if (PadChecks) yield return TitleCaseFileChecks(true, null);
             if (PadChecks) yield return RecordsChecks(expected);
             if (PadChecks) PlaytestChecks(expected, secretsFound);
             Debug.Log($"[AutoPilot] done: {passes} passed, {fails} failed");
@@ -1557,9 +1558,18 @@ namespace AfterHours
             int results = Story.State.Results.Count, chats = Story.State.Chats.Count;
             Transform Card(int n) => FindAnyObjectByType<NightSelect>()?.transform.Find("Night" + n);
             void Pick(int n) => Card(n)?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            // The clipboard's case file tonight, less tonight's own reads, is what the save holds.
+            var cb = Clipboard.Instance;
+            cb.Show(Clipboard.CasePage);
+            yield return Wait(0.4f);
+            var tonight = Story.State.Read.Where(r => r.Night == dir.Def.Number).Select(r => r.Id).ToList();
+            var clipboardList = cb.CaseEntries.Where(e => !tonight.Contains(e)).ToList();
+            cb.Close();
+            yield return WaitUnblocked(3f);
             root.ToTitle();
             yield return Wait(1.5f);
             Check(TitleScreen.Instance != null && GameObject.Find("Btn_Continue  ·  Night 3") != null, "mid-story, the title offers Continue on Night 3");
+            yield return TitleCaseFileChecks(false, clipboardList);
             NightSelect.Show();
             yield return Wait(0.6f);
             vpad = InputSystem.AddDevice<Gamepad>("AutoPilotReplayPad"); // night 1's pad was unplugged
@@ -1602,6 +1612,140 @@ namespace AfterHours
             GameInput.UsingPad = false;
             InputSystem.RemoveDevice(vpad);
             vpad = null;
+        }
+
+        // ---- the case file from the title (round 7) ------------------------------------------------
+
+        /// <summary>
+        /// The title's Case file: the save's list (the clipboard's, mid-story), documents and a
+        /// morning read again over the menu with pad and keys, the save untouched, Esc back to the
+        /// title. Mid-story it's also walked at Largest and the six-button title is laid out at
+        /// each size; after the ending, Night 7's documents are listed.
+        /// </summary>
+        IEnumerator TitleCaseFileChecks(bool ended, System.Collections.Generic.List<string> clipboardList)
+        {
+            string when = ended ? "after the ending" : "mid-story";
+            Interstitial.AutoAdvance = false; // left pending by clicking through the ending; it would close the chat read again
+            var pad = InputSystem.AddDevice<Gamepad>("AutoPilotCaseFilePad");
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotCaseFileKeyboard");
+            var padBefore = vpad;
+            vpad = pad; // Press() and ListChecks drive this pad
+            IEnumerator PadPress(GamepadButton b) { yield return Press(b); yield return Wait(0.35f); }
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.35f);
+            }
+            string savePath = System.IO.Path.Combine(StoryState.Dir, "save.json");
+            byte[] SaveBytes() => System.IO.File.Exists(savePath) ? System.IO.File.ReadAllBytes(savePath) : new byte[0];
+            var before = SaveBytes();
+            var saved = StoryState.Load();
+            var want = CaseFile.Entries(saved).Select(e => e.id).ToList();
+            var title = TitleScreen.Instance;
+            var btn = title ? title.transform.Find("Menu/Btn_Case file") : null;
+            Check(btn != null && want.Count > 0, $"{when}, the title offers the case file ({want.Count} entries in the save)");
+            if (clipboardList != null)
+                Check(want.SequenceEqual(clipboardList), $"{when}, the save's case file is the clipboard's from tonight, less tonight's reads ({want.Count} and {clipboardList.Count} entries)");
+            if (ended)
+            {
+                var nights = CaseFile.Entries(saved).Select(e => e.night).ToList();
+                Check(nights.Count > 0 && nights[0] == 7 && nights.Distinct().Count() >= 6,
+                    $"after the ending it starts with night 7's documents ({nights.Count(n => n == 7)}) and covers {nights.Distinct().Count()} nights");
+            }
+            if (btn == null) { vpad = padBefore; InputSystem.RemoveDevice(pad); InputSystem.RemoveDevice(vkb); yield break; }
+            if (!ended) yield return TitleTextChecks(); // six buttons now (Continue and Case file)
+
+            bool padWas = GameInput.UsingPad;
+            pad.MakeCurrent();
+            GameInput.UsingPad = true;
+            EventSystem.current.SetSelectedGameObject(btn.gameObject);
+            yield return Wait(0.2f);
+            yield return PadPress(GamepadButton.South);
+            yield return Wait(0.4f);
+            Check(CaseFilePanel.IsOpen && CaseFilePanel.Entries.SequenceEqual(want) && Selected == "Entry_" + want[0],
+                $"pad A opens it: the save's {want.Count} entries in order, the first selected ({Selected})");
+            yield return Shot(ended ? "title_case_file_ended" : "title_case_file");
+
+            // A document, read again over the list.
+            string doc = want.FirstOrDefault(e => CaseFile.ChatNight(e) < 0);
+            int docAt = want.IndexOf(doc);
+            for (int i = 0; i < docAt; i++) yield return PadPress(GamepadButton.DpadDown);
+            Check(Selected == "Entry_" + doc, $"the d-pad reaches {doc} ({Selected})");
+            yield return PadPress(GamepadButton.South);
+            yield return Wait(0.3f);
+            var inspect = Ui.Canvas.transform.Find("Inspect")?.GetComponent<Canvas>();
+            var panelCanvas = Ui.Canvas.transform.Find("CaseFile")?.GetComponent<Canvas>();
+            Check(InspectView.IsOpen && InspectView.CurrentDoc == doc && inspect && panelCanvas && inspect.sortingOrder > panelCanvas.sortingOrder,
+                $"pad A reads {doc} again, drawn above the list ({inspect?.sortingOrder} over {panelCanvas?.sortingOrder})");
+            yield return Shot(ended ? "title_case_file_read_ended" : "title_case_file_read");
+            yield return PadPress(GamepadButton.East);
+            Check(!InspectView.IsOpen && CaseFilePanel.IsOpen && Selected == "Entry_" + doc, "pad B closes it, back on the list with the same entry selected");
+            yield return PadPress(GamepadButton.South);
+            yield return Wait(0.3f);
+            yield return PadPress(GamepadButton.South);
+            yield return Wait(0.4f);
+            Check(!InspectView.IsOpen && CaseFilePanel.IsOpen, "pad A closes it too, without opening the entry again");
+
+            // A morning's chat, with the keyboard.
+            string chat = want.FirstOrDefault(e => CaseFile.ChatNight(e) >= 0);
+            if (chat != null)
+            {
+                vkb.MakeCurrent();
+                GameInput.UsingPad = false;
+                int at = want.IndexOf(chat), from = want.IndexOf(doc);
+                for (int i = from; i < at; i++) yield return Key(UnityEngine.InputSystem.Key.DownArrow);
+                Check(Selected == "Entry_" + chat, $"the down arrow reaches {chat} ({Selected})");
+                yield return Key(UnityEngine.InputSystem.Key.Enter);
+                yield return Wait(0.4f);
+                var live = FindAnyObjectByType<ChatInterlude>();
+                int night = CaseFile.ChatNight(chat);
+                var texts = live ? live.Content.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).Where(t => t.name == "Message").Select(t => t.text).ToList() : new System.Collections.Generic.List<string>();
+                bool known = morningTexts.TryGetValue(night, out var shown);
+                Check(ChatInterlude.ReviewOpen && live && live.Review && texts.Count > 0 && (!known || texts.SequenceEqual(shown)),
+                    $"Enter opens {CaseFile.MorningLabel(night)}'s chat ({texts.Count} messages{(known ? $", as shown that morning: {shown.Count}" : "")})");
+                yield return Shot(ended ? "title_case_file_chat_ended" : "title_case_file_chat");
+                yield return Key(UnityEngine.InputSystem.Key.Escape);
+                yield return Wait(0.3f);
+                Check(!ChatInterlude.ReviewOpen && CaseFilePanel.IsOpen && TitleScreen.Instance != null, "Esc closes the chat, leaving the list open");
+            }
+            else Log("case file: no morning chat in this save");
+
+            if (!ended)
+            {
+                // At Largest: rows at 1.5×, the d-pad walks every one in view and on to Back.
+                FindAnyObjectByType<CaseFilePanel>()?.SendMessage("Close");
+                yield return Wait(0.3f);
+                Settings.Current.TextSize = 2;
+                pad.MakeCurrent();
+                GameInput.UsingPad = true;
+                CaseFilePanel.Show(StoryState.Load());
+                yield return Wait(0.6f);
+                yield return ListChecks("CaseFile", () => CaseFilePanel.List, "the case file", "Btn_Back", 3, false);
+                var listView = CaseFilePanel.List ? (RectTransform)CaseFilePanel.List.transform : null;
+                var heading = listView ? (RectTransform)listView.Find("Content").GetChild(0) : null;
+                Check(heading && Inside(ScreenRect(heading), ScreenRect(listView), 2f), "back on the first entry, its night's heading is in view too");
+                yield return Shot("title_case_file_largest");
+                FindAnyObjectByType<CaseFilePanel>()?.SendMessage("Close");
+                yield return Wait(0.3f);
+                Settings.Current.TextSize = 0;
+                CaseFilePanel.Show(StoryState.Load());
+                yield return Wait(0.5f);
+            }
+
+            vkb.MakeCurrent();
+            GameInput.UsingPad = false;
+            yield return Key(UnityEngine.InputSystem.Key.Escape);
+            yield return Wait(1f);
+            Check(!CaseFilePanel.IsOpen && TitleScreen.Instance != null && !SettingsPanel.IsOpen && !NightSelect.IsOpen,
+                "Esc closes the case file, back on the title without starting a night");
+            var after = SaveBytes();
+            Check(after.Length > 0 && after.SequenceEqual(before), $"reading from the title leaves the save as it was ({after.Length} bytes)");
+            GameInput.UsingPad = padWas;
+            vpad = padBefore;
+            InputSystem.RemoveDevice(pad);
+            InputSystem.RemoveDevice(vkb);
         }
 
         // ---- the menus at larger text sizes (round 6) ----------------------------------------------
@@ -1740,7 +1884,7 @@ namespace AfterHours
         /// A scrolling list at Largest: rows 1.5x, on screen and apart from each other and the
         /// buttons; the d-pad walks every row from the first, each in view, and on to Done.
         /// </summary>
-        IEnumerator ListChecks(string layer, Func<ScrollFollow> getList, string what)
+        IEnumerator ListChecks(string layer, Func<ScrollFollow> getList, string what, string after = "Btn_Done", int minRows = 6, bool mustScroll = true)
         {
             var list = getList();
             if (list == null) { Check(false, $"{what} at Largest is a scrolling list"); yield break; }
@@ -1754,9 +1898,9 @@ namespace AfterHours
                 for (int j = i + 1; j < rows.Count; j++)
                     if (ScreenRect((RectTransform)rows[i].transform).Overlaps(ScreenRect((RectTransform)rows[j].transform))) overlaps++;
             var heights = rows.Select(r => Units(ScreenRect((RectTransform)r.transform).height)).ToList();
-            Check(rows.Count > 5 && heights.All(h => Mathf.Abs(h - 84f) < 2.5f) && overlaps == 0 && Inside(ScreenRect(panel), ScreenArea) && Inside(vr, ScreenRect(panel))
-                  && others.All(o => !ScreenRect((RectTransform)o.transform).Overlaps(vr)) && list.MaxScroll > 0f,
-                $"{what} at Largest, {Screen.width}x{Screen.height}: {rows.Count} rows in one scrolling list ({heights.Min():F0}–{heights.Max():F0} units, Normal 56), {overlaps} overlaps, clear of {others.Count} buttons, on screen");
+            Check(rows.Count >= minRows && heights.All(h => Mathf.Abs(h - 84f) < 2.5f) && overlaps == 0 && Inside(ScreenRect(panel), ScreenArea) && Inside(vr, ScreenRect(panel))
+                  && others.All(o => !ScreenRect((RectTransform)o.transform).Overlaps(vr)) && (!mustScroll || list.MaxScroll > 0f),
+                $"{what} at Largest, {Screen.width}x{Screen.height}: {rows.Count} rows in one {(list.MaxScroll > 0f ? "scrolling " : "")}list ({heights.Min():F0}–{heights.Max():F0} units, Normal 56), {overlaps} overlaps, clear of {others.Count} buttons, on screen");
             var es = EventSystem.current;
             es.SetSelectedGameObject(rows[0].gameObject);
             yield return Wait(0.3f);
@@ -1773,8 +1917,8 @@ namespace AfterHours
                 yield return Press(GamepadButton.DpadDown);
                 yield return Wait(0.1f);
             }
-            Check(seen.Count == rows.Count && outOfView == 0 && Selected == "Btn_Done",
-                $"{what}: the d-pad walks all {rows.Count} rows ({seen.Count} seen, {outOfView} out of view) and on to Done ({Selected})");
+            Check(seen.Count == rows.Count && outOfView == 0 && Selected == after,
+                $"{what}: the d-pad walks all {rows.Count} rows ({seen.Count} seen, {outOfView} out of view) and on to {after.Replace("Btn_", "")} ({Selected})");
             es.SetSelectedGameObject(rows[0].gameObject);
             yield return Wait(0.4f);
         }
@@ -1797,8 +1941,12 @@ namespace AfterHours
                 var mr = ScreenRect(menu);
                 var tr = TextRect(tag);
                 var fr = TextRect(foot);
-                Check(Mathf.Abs(h - 64f * k) < 1.5f && Inside(mr, ScreenArea) && Inside(fr, ScreenArea) && mr.yMax < tr.yMin && mr.yMin > fr.yMax,
-                    $"title at {Settings.TextSizes[size]}, {Screen.width}x{Screen.height}: buttons {h:F0} units ({64f * k:F0} expected), on screen, below the tagline ({Units(tr.yMin - mr.yMax):F0} units clear) and above the footer");
+                // Five buttons grow by the full text size; a sixth (Case file) at Largest grows as far as there's room.
+                int buttons = menu.childCount;
+                float km = TitleScreen.Instance.MenuScale;
+                bool scaleOk = buttons <= 5 ? Mathf.Abs(km - k) < 0.01f : km >= Mathf.Min(k, 1.3f) - 0.01f && km <= k + 0.01f;
+                Check(scaleOk && Mathf.Abs(h - 64f * km) < 1.5f && Inside(mr, ScreenArea) && Inside(fr, ScreenArea) && mr.yMax < tr.yMin && mr.yMin > fr.yMax,
+                    $"title at {Settings.TextSizes[size]}, {Screen.width}x{Screen.height}, {buttons} buttons: buttons {h:F0} units ({64f * km:F0} expected, {km:F2}×), on screen, below the tagline ({Units(tr.yMin - mr.yMax):F0} units clear) and above the footer ({Units(mr.yMin - fr.yMax):F0} clear)");
                 if (size == 2) yield return Shot("title_largest");
             }
             s.TextSize = 0;

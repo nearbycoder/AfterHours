@@ -124,5 +124,61 @@ namespace AfterHours.Tests
             var loaded = StoryState.Upgrade(JsonUtility.FromJson<StoryState>(JsonUtility.ToJson(s)));
             Assert.AreEqual(new[] { "fridge_note" }, loaded.Read.Select(r => r.Id).ToArray(), "a save with a list isn't re-seeded");
         }
+            // ---- the case file from the title (round 7) ----------------------------------------------
+
+        [Test]
+        public void EntriesListEachNightsDocumentsThenItsMorningNewestFirst()
+        {
+            var s = new StoryState { Night = 1 };
+            s.NoteRead("dana_welcome");
+            s.NoteRead("theo_note");
+            s.Night = 2;
+            s.NoteRead("russ_slip");
+            s.NoteRead("no_such_document");   // a document that no longer exists isn't listed
+            s.NoteChat(1, new[] { 0, 1 });
+            s.Night = 3;
+            s.NoteChat(2, new[] { 0 });
+            s.NoteChat(3, new[] { 0 });       // tonight's chat (a replay's) isn't a past morning yet
+            var e = CaseFile.Entries(s);
+            Assert.AreEqual(new[] { "russ_slip", "chat:2", "dana_welcome", "theo_note", "chat:1" }, e.Select(x => x.id).ToArray());
+            Assert.AreEqual(new[] { 2, 2, 1, 1, 1 }, e.Select(x => x.night).ToArray());
+            Assert.AreEqual("3 documents you've read, 2 mornings of chat", CaseFile.Summary(s));
+            Assert.AreEqual(("Tuesday morning · #general", "the office chat"), CaseFile.Describe(s, "chat:1"));
+            Assert.AreEqual(1, CaseFile.ChatNight("chat:1"));
+            Assert.AreEqual(-1, CaseFile.ChatNight("theo_note"));
+        }
+
+        [Test]
+        public void TheWholeStoryIsListedAfterTheEnding()
+        {
+            // After night 7: the save is on night 8 with an ending; night 7 kept an empty chat.
+            var s = new StoryState { Night = 7 };
+            s.NoteRead("red_folder");
+            s.SetFate("red_folder", Fate.Delivered, "auditor");
+            s.Night = 6;
+            s.NoteRead("payment_ledger");
+            s.NoteChat(6, new[] { 0, 4 });
+            s.Night = 8;
+            s.NoteChat(7, NightDefs.Get(7).MorningChat(s));
+            s.Ending = "audit";
+            var loaded = JsonUtility.FromJson<StoryState>(JsonUtility.ToJson(s));
+            var e = CaseFile.Entries(loaded);
+            Assert.AreEqual(new[] { "red_folder", "payment_ledger", "chat:6" }, e.Select(x => x.id).ToArray(), "night 7's documents first; night 7 has no morning chat");
+            Assert.AreEqual(("The red folder", "left for the auditor"), CaseFile.Describe(loaded, "red_folder"));
+            Assert.AreEqual("Monday morning", CaseFile.MorningLabel(6));
+            Assert.AreEqual(2, CaseFile.MorningLines(loaded, 6).Count);
+            Assert.IsTrue(CaseFilePanel.HasEntries(loaded));
+        }
+
+        [Test]
+        public void ANewOrMissingSaveHasNoCaseFile()
+        {
+            Assert.IsFalse(CaseFilePanel.HasEntries(null));
+            Assert.IsFalse(CaseFilePanel.HasEntries(new StoryState()));
+            var chatOnlyEmpty = new StoryState { Night = 2 };
+            chatOnlyEmpty.NoteChat(1, new int[0]);   // a morning with no messages isn't listed
+            Assert.IsFalse(CaseFilePanel.HasEntries(chatOnlyEmpty));
+            Assert.AreEqual(0, CaseFile.MorningLines(chatOnlyEmpty, 5).Count);
+        }
     }
 }
