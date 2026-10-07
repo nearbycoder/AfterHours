@@ -8,16 +8,30 @@ namespace AfterHours
     public class EndingScreen : Interstitial
     {
         EndingDef ending;
+        StoryState state;
         TextMeshProUGUI lines, stats, hint;
         int shown;
         float nextAt, shownAt;
         bool doneLines;
+
+        /// <summary>Read again from the title's case file: everything at once; any close key returns.</summary>
+        public bool Review { get; private set; }
+        static EndingScreen reviewing;
+        /// <summary>The ending is open again over the title's case file.</summary>
+        public static bool ReviewOpen => reviewing != null;
+        /// <summary>The frame it closed on, so the key that closed it goes no further.</summary>
+        public static int ClosedFrame = -1;
+        /// <summary>The headline, epilogue and stats on screen (for checks).</summary>
+        public string Shown => lines ? $"{ending.Headline}\n{lines.text}\n{stats.text}" : "";
+        /// <summary>Every epilogue line and the stats are on screen.</summary>
+        public bool AllShown => doneLines;
 
         public static void Show(EndingDef e)
         {
             var go = new GameObject("Ending");
             var s = go.AddComponent<EndingScreen>();
             s.ending = e;
+            s.state = Story.State;
             s.Build();
             Story.State.Save();
             Records.NoteEnding(e.Id);
@@ -25,10 +39,55 @@ namespace AfterHours
             Debug.Log($"[Ending] {e.Id}: {e.Title}");
         }
 
+        /// <summary>
+        /// The ending of a finished story, read again: the same headline, epilogue and stats as
+        /// when it was reached, all at once. Nothing is saved or recorded.
+        /// </summary>
+        public static void ShowAgain(StoryState saved, System.Action onClosed)
+        {
+            var copy = saved.Clone(); // resolving notes the ending on the state it reads
+            var go = new GameObject("Ending");
+            var s = go.AddComponent<EndingScreen>();
+            s.ending = Endings.Resolve(copy);
+            s.state = saved;
+            s.Review = true;
+            reviewing = s;
+            GameRoot.Instance?.SetBlocked("ending_again", true);
+            s.done = () => { s.EndReview(); onClosed?.Invoke(); };
+            s.Build();
+            s.shown = s.ending.Lines.Count;
+            s.doneLines = true;
+            s.lines.text = string.Join("\n", s.ending.Lines);
+            s.stats.text = StatsLine(saved);
+            s.stats.alpha = s.hint.alpha = 1f;
+            s.hint.text = $"{GameInput.MenuKeyTag("E")}  close";
+        }
+
+        static string StatsLine(StoryState st)
+        {
+            int secrets = st.Results.Sum(r => r.Secrets), total = st.Results.Sum(r => r.SecretsTotal);
+            string grades = string.Join("  ", st.Results.OrderBy(r => r.Night).Select(r => $"N{r.Night} {r.Grade}"));
+            return $"SECRETS {secrets}/{total}    ·    {grades}";
+        }
+
+        void EndReview()
+        {
+            if (reviewing != this) return;
+            reviewing = null;
+            ClosedFrame = Time.frameCount;
+            GameRoot.Instance?.SetBlocked("ending_again", false);
+        }
+
+        protected override void OnDestroy()
+        {
+            base.OnDestroy();
+            EndReview();
+        }
+
         void Build()
         {
             Setup("Ending", 90, new Color(0.012f, 0.016f, 0.03f, 1f));
-            AudioDirector.Instance?.PlayMusic(ending.Id is "audit" or "spotless" ? "music_ending_warm" : "music_ending_cold", 0.55f);
+            if (!Review) AudioDirector.Instance?.PlayMusic(ending.Id is "audit" or "spotless" ? "music_ending_warm" : "music_ending_cold", 0.55f);
             var paper = Ui.Panel(root, "Paper", Palette.Hex("E9E3D3"), 4);
             Ui.Place(paper.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -60), new Vector2(1240, 300), new Vector2(0.5f, 1f));
             paper.rectTransform.localRotation = Quaternion.Euler(0, 0, -0.8f);
@@ -73,6 +132,13 @@ namespace AfterHours
 
         void Update()
         {
+            if (Review)
+            {
+                // E, Enter, a click, Esc or Tab close it, back to the case file.
+                var m = GameInput.Menu;
+                if (done != null && age > 0.3f && (Advance() || m.Back || m.Clipboard)) Finish();
+                return;
+            }
             // The newest epilogue line fades in; earlier ones stay put.
             if (shown > 0)
             {
@@ -94,9 +160,7 @@ namespace AfterHours
                 {
                     doneLines = true;
                     nextAt = age;
-                    int secrets = Story.State.Results.Sum(r => r.Secrets), total = Story.State.Results.Sum(r => r.SecretsTotal);
-                    string grades = string.Join("  ", Story.State.Results.OrderBy(r => r.Night).Select(r => $"N{r.Night} {r.Grade}"));
-                    stats.text = $"SECRETS {secrets}/{total}    ·    {grades}";
+                    stats.text = StatsLine(state);
                     hint.text = $"Thanks for playing.   Press {GameInput.MenuKeyTag("E")} to return to the title.";
                     Tween.Run(1.2f, k => { if (stats) { stats.alpha = k; hint.alpha = k; } }, Ease.OutCubic);
                 }

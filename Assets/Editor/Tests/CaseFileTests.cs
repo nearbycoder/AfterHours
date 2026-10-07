@@ -163,7 +163,9 @@ namespace AfterHours.Tests
             s.Ending = "audit";
             var loaded = JsonUtility.FromJson<StoryState>(JsonUtility.ToJson(s));
             var e = CaseFile.Entries(loaded);
-            Assert.AreEqual(new[] { "red_folder", "payment_ledger", "chat:6" }, e.Select(x => x.id).ToArray(), "night 7's documents first; night 7 has no morning chat");
+            Assert.AreEqual(new[] { CaseFile.EndingId, "red_folder", "payment_ledger", "chat:6" }, e.Select(x => x.id).ToArray(), "the ending, then night 7's documents; night 7 has no morning chat");
+            Assert.AreEqual(CaseFile.EndingNight, e[0].night);
+            Assert.AreEqual(("Tuesday morning · The Meridian Daily", "the ending: The Audit"), CaseFile.Describe(loaded, CaseFile.EndingId));
             Assert.AreEqual(("The red folder", "left for the auditor"), CaseFile.Describe(loaded, "red_folder"));
             Assert.AreEqual("Monday morning", CaseFile.MorningLabel(6));
             Assert.AreEqual(2, CaseFile.MorningLines(loaded, 6).Count);

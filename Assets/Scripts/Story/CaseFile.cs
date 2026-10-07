@@ -12,6 +12,10 @@ namespace AfterHours
     {
         /// <summary>Entries for a morning's chat are "chat:N", N the night before it.</summary>
         public const string ChatPrefix = "chat:";
+        /// <summary>The ending's entry (a finished story only), listed first under its own heading.</summary>
+        public const string EndingId = "ending";
+        /// <summary>The "night" the ending's entry is grouped under: the morning after the last night.</summary>
+        public static int EndingNight => NightDefs.Count + 1;
 
         /// <summary>Every document read so far that still exists, newest night first, in reading order within a night.</summary>
         public static List<ReadRecord> Reads(StoryState s) => (s?.Read ?? new List<ReadRecord>())
@@ -23,12 +27,16 @@ namespace AfterHours
             .Where(c => c.Night < s.Night && c.Lines != null && c.Lines.Count > 0 && NightDefs.Get(c.Night) != null)
             .Select(c => c.Night).Distinct().OrderByDescending(n => n).ToList();
 
-        /// <summary>The list in order: newest night first; each night's documents, then the next morning's chat.</summary>
+        /// <summary>
+        /// The list in order: the ending, once the story has one; then newest night first, each
+        /// night's documents, then the next morning's chat.
+        /// </summary>
         public static List<(int night, string id)> Entries(StoryState s)
         {
             var reads = Reads(s);
             var mornings = Mornings(s);
             var entries = new List<(int night, string id)>();
+            if (!string.IsNullOrEmpty(s?.Ending)) entries.Add((EndingNight, EndingId));
             foreach (int n in reads.Select(r => r.Night).Concat(mornings).Distinct().OrderByDescending(n => n))
             {
                 entries.AddRange(reads.Where(r => r.Night == n).Select(r => (n, r.Id)));
@@ -57,6 +65,7 @@ namespace AfterHours
         {
             int night = ChatNight(id);
             if (night >= 0) return (MorningLabel(night) + " · #general", "the office chat");
+            if (id == EndingId) return ($"{NightDefs.MorningAfter(NightDefs.Count)} morning · The Meridian Daily", "the ending: " + Endings.TitleOf(s?.Ending));
             var d = Docs.Get(id);
             return d == null ? (id, null) : (d.Title, s?.FateLabel(d.Id, d.Evidence));
         }

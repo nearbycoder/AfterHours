@@ -9,7 +9,7 @@ namespace AfterHours
     /// The case file from the title: the same list as the clipboard's (documents read and the
     /// morning chats, newest night first), as a menu that scrolls, built from the save on disk.
     /// So the story can be looked back over between sessions and after the ending, Night 7
-    /// included. Reading never changes the story or the save.
+    /// and the ending itself included. Reading never changes the story or the save.
     /// </summary>
     public class CaseFilePanel : MonoBehaviour
     {
@@ -29,7 +29,7 @@ namespace AfterHours
         float hintRefresh;
 
         /// <summary>A document or a morning's chat is open over the list.</summary>
-        public static bool Reading => InspectView.IsOpen || ChatInterlude.ReviewOpen;
+        public static bool Reading => InspectView.IsOpen || ChatInterlude.ReviewOpen || EndingScreen.ReviewOpen;
 
         /// <summary>Whether a saved story has anything to show (the title offers the button only then).</summary>
         public static bool HasEntries(StoryState s) => s != null && CaseFile.Entries(s).Count > 0;
@@ -74,7 +74,7 @@ namespace AfterHours
                 {
                     last = night;
                     var nd = NightDefs.Get(night);
-                    Widgets.Heading(col, $"Night {night}{(nd != null ? " · " + nd.Day : "")}", rowW);
+                    Widgets.Heading(col, night == CaseFile.EndingNight ? "The ending" : $"Night {night}{(nd != null ? " · " + nd.Day : "")}", rowW);
                 }
                 var (name, note) = CaseFile.Describe(state, id);
                 string label = note != null ? $"{name}   <size=75%><color=#FFFFFF80>{note}</color></size>" : name;
@@ -117,7 +117,13 @@ namespace AfterHours
 
         void Read(string id)
         {
-            if (Reading || Time.frameCount == InspectView.ClosedFrame || Time.frameCount == ChatInterlude.ClosedFrame) return;
+            if (Reading || Time.frameCount == InspectView.ClosedFrame || Time.frameCount == ChatInterlude.ClosedFrame || Time.frameCount == EndingScreen.ClosedFrame) return;
+            if (id == CaseFile.EndingId)
+            {
+                Sfx.Play("ui_page", null, 0.5f);
+                EndingScreen.ShowAgain(state, null);
+                return;
+            }
             int night = CaseFile.ChatNight(id);
             if (night >= 0)
             {
@@ -143,7 +149,7 @@ namespace AfterHours
         {
             // A document or chat read again has the keys until the frame after it closes, so the
             // press that closes it doesn't also open the row behind it or close the list.
-            bool fresh = Time.frameCount > InspectView.ClosedFrame && Time.frameCount > ChatInterlude.ClosedFrame;
+            bool fresh = Time.frameCount > InspectView.ClosedFrame && Time.frameCount > ChatInterlude.ClosedFrame && Time.frameCount > EndingScreen.ClosedFrame;
             bool reading = Reading;
             group.interactable = !reading && fresh;
             list.enabled = !reading;

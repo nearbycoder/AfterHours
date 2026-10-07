@@ -99,7 +99,14 @@ namespace AfterHours
                 Check(ending.Lines.Any(l => l.Contains("fifty dollars")), "taking Marian's money shows up in the epilogue");
             }
             Check(Story.State.Ending == expected, $"{route} route reaches the {expected} ending (got {Story.State.Ending}, score {Endings.AuditScore(Story.State)})");
-            for (int i = 0; i < 8; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.4f); }
+            for (int i = 0; i < 8; i++)
+            {
+                Interstitial.AutoAdvance = true;
+                yield return Wait(0.4f);
+                // What the ending showed once every line and the stats were in (read again from the title later).
+                var es = FindAnyObjectByType<EndingScreen>();
+                if (es && es.AllShown) endingSeen = System.Text.RegularExpressions.Regex.Replace(es.Shown, "<[^>]+>", "");
+            }
             yield return Wait(2f);
             Check(TitleScreen.Instance != null, "ending returns to the title");
             yield return Shot("back_to_title");
@@ -121,6 +128,8 @@ namespace AfterHours
             yield return Wait(0.5f);
             Application.Quit();
         }
+
+        string endingSeen;
 
         [Serializable] class LogLine { public float t; public int night; public float nt; public string type; public string id; public string grade; }
 
@@ -1694,8 +1703,8 @@ namespace AfterHours
             if (ended)
             {
                 var nights = CaseFile.Entries(saved).Select(e => e.night).ToList();
-                Check(nights.Count > 0 && nights[0] == 7 && nights.Distinct().Count() >= 6,
-                    $"after the ending it starts with night 7's documents ({nights.Count(n => n == 7)}) and covers {nights.Distinct().Count()} nights");
+                Check(want.Count > 1 && want[0] == CaseFile.EndingId && nights[1] == 7 && nights.Skip(1).Distinct().Count() >= 6,
+                    $"after the ending it starts with the ending, then night 7's documents ({nights.Count(n => n == 7)}), and covers {nights.Skip(1).Distinct().Count()} nights");
             }
             if (btn == null) { vpad = padBefore; InputSystem.RemoveDevice(pad); InputSystem.RemoveDevice(vkb); yield break; }
             if (!ended) yield return TitleTextChecks(); // six buttons now (Continue and Case file)
@@ -1711,8 +1720,10 @@ namespace AfterHours
                 $"pad A opens it: the save's {want.Count} entries in order, the first selected ({Selected})");
             yield return Shot(ended ? "title_case_file_ended" : "title_case_file");
 
+            if (ended) yield return EndingAgainChecks(saved, before, PadPress, Key);
+
             // A document, read again over the list.
-            string doc = want.FirstOrDefault(e => CaseFile.ChatNight(e) < 0);
+            string doc = want.FirstOrDefault(e => CaseFile.ChatNight(e) < 0 && e != CaseFile.EndingId);
             int docAt = want.IndexOf(doc);
             for (int i = 0; i < docAt; i++) yield return PadPress(GamepadButton.DpadDown);
             Check(Selected == "Entry_" + doc, $"the d-pad reaches {doc} ({Selected})");
@@ -1789,6 +1800,35 @@ namespace AfterHours
             vpad = padBefore;
             InputSystem.RemoveDevice(pad);
             InputSystem.RemoveDevice(vkb);
+        }
+
+        /// <summary>
+        /// The ending read again from the title's case file (round 8): the same headline,
+        /// epilogue and stats as when it was reached, over the list; pad B and Esc close it back
+        /// to the list, with the save unchanged.
+        /// </summary>
+        IEnumerator EndingAgainChecks(StoryState saved, byte[] before, Func<GamepadButton, IEnumerator> padPress, Func<UnityEngine.InputSystem.Key, IEnumerator> key)
+        {
+            Check(Selected == "Entry_" + CaseFile.EndingId, $"the ending is the first entry, under its own heading ({Selected})");
+            yield return padPress(GamepadButton.South);
+            yield return Wait(0.6f);
+            var screen = FindObjectsByType<EndingScreen>(FindObjectsSortMode.None).FirstOrDefault(x => x.Review);
+            var layer = Ui.Canvas.transform.Find("Ending")?.GetComponent<Canvas>();
+            var panelCanvas = Ui.Canvas.transform.Find("CaseFile")?.GetComponent<Canvas>();
+            string shown = screen ? System.Text.RegularExpressions.Regex.Replace(screen.Shown, "<[^>]+>", "") : "";
+            Check(EndingScreen.ReviewOpen && screen && endingSeen != null && shown == endingSeen && layer && panelCanvas && layer.sortingOrder > panelCanvas.sortingOrder,
+                $"pad A reads the ending again: the same headline, {saved.Results.Count} nights' stats and epilogue as when it was reached ({shown.Split('\n').Length} lines), above the list");
+            yield return Shot("title_case_file_ending");
+            yield return padPress(GamepadButton.East);
+            yield return Wait(0.6f);
+            Check(!EndingScreen.ReviewOpen && CaseFilePanel.IsOpen && Selected == "Entry_" + CaseFile.EndingId && !FindObjectsByType<EndingScreen>(FindObjectsSortMode.None).Any(),
+                "pad B closes it, back on the list with the ending selected");
+            yield return padPress(GamepadButton.South);
+            yield return Wait(0.6f);
+            yield return key(UnityEngine.InputSystem.Key.Escape);
+            yield return Wait(0.6f);
+            Check(!EndingScreen.ReviewOpen && CaseFilePanel.IsOpen && TitleScreen.Instance != null && Selected == "Entry_" + CaseFile.EndingId,
+                "Esc closes it too, leaving the list open on the ending");
         }
 
         // ---- the menus at larger text sizes (round 6) ----------------------------------------------
