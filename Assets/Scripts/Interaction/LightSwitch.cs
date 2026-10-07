@@ -3,7 +3,7 @@ using UnityEngine;
 namespace AfterHours
 {
     /// <summary>Wall switch for a room's lights.</summary>
-    public class LightSwitch : MonoBehaviour, IInteractable
+    public class LightSwitch : MonoBehaviour, IInteractable, IHandsFree
     {
         public Room Room;
         Transform toggle;

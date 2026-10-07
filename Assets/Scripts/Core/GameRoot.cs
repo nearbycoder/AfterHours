@@ -312,7 +312,10 @@ namespace AfterHours
             {
                 // Toggled: one press starts the charge and the next throws.
                 string throwText = !Settings.Current.ToggleUse ? "Throw (hold)" : Hands.Charging ? "Throw" : "Aim a throw";
-                hud.Prompt(("LMB", throwText), ("E", Hands.PromptText()), ("Q", "Drop"));
+                // E uses a door, switch or chair under the reticle; otherwise it places what's held.
+                var use = Interactor != null && Interactor.HandsFreeFocus ? Interactor.Focus.Prompt(Interactor) : Hands.PromptText();
+                if (use != null) hud.Prompt(("LMB", throwText), ("E", use), ("Q", "Drop"));
+                else hud.Prompt(("LMB", throwText), ("Q", "Drop"));
                 return;
             }
             var t = Cleaning != null ? Cleaning.Target : null;

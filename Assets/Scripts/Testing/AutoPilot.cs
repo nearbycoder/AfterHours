@@ -678,6 +678,7 @@ namespace AfterHours
                 yield return Wait(0.4f);
                 Check(root.Hands.Holding == cup, "real input: E picks up a cup");
                 yield return BinLabelChecks(cup);
+                yield return HandsFullChecks(cup);
                 var anchor = o.Anchor("BIN_trash_reception_1").position;
                 var bin = root.Director.Furniture.Bins.OrderBy(b => (b.transform.position - anchor).sqrMagnitude).First();
                 var spot = ThrowSpot(bin, 3.6f) ?? ThrowSpot(bin, 2.8f) ?? ThrowSpot(bin, 2.2f);
@@ -775,6 +776,117 @@ namespace AfterHours
                 Check(root.Hands.AimedBin == wrong && HudLabel() == expect, $"aiming at the wrong bin, the label says so and which one it goes in (\"{HudLabel()}\")");
                 yield return Shot("n1_bin_label_wrong");
             }
+            player.Teleport(pos, yaw, pitch);
+            yield return Wait(0.3f);
+            Check(root.Hands.Holding == item, "still holding it afterwards");
+        }
+
+        /// <summary>
+        /// With something in hand, E still uses a light switch, a door or a chair, and the cup stays
+        /// held (round 9); E on the floor offers Place, and with nothing to stand it on the prompt
+        /// offers only Q. Pressed on a virtual keyboard. Ends where it started, still holding it.
+        /// </summary>
+        IEnumerator HandsFullChecks(Holdable item)
+        {
+            var player = root.Player;
+            var (pos, yaw, pitch) = (player.transform.position, player.Yaw, player.Pitch);
+            var hl = AimHighlight.Instance;
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotKeyboardHands");
+            vkb.MakeCurrent();
+            IEnumerator Key(UnityEngine.InputSystem.Key k)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(k));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return Wait(0.4f);
+            }
+            string Prompt() => Hud.Instance.PromptSignature ?? "";
+            var scripted = GameInput.Override;
+            GameInput.Override = null;
+
+            // The reception light switch.
+            var room = root.Office.Rooms["reception"];
+            var sw = root.Office.Switches["reception"];
+            var toRoom = room.Bounds.center - sw.transform.position; toRoom.y = 0;
+            var stand = sw.transform.position + toRoom.normalized * 0.9f; stand.y = 0;
+            player.Teleport(stand, 0, 0);
+            yield return Aim(sw.transform.position, 0.3f);
+            yield return Wait(0.3f);
+            bool lit = room.LightsOn;
+            string want = lit ? "Lights off" : "Lights on";
+            Check(Interactor.Instance.Focus == (IInteractable)sw && Interactor.Instance.HandsFreeFocus && hl != null && hl.Target == sw.transform,
+                $"holding the {item.DisplayName.ToLowerInvariant()}, the switch under the reticle is found and highlighted (focus {(Interactor.Instance.Focus as Component)?.name ?? "none"})");
+            Check(Prompt().Contains("|E" + want + "|"), $"the prompt offers E: {want} as well as the throw and Q (\"{Prompt()}\")");
+            yield return Shot("n1_hands_full_switch");
+            yield return Key(UnityEngine.InputSystem.Key.E);
+            Check(room.LightsOn != lit && root.Hands.Holding == item, $"E flips the switch with the cup in hand, and the cup stays held (lights {(room.LightsOn ? "on" : "off")}, holding {root.Hands.Holding?.name ?? "nothing"})");
+            yield return Key(UnityEngine.InputSystem.Key.E);
+            Check(room.LightsOn == lit && root.Hands.Holding == item, "E again flips it back, still holding");
+
+            // The nearest door that opens.
+            var door = root.Office.Doors.Values.Where(d => d != null && !d.Locked && d.gameObject.activeInHierarchy)
+                .OrderBy(d => (d.transform.position - pos).sqrMagnitude).FirstOrDefault();
+            Check(door != null, "a door to try");
+            if (door != null)
+            {
+                var col = door.GetComponentInChildren<Collider>();
+                var mid = col != null ? col.bounds.center : door.transform.position + Vector3.up;
+                var away = pos - mid; away.y = 0;
+                // Stand square in front of it (across its thin side), on the side the cup came from.
+                var size = col != null ? col.bounds.size : Vector3.one;
+                var normal = size.x < size.z ? Vector3.right : Vector3.forward;
+                if (Vector3.Dot(normal, away) < 0) normal = -normal;
+                var at = mid + normal * 1.3f; at.y = 0;
+                player.Teleport(at, 0, 0);
+                yield return Aim(new Vector3(mid.x, 1.1f, mid.z), 0.3f);
+                yield return Wait(0.3f);
+                bool open = door.IsOpen;
+                Check(Interactor.Instance.Focus == (IInteractable)door && Prompt().Contains("|E" + (open ? "Close" : "Open") + "|"),
+                    $"holding it, a door under the reticle offers E: {(open ? "Close" : "Open")} (\"{Prompt()}\", focus {(Interactor.Instance.Focus as Component)?.name ?? "none"})");
+                yield return Key(UnityEngine.InputSystem.Key.E);
+                Check(door.IsOpen != open && root.Hands.Holding == item, $"E {(open ? "closes" : "opens")} the door ({door.Id}) and the cup stays held");
+                yield return Wait(0.8f); // the swing
+                yield return Shot("n1_hands_full_door");
+                // Look at where the door is now, as a player would, and close it again.
+                yield return Aim(col != null ? col.bounds.center : mid, 0.3f);
+                yield return Wait(0.3f);
+                Check(Interactor.Instance.Focus == (IInteractable)door && Prompt().Contains("|E" + (open ? "Open" : "Close") + "|"),
+                    $"aimed at the swung door, E offers to {(open ? "open" : "close")} it again (\"{Prompt()}\")");
+                yield return Key(UnityEngine.InputSystem.Key.E);
+                Check(door.IsOpen == open && root.Hands.Holding == item, "E again puts the door back, still holding");
+                yield return Wait(0.6f);
+            }
+
+            // A chair left out from its desk.
+            var chair = Chair.All.Where(c => !c.Tucked).OrderBy(c => (c.transform.position - pos).sqrMagnitude).FirstOrDefault();
+            Check(chair != null, "a chair that's out from its desk");
+            if (chair != null)
+            {
+                var (p0, r0) = (chair.transform.position, chair.transform.rotation);
+                var out_ = p0 - chair.HomePos; out_.y = 0;
+                if (out_.sqrMagnitude < 0.01f) out_ = Vector3.back;
+                var at = p0 + out_.normalized * 1.0f; at.y = 0;
+                player.Teleport(at, 0, 0);
+                yield return Aim(p0 + Vector3.up * 0.55f, 0.3f);
+                yield return Wait(0.3f);
+                Check(Interactor.Instance.Focus == (IInteractable)chair && Prompt().Contains("|ETuck in chair|"),
+                    $"holding it, a chair under the reticle offers E: Tuck in chair (\"{Prompt()}\", focus {(Interactor.Instance.Focus as Component)?.name ?? "none"})");
+                yield return Key(UnityEngine.InputSystem.Key.E);
+                yield return Wait(0.4f);
+                Check(chair.Tucked && root.Hands.Holding == item, "E tucks the chair in and the cup stays held");
+                chair.Untuck(p0, r0); // as the night left it: the route tucks it in later
+            }
+
+            // Nothing to stand it on: only the throw and Q; the floor: Place.
+            player.Teleport(pos, yaw, -80f);
+            yield return Wait(0.4f);
+            Check(!Prompt().Contains("|E") && Prompt().Contains("|QDrop"), $"aimed at the ceiling, E isn't offered (it would only drop it, like Q) (\"{Prompt()}\")");
+            player.Pitch = 60f;
+            yield return Wait(0.4f);
+            Check(Prompt().Contains("|EPlace") || Prompt().Contains("|EPut back"), $"aimed at the floor, E places it (\"{Prompt()}\")");
+
+            GameInput.Override = scripted;
+            InputSystem.RemoveDevice(vkb);
             player.Teleport(pos, yaw, pitch);
             yield return Wait(0.3f);
             Check(root.Hands.Holding == item, "still holding it afterwards");

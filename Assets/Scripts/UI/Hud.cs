@@ -84,6 +84,9 @@ namespace AfterHours
             clockSub.text = sub;
         }
 
+        /// <summary>The prompt showing now, as key and label pairs joined by "|" (for checks).</summary>
+        public string PromptSignature => promptKey;
+
         /// <summary>Show a prompt like ("E", "Pick up · Crumpled note"). Empty key hides it.</summary>
         public void Prompt(params (string key, string label)[] items)
         {

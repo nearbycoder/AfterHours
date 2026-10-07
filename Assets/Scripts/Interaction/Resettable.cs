@@ -175,7 +175,7 @@ namespace AfterHours
     }
 
     /// <summary>A chair you can tuck back under its desk with E.</summary>
-    public class Chair : MonoBehaviour, IInteractable
+    public class Chair : MonoBehaviour, IInteractable, IHandsFree
     {
         public string Id;
         public Vector3 HomePos;

@@ -4,7 +4,8 @@ namespace AfterHours
 {
     /// <summary>
     /// Carrying: the held object floats in front of the camera, LMB charges and throws (with an arc
-    /// preview), E places on the surface you aim at (or snaps home), Q drops.
+    /// preview), E places on the surface you aim at (or snaps home), Q drops. With the reticle on a
+    /// door, a light switch or a chair, E uses that instead (<see cref="Interactor.HandsFreeFocus"/>).
     /// </summary>
     public class Hands : MonoBehaviour
     {
@@ -137,7 +138,9 @@ namespace AfterHours
                 }
             }
 
-            if (input.Interact && !justGrabbed)
+            // A door, switch or chair under the reticle takes E (the Interactor has already used it).
+            bool handsFree = Interactor.Instance != null && Interactor.Instance.HandsFreeFocus;
+            if (input.Interact && !justGrabbed && !handsFree)
             {
                 if (homeCandidate != null)
                 {
@@ -253,10 +256,11 @@ namespace AfterHours
             ghostFor = null;
         }
 
+        /// <summary>What E does with the held object: put it back, place it, or (aimed at nothing it can stand on) null, since it would only drop it like Q.</summary>
         public string PromptText()
         {
             if (Holding == null) return null;
-            return homeCandidate != null ? "Put back" : "Place";
+            return homeCandidate != null ? "Put back" : PlaceTarget(out _, out _).HasValue ? "Place" : null;
         }
 
         public bool HasHomeCandidate => homeCandidate != null;

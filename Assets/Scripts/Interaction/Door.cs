@@ -3,7 +3,7 @@ using UnityEngine;
 namespace AfterHours
 {
     /// <summary>Hinged door: E toggles, it swings away from the player, and it can be locked.</summary>
-    public class Door : MonoBehaviour, IInteractable
+    public class Door : MonoBehaviour, IInteractable, IHandsFree
     {
         public string Id;
         public bool Locked;
