@@ -45,6 +45,19 @@ namespace AfterHours
         }
 
         public float Fps => MedianMs > 0f ? 1000f / MedianMs : 0f;
+
+        /// <summary>
+        /// Frames a second over the last <paramref name="seconds"/> of the window: what the player
+        /// is seeing now. (The median decides; just after a fast spell it can still hold fast frames.)
+        /// </summary>
+        public float RecentFps(float seconds = 3f)
+        {
+            var a = times.ToArray();
+            float t = 0f;
+            int n = 0;
+            for (int i = a.Length - 1; i >= 0 && t < seconds; i--, n++) t += a[i];
+            return t > 0f ? n / t : 0f;
+        }
         public bool Slow => Full && MedianMs > SlowMs;
 
         /// <summary>The next lower setting: the preset one step down, then the render scale to 75% and 50%; null when nothing is lower.</summary>
@@ -99,7 +112,7 @@ namespace AfterHours
         void Offer(Settings s)
         {
             var next = SlowFrames.NextStep(s.Quality, s.RenderScale);
-            int fps = OfferedFps = Mathf.RoundToInt(Frames.Fps);
+            int fps = OfferedFps = Mathf.RoundToInt(Frames.RecentFps());
             Frames.Reset();
             if (next == null) return;
             var (q, scale) = next.Value;

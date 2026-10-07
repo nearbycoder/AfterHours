@@ -43,6 +43,17 @@ namespace AfterHours.Tests
         }
 
         [Test]
+        public void TheRateNamedIsTheRecentOne()
+        {
+            // Fast for a while, then 20 fps: by the time the median says slow, the window still
+            // holds fast frames, but the rate named is what's on screen now.
+            var f = Feed(SlowFrames.Warmup + SlowFrames.Window, 16.7f);
+            for (int i = 0; i < 400 && !f.Slow; i++) f.Add(0.05f);
+            Assert.IsTrue(f.Slow);
+            Assert.AreEqual(20f, f.RecentFps(), 0.5f);
+        }
+
+        [Test]
         public void TheWindowRollsOn()
         {
             var f = Feed(SlowFrames.Warmup + 20f, 50f);

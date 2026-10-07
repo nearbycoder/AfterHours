@@ -930,7 +930,7 @@ namespace AfterHours
             float waited = 0f;
             yield return Play(SlowFrames.Warmup + SlowFrames.Window + 10f, () => { waited += GameTime.UnscaledDelta; return ChoiceMenu.IsOpen; });
             Check(ChoiceMenu.IsOpen && fw.Offers == offers0 + 1 && fw.OfferedFps >= 15 && fw.OfferedFps <= 22,
-                $"at 20 fps the game offers a lower setting after {waited:F0} s (it measured {fw.OfferedFps} fps)");
+                $"at 20 fps the game offers a lower setting after {waited:F0} s, naming the rate on screen ({fw.OfferedFps} fps; median over the window {fw.Frames.MedianMs:F0} ms)");
             yield return Wait(0.5f);
             yield return Shot("n2_running_slowly");
             ChoiceMenu.AutoPick = 0;
