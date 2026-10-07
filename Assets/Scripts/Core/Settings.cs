@@ -38,6 +38,8 @@ namespace AfterHours
         public bool ToggleSprint;
         /// <summary>Clean and spray: false holds the button, true presses once to start and again to stop.</summary>
         public bool ToggleUse;
+        /// <summary>"Running slowly": the player chose to keep their graphics settings; don't offer lower ones again (see <see cref="FrameWatch"/>).</summary>
+        public bool SlowFramesDeclined;
         /// <summary>Write a local playtest log (see PlaytestLog and docs/PLAYTEST.md).</summary>
         public bool PlaytestLog;
         /// <summary>Keyboard and mouse bindings that differ from the defaults (see <see cref="Controls"/>).</summary>

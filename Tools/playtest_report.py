@@ -105,6 +105,13 @@ def main():
         print(f"{start.get('platform', '?')} · {start.get('gpu', '?')} · {start.get('screen', '?')} · quality {start.get('quality', '?')}"
               f" · pad {start.get('pad') or 'none'} · {len(events)} events")
         ending = next((e.get("id") for e in events if e.get("type") == "ending"), None)
+        # The game offered a lower graphics setting because a night ran slowly (and what was chosen).
+        for e in events:
+            if e.get("type") == "slow_frames":
+                print(f"Running slowly on Night {e.get('night', '?')}: about {e.get('fps')} fps at quality {e.get('quality')},"
+                      f" render scale {e.get('scale')}")
+            elif e.get("type") == "slow_frames_choice":
+                print(f"  chose to {e.get('choice')}" + (f" (quality {e.get('quality')}, render scale {e.get('scale')})" if e.get("choice") == "lower" else ""))
         print()
         print("| Night | Time | Grade | Secrets | Stuck glints | Recovered | Clipboard | Slowest task | How it ended |")
         print("|---|---|---|---|---|---|---|---|---|")

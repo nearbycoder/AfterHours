@@ -261,6 +261,7 @@ namespace AfterHours
                     yield return ReplayAskChecks();
                 }
                 if (n == 2) yield return AutoPauseChecks();
+                if (n == 2) yield return SlowFrameChecks();
             }
             float start = Time.realtimeSinceStartup;
             frameTimes.Clear();
@@ -890,6 +891,78 @@ namespace AfterHours
             player.Teleport(pos, yaw, pitch);
             yield return Wait(0.3f);
             Check(root.Hands.Holding == item, "still holding it afterwards");
+        }
+
+        // ---- running slowly (night 2) -------------------------------------------------------------
+
+        /// <summary>
+        /// Running slowly (round 9): at full speed nothing is offered; with frames held to 20 a
+        /// second the game offers the next lower preset once its warm-up and window have passed;
+        /// lowering applies and saves it; still slow, it offers the next step; Keep means it never
+        /// asks again. Both offers go in the playtest log. Puts every setting back afterwards.
+        /// </summary>
+        IEnumerator SlowFrameChecks()
+        {
+            var s = Settings.Current;
+            var fw = FrameWatch.Instance;
+            Check(fw != null && !FrameWatch.Watching, "the frame watch is there, and off in automated runs");
+            if (fw == null) yield break;
+            var (q0, scale0, vs0, fr0) = (s.Quality, s.RenderScale, QualitySettings.vSyncCount, Application.targetFrameRate);
+            var file = System.IO.Path.Combine(StoryState.Dir, "settings.json");
+            int offers0 = fw.Offers;
+            IEnumerator Play(float seconds, Func<bool> until = null)
+            {
+                for (float t = 0; t < seconds && (until == null || !until()); t += GameTime.UnscaledDelta) yield return null;
+            }
+            FrameWatch.Watching = true;
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+            yield return Play(SlowFrames.Warmup + SlowFrames.Window + 3f, () => ChoiceMenu.IsOpen);
+            Check(!ChoiceMenu.IsOpen && fw.Offers == offers0, $"at full speed nothing is offered ({1f / Mathf.Max(1e-4f, Time.smoothDeltaTime):F0} fps, median {fw.Frames.MedianMs:F1} ms, {Load()})");
+            if (ChoiceMenu.IsOpen) { ChoiceMenu.AutoPick = 99; yield return Wait(0.4f); }
+
+            // 20 frames a second: the preset one step down.
+            Application.targetFrameRate = 20;
+            float waited = 0f;
+            yield return Play(SlowFrames.Warmup + SlowFrames.Window + 10f, () => { waited += GameTime.UnscaledDelta; return ChoiceMenu.IsOpen; });
+            Check(ChoiceMenu.IsOpen && fw.Offers == offers0 + 1 && fw.OfferedFps >= 15 && fw.OfferedFps <= 22,
+                $"at 20 fps the game offers a lower setting after {waited:F0} s (it measured {fw.OfferedFps} fps)");
+            yield return Wait(0.5f);
+            yield return Shot("n2_running_slowly");
+            ChoiceMenu.AutoPick = 0;
+            yield return Wait(0.5f);
+            Check(s.Quality == q0 - 1 && System.IO.File.ReadAllText(file).Contains($"\"Quality\": {q0 - 1}"),
+                $"choosing it lowers the preset to {GraphicsQuality.Names[Mathf.Max(0, q0 - 1)]} and saves it (now {GraphicsQuality.Names[s.Quality]})");
+            Check(!root.Blocked, "and play carries on");
+
+            // Still slow: the next step; Keep means never again.
+            waited = 0f;
+            yield return Play(SlowFrames.Warmup + SlowFrames.Window + 10f, () => { waited += GameTime.UnscaledDelta; return ChoiceMenu.IsOpen; });
+            Check(ChoiceMenu.IsOpen && fw.Offers == offers0 + 2, $"still slow, it offers the next step after {waited:F0} s");
+            ChoiceMenu.AutoPick = 1;
+            yield return Wait(0.5f);
+            Check(s.SlowFramesDeclined && s.Quality == q0 - 1 && System.IO.File.ReadAllText(file).Contains("\"SlowFramesDeclined\": true"),
+                "Keep leaves the settings as they are and is saved");
+            yield return Play(SlowFrames.Warmup + SlowFrames.Window + 3f, () => ChoiceMenu.IsOpen);
+            Check(!ChoiceMenu.IsOpen && fw.Offers == offers0 + 2, "after Keep it doesn't ask again, however slow");
+            var log = PlaytestLog.CurrentFile != null && System.IO.File.Exists(PlaytestLog.CurrentFile) ? System.IO.File.ReadAllText(PlaytestLog.CurrentFile) : "";
+            Check(System.Text.RegularExpressions.Regex.Matches(log, "\"type\":\"slow_frames\"").Count == 2 && log.Contains("\"choice\":\"lower\"") && log.Contains("\"choice\":\"keep\""),
+                "the playtest log has both offers and both choices");
+
+            FrameWatch.Watching = false;
+            QualitySettings.vSyncCount = vs0;
+            Application.targetFrameRate = fr0;
+            s.Quality = q0;
+            s.RenderScale = scale0;
+            s.SlowFramesDeclined = false;
+            Settings.ApplyGraphics();
+            Settings.Save();
+            yield return Wait(0.5f);
+        }
+
+        static string Load()
+        {
+            try { return "load " + System.IO.File.ReadAllText("/proc/loadavg").Split(' ')[0]; } catch { return "load ?"; }
         }
 
         // ---- pad tool cycling and controller glyphs (night 1) ------------------------------------

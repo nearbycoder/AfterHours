@@ -75,6 +75,7 @@ namespace AfterHours
             QualitySettings.vSyncCount = 1;
             Application.targetFrameRate = -1;
             gameObject.AddComponent<GameInput>();
+            gameObject.AddComponent<FrameWatch>();
             Application.wantsToQuit += WantsToQuit;
             PostFx.Create();
             AudioDirector.Create();
