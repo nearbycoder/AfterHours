@@ -77,6 +77,13 @@ namespace AfterHours
         public static float TextScaleOf(int size) => size switch { 1 => 1.25f, 2 => 1.5f, _ => 1f };
         public static float TextScale => TextScaleOf(Current.TextSize);
 
+        /// <summary>Fullscreen (a borderless window over the whole screen) or a window.</summary>
+        public static void ApplyWindowMode(bool fullscreen)
+        {
+            var mode = fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+            if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
+        }
+
         /// <summary>Fullscreen, VSync and frame cap, quality preset and render scale.</summary>
         public static void ApplyGraphics()
         {
@@ -87,8 +94,7 @@ namespace AfterHours
             if (!automated)
             {
                 // Automation runs uncapped (or on a fixed clock) and keeps its own timing.
-                var mode = s.Fullscreen ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
-                if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
+                ApplyWindowMode(s.Fullscreen);
                 QualitySettings.vSyncCount = s.VSync ? 1 : 0;
                 Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : -1;
             }

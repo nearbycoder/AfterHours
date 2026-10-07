@@ -47,6 +47,8 @@ namespace AfterHours
                 case "perf": yield return PerfProbe(); break;
                 case "monitors": yield return Monitors(); break;
                 case "menus": yield return Menus(); break;
+                case "closetest": yield return CloseTest(); break;
+                case "windowtest": yield return WindowTest(); break;
                 case var s when s.StartsWith("look:"): yield return LookAt(s.Substring(5)); break;
                 default: yield return OfficeTour(); break;
             }
@@ -135,6 +137,69 @@ namespace AfterHours
             }
             Settings.Current.TextSize = 0;
             Settings.Save();
+        }
+
+        /// <summary>
+        /// The other half of <c>Tools/closetest.sh</c>, which closes this window from the window
+        /// manager (as the title bar's close button does) when the log says "ready". On the title
+        /// the close must go through. Mid-night (<c>-ahNight 1</c>) it must be held behind the
+        /// question; Never mind keeps the night paused where it was, and the second close is
+        /// answered with Quit the game, which must close the game.
+        /// </summary>
+        IEnumerator CloseTest()
+        {
+            GameRoot.QuitAsks = true; // as for a player
+            if (!GameRoot.HasArg("-ahNight"))
+            {
+                yield return Wait(2f);
+                Log("closetest ready 1: on the title");
+                yield return Wait(30f);
+                Log("closetest FAIL: still running 30 s after the title's window was closed");
+                yield break;
+            }
+            var dir = root.Director;
+            yield return WaitUnblocked(40f);
+            yield return Wait(1.5f);
+            Log($"closetest ready 1: Night {dir.Def.Number} running {dir.Running} at {dir.Elapsed:F1}s");
+            for (float t = 0; !ChoiceMenu.IsOpen && t < 30f; t += GameTime.UnscaledDelta) yield return null;
+            float at = dir.Elapsed;
+            Log($"closetest held: question {ChoiceMenu.IsOpen}, pause menu {PauseMenu.IsOpen}, time scale {Time.timeScale}, night running {dir.Running} at {at:F1}s");
+            if (!ChoiceMenu.IsOpen) { Log("closetest FAIL: the close wasn't held"); yield break; }
+            yield return Shot("close_question");
+            ChoiceMenu.AutoPick = 1; // Never mind
+            yield return Wait(2f);
+            Log($"closetest never mind: question {ChoiceMenu.IsOpen}, pause menu {PauseMenu.IsOpen}, night running {dir.Running}, clock moved {Mathf.Abs(dir.Elapsed - at):F2}s");
+            Log("closetest ready 2: closing again");
+            for (float t = 0; !ChoiceMenu.IsOpen && t < 30f; t += GameTime.UnscaledDelta) yield return null;
+            Log($"closetest asked again: question {ChoiceMenu.IsOpen}, pause menu {PauseMenu.IsOpen}; answering Quit the game");
+            ChoiceMenu.AutoPick = 0; // Quit the game
+            yield return Wait(30f);
+            Log("closetest FAIL: still running 30 s after Quit the game");
+        }
+
+        /// <summary>
+        /// The other half of <c>Tools/wmtest.sh window</c>: started fullscreen, switches Fullscreen
+        /// off and back on as Settings does, saying "ready" at each step so the script can ask
+        /// the window manager where the window is.
+        /// </summary>
+        IEnumerator WindowTest()
+        {
+            yield return Wait(2f);
+            string Now() => $"{Screen.fullScreenMode} {Screen.width}x{Screen.height}, display {Display.main.systemWidth}x{Display.main.systemHeight}";
+            Log($"windowtest ready 1: started {Now()}");
+            yield return Wait(4f);
+            Settings.ApplyWindowMode(false);
+            yield return Wait(3f);
+            Log($"windowtest ready 2: windowed {Now()}");
+            yield return Wait(4f);
+            Settings.ApplyWindowMode(true);
+            yield return Wait(3f);
+            Log($"windowtest ready 3: fullscreen again {Now()}");
+            yield return Wait(4f);
+            Settings.ApplyWindowMode(false);
+            yield return Wait(3f);
+            Log($"windowtest ready 4: windowed again {Now()}");
+            yield return Wait(4f);
         }
 
         IEnumerator Proto()

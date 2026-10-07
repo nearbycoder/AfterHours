@@ -133,7 +133,12 @@ namespace AfterHours
         /// <summary>Unity asks before quitting (a window close, Alt+F4, Application.Quit): hold it if a night would be lost.</summary>
         public bool WantsToQuit()
         {
-            if (!QuitLosesNight(QuitAsks, quitConfirmed, InNight, Director != null && Director.Paused, TitleScreen.Instance != null)) return true;
+            if (!QuitLosesNight(QuitAsks, quitConfirmed, InNight, Director != null && Director.Paused, TitleScreen.Instance != null))
+            {
+                Debug.Log("[Quit] request goes through");
+                return true;
+            }
+            Debug.Log("[Quit] request held: tonight would be lost, asking first");
             AskBeforeQuit();
             return false;
         }
