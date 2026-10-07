@@ -91,8 +91,16 @@ on one press and flies on the next). Prompts and hints show your keys by their n
 layout, so on AZERTY they read Z Q S D rather than W A S D, and your pad buttons as bound.
 
 The game pauses itself if its window loses focus or the controller you're using disconnects
-mid-night. The first time it starts, it offers a **brightness** page over the dark office (also
-in Settings → Display).
+mid-night. The pause menu lists the controls with the keys or pad buttons you have now. The
+first time it starts, it offers a **brightness** page over the dark office (also in Settings →
+Display).
+
+**Text size** (Settings → Accessibility: Normal, Large or Largest) scales the HUD and everything
+you read: documents (the paper grows with the text), the clipboard, choices, the shift report and
+the morning chat. At Large and Largest the clipboard becomes one wide sheet with three pages
+(shift sheet, notes, case file); <kbd>W</kbd>/<kbd>S</kbd> or the wheel show the rest of a long
+page. The morning chat scrolls back with <kbd>W</kbd>/<kbd>S</kbd>, the arrows, the wheel or the
+d-pad at any size. The title, pause and settings menus keep their size.
 
 **A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
 clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
@@ -186,11 +194,12 @@ best grade and most secrets for each night, and the endings you've found (shown 
 screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
 Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
-Settings, Restart this night, Quit to title; both of the last two ask first) and settings in two
+Settings, Restart this night, Quit to title; both of the last two ask first; and a card listing
+the controls as you have them bound) and settings in two
 columns: mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
 four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
 render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
-whatever you're aiming at, HUD text size (Normal, Large, Largest), and pages for keyboard and
+whatever you're aiming at, text size (Normal, Large, Largest), and pages for keyboard and
 mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
 spray. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
@@ -304,9 +313,15 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   the next tap and on opening the clipboard, and that a throw charges on one tap and flies on the
   next. From the pause menu it opens the brightness page and moves it with the pad and the arrow
   keys, backs out of Quit to title and then confirms it (Continue starts the night again), and
-  checks the HUD at each text size stays on screen. Every shift report is checked against the
+  checks the HUD at each text size stays on screen. It opens every document at Normal and Largest
+  and checks the text stays on the paper and the paper on screen, and checks choices at Largest.
+  The pause menu's controls card is checked against the bindings, after a rebind and with a
+  virtual pad and DualShock 4. Nights 1 and 2 end at Largest: the report's text must stay on the
+  paper and the morning chat is scrolled back to its first message with real key presses (and
+  must hold new messages while scrolled back). Every shift report is checked against the
   numbers its grade came from. On Night 2 it opens the case file, reads documents again
-  with the pad and the keyboard and checks nothing in the story changed, and checks the pause on
+  with the pad and the keyboard and checks nothing in the story changed, turns the clipboard's
+  three pages at Large and Largest and scrolls the long shift sheet, and checks the pause on
   focus loss (through the game's focus handler) and on unplugging the pad in use. Automated runs
   keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
@@ -314,7 +329,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
   buttons and survive a save, the hold-or-toggle logic (including clean and spray), the case
   file's reading list (including saves from before it existed), the grading and its hints, the
-  brightness curve and the HUD text sizes, and that settings files from earlier versions load.
+  brightness curve, the HUD text sizes and how far documents grow, and that settings files from
+  earlier versions load.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
   then on for the run, and afterwards checks the log: every line is JSON, a night end for each
   night in order, every secret, the ending, clipboard opens, pauses, glints and recovered items.
@@ -405,7 +421,9 @@ records, the macOS build and longer night music; round 2: the aim highlight, key
 tool cycling and PlayStation glyphs, and a playtest kit; round 3: the case file, controller
 remapping, hold or toggle for crouch and brisk walk, and pausing on focus or pad loss; round 4:
 brightness, hold or toggle for clean and spray, the grade breakdown on the shift report, HUD
-text size, and a question before Quit to title) are listed in
+text size, and a question before Quit to title; round 5: text size for documents, the
+clipboard, choices, the report and the morning chat, scrolling back through the chat, and the
+controls in the pause menu) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -427,9 +445,11 @@ still rough or untested:
   symbols were checked with a virtual DualShock 4 only. Pad buttons can be rebound, which was
   also only checked with virtual pads. The pause when a pad disconnects was tested by removing a
   virtual pad; a real wireless pad dropping out may report differently.
-- **Brightness was set by numbers on one screen.** The slider's range (from about 86% of a
-  dark view near-black to about 12%) was chosen by measuring screenshots, not by eye on
-  different monitors or TVs.
+- **Brightness and text size were set by numbers on one screen.** The brightness slider's range
+  (from about 86% of a dark view near-black to about 12%) was chosen by measuring screenshots,
+  not by eye on different monitors or TVs. Text size was checked by measuring where text lands
+  (on the paper, on screen, at 1.25× or 1.5×) at three window sizes, not by people reading it at a
+  distance. The title, pause and settings menus don't follow the text size.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,

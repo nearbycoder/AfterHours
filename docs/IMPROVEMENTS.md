@@ -665,6 +665,65 @@ pad it shows pad buttons; on Night 1 there's no torch line; it doesn't overlap t
 1280×720 or 1024×768. **Verify:** AutoPilot checks (rebinding Interact to F shows F on the
 card; a virtual pad shows A; a virtual DualShock shows ✕); screenshots.
 
+## Round 5 results (7 October 2026)
+
+All three items shipped on `improvements-5`, one commit each after the scope commit, plus one
+commit for two fixes the final runs found (below). The baseline `audit` run on `main` passed 355
+checks with 0 failed. Screenshots are in [`docs/media/improvements/round5/`](media/improvements/round5/). Final build:
+**all five routes pass, 0 failed** (audit 404 checks, loose 400, cleanbooks 400,
+spotless 375, marian 393; round 4 ended at 355, 351, 351, 326 and 346; one cleanbooks run
+crashed in Unity's Wayland code and was run again, see below). EditMode tests 61/61 (58
+before). The commits for R5-1 alone and R5-1 with R5-2 were also compiled and tested on their
+own (61/61 each). Nights 1 and 2 were also run at 1280×720 and 1024×768 (4:3), where every new
+check passed. The real save and settings files under `~/.config/unity3d` were checksummed before
+and after: `save.json`, `prefs` and the night snapshots are unchanged; only `TestResults.xml`,
+which Unity's test runner writes there itself, changed (every automated run used an `-ahProfile`
+folder). Load average from other sessions was about 21–30 during the item runs, 22–46 during
+the first final run, and 6–26 during the final one. The checks that depend on timing (the chat
+holding new messages for 3 s) passed at both. For a few minutes the shared Unity licensing
+client answered "no valid licence" to every batch editor; the test run was retried once it
+recovered.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R5-1 | Text size for documents, choices, the morning chat and the report | Done | 3 EditMode tests for how far a document's paper grows (Normal unchanged; within the screen and clear of the header and key hints on 16:9, 16:10 and 4:3; pictures keep their shape). AutoPilot opens all 38 documents at Normal and at Largest, at 1600×900, 1280×720 and 1024×768: 38/38 keep their text on the paper and the paper on screen; at Largest none is smaller than at Normal, all are larger and 32 reach the full 1.5× (the other 6 are longer and grow as far as their paper allows). A 3-option choice is 1.5×; an 11-option one is 1.11× and still on screen. Nights 1 and 2 end at Largest: the report's text stays on the paper, its grey lines go from 22 to 29–33, the hint is clear of the clipboard and the night line clear of the stamp; chat messages are 36 (24 at Normal); scrolled back, the next message waits (still 6 of 8 after 3 s); the down arrow returns to the newest; W and the up arrow reach the first message. |
+| R5-2 | The clipboard at larger text sizes | Done | AutoPilot on Night 2 (14 tasks) at 1600×900, 1280×720 and 1024×768: at Normal the layout is exactly as before (board, side note, auto-sized sheet); at Large and Largest it opens as one wide sheet with the side note folded in; tasks, header and footer are 1.25× and 1.5× (49.5, 51 and 30 units at Largest); the sheet is in 2 parts, each on the paper and together holding all 14 tasks; S steps on and wraps to the top, W steps back, d-pad down steps on; D turns to the notes (on the paper) and the case file (fits the paper), A turns back and stops at the sheet; the d-pad turns pages; E reads a case-file entry and Esc closes it but not the clipboard; back at Normal the side note returns. |
+| R5-3 | Controls at a glance in the pause menu | Done | AutoPilot on Night 1 at all three window sizes: the card is on screen, clear of the menu, with its text inside; it shows the bound keys (E, LMB, Tab) and no torch; after rebinding Interact to F it shows F; with a virtual pad it shows A, and with a virtual DualShock 4 ✕ and ◀ ▶. On Night 3 (after the torch is found on Night 2) it lists the torch on F. |
+
+Things fixed along the way:
+
+- Three sticky notes (the fridge note, Dana's note and Priya's note) ran past the bottom of
+  their paper at Normal by about one line. Document text now shrinks by up to a fifth if, and
+  only if, it wouldn't fit; every other document looks as before.
+- The report's night line ran under the grade stamp at Normal, and its "Press E" hint touched
+  the clipboard's bottom edge. At Normal they're as before; at the larger sizes the night line
+  moves under the tasks and the hint goes under the polaroid.
+- The first final run found two more. On the marian route, which keeps documents, Night 2's
+  report at Largest had its locker line's box reaching 4 px past the paper (the text itself was
+  on it); the box now stops at the paper's edge. The spotless run logged an exception from the
+  title screen's logo slide-in: choosing Continue in the first 1.6 s after the title appears
+  (as round 4's Quit check does) destroyed the logo while it was still moving. A player pressing
+  Continue that quickly would have hit it too; the slide-in now checks the logo is still there.
+  The five routes were then run again on the final build.
+- One rerun of cleanbooks crashed after the ending inside Unity's Wayland event dispatch
+  (`wl_display_dispatch_queue_pending`, the crash already in the README), with 385 checks passed
+  and none failed; the route was run again.
+
+Known limits:
+
+- The title, pause and settings menus keep their size, as do the chat's channel list and the
+  Night Select cards. Their smallest text is about 20–22 units of a 1080-unit screen.
+- On 4:3 screens the whole report (clipboard and polaroid) is shrunk to fit, as before, so its
+  grey lines are about 1.2× rather than 1.5×.
+- A choice with many options (a sticky note with every lead) can only grow as far as the screen
+  allows (1.11× with 11 options).
+- Nobody has read these screens at a distance or on a TV; sizes were checked by measurement.
+
+Deferred: saving mid-night (each night's scripted events keep their state in local variables,
+so it would mean rewriting all seven nights' scripts), hints for missed secrets (the owner's
+call), the chat being readable again later (the case file covers documents only), and still
+WebGL, Windows and the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -686,7 +745,9 @@ published; no web build; licence, releases, tags and signing left to the owner. 
    A "still hidden: one in the break room" line would help replays, but every one of the 32
    secrets needs a room, and how much to give away is a design call.
 7. **A look at brightness and text size on real screens**: both were checked by numbers and
-   screenshots on one monitor.
+   screenshots on one monitor. Since round 5, text size also covers documents, the clipboard,
+   choices, the report and the morning chat; whether Largest is large enough on a TV across a
+   room, and whether the menus should follow it too, needs someone to look.
 8. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
    dropping out have only met virtual devices. Ten minutes with a real Xbox and DualSense pad
    would settle it.
