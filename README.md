@@ -449,7 +449,8 @@ text size, and a question before Quit to title; round 5: text size for documents
 clipboard, choices, the report and the morning chat, scrolling back through the chat, and the
 controls in the pause menu; round 6: text size for the menus, with Settings as a scrolling list
 at the larger sizes, the morning chats in the case file, and a question before Night Select
-takes a story in progress back to an earlier night) are listed in
+takes a story in progress back to an earlier night; round 7: the case file from the title, and a
+question before the game closes in the middle of a night) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -488,7 +489,9 @@ still rough or untested:
   `Tools/play.sh` and the packaged `AfterHours.sh` launcher pass `-force-wayland`. A monitor
   powering off or reconnecting under KDE once crashed the player inside Unity's Wayland code, and
   one unattended AutoPilot run crashed there too (in `wl_display_dispatch_queue_pending`); a re-run
-  passed.
+  passed. Closing the game in the middle of a night asks first; that was tested through the
+  game's own quit request (which a window close goes through), not by closing the window from
+  the desktop.
 - **The art is stylised and procedural.** Every model is generated in Blender from code: chunky,
   bevelled and flat-shaded. It's consistent, but it isn't hand-modelled or textured to a
   commercial standard.

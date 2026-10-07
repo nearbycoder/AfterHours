@@ -930,6 +930,66 @@ pitch until the cup has settled, and only then release. The game's throw doesn't
 with the settled cup within 2 cm of where the solve expected it. **Verify:** those runs, and
 the five routes.
 
+## Round 7 results (7 October 2026)
+
+All three items shipped on `improvements-7`, one commit each after the scope commit, plus this
+update. The baseline `audit` run on `main` passed 446 checks with 0 failed (load 3 rising to 36
+from other sessions). Screenshots are in
+[`docs/media/improvements/round7/`](media/improvements/round7/). Final build: **all five routes
+pass, 0 failed** (audit 484 checks, loose 480, cleanbooks 480, spotless 455, marian 473; round 6
+ended at 446, 442, 442, 417 and 435). The first `marian` run crashed inside Unity's Wayland
+event dispatch (`wl_display_dispatch_queue_pending`, the crash already in the README) after 155
+checks with none failed, and was run again. EditMode tests 68/68 (64 before). The R7-2 commit
+was also compiled and tested on its own (68/68); the R7-1 commit is the build its runs used,
+plus a one-line fix to its own check (below). Nights 1 to 3 were also run at 1280×720 and
+1024×768 (317 checks each, 0 failed), and Night 1 ten more times at those sizes for R7-3. The
+real save and settings files under `~/.config/unity3d` were checksummed before and after:
+`save.json`, `prefs` and the night snapshots are unchanged; only `TestResults.xml`, which
+Unity's test runner writes there itself, changed (every automated run used an `-ahProfile`
+folder, removed afterwards). Load average from other sessions was about 14–43 during the item
+runs and 6–15 during the final runs.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R7-1 | The case file from the title | Done | 3 EditMode tests (the list for a story mid-way: each night's documents then its morning, newest first, tonight's chat and missing documents left out; a finished story starting with Night 7's documents, with fates and the Monday-morning chat; no button for a new or empty save). AutoPilot on the Night 3 title visit, every route: the title offers Case file; its 12 entries (on `audit`) are exactly the clipboard's from that night less that night's own reads; pad A opens it with the first entry selected; the d-pad reaches a document and pad A reads it above the list (sorting 75 over 57); pad B and pad A close it without reopening the entry; the down arrow reaches Wednesday morning's chat and Enter opens it with the same 8 messages shown that morning; Esc closes the chat and then the list, without starting a night; the save file's bytes are unchanged. At Largest the rows are 84 units (56 at Normal), the d-pad walks all of them in view and on to Back, and the first entry's night heading stays in view, at 1600×900, 1280×720 and 1024×768. The title with six buttons is laid out at each size (at Largest they grow 1.32× rather than 1.5×, 29 units clear of the tagline). After the ending: 36 entries, starting with Night 7's 2 documents and covering all 7 nights; a document and a morning read again the same way. |
+| R7-2 | Ask before the game closes mid-night | Done (through the game's quit request) | EditMode test of when it asks (a night being played; not once confirmed, not on the report, chat, ending, title or behind a title card, not in automated runs). AutoPilot on Night 1, every route and at 1280×720 and 1024×768: with the clipboard open, `Application.Quit()` (the request a window close makes) leaves the game running with the clipboard closed, the night paused (time scale 0) and "Quit the game?" over the pause menu; Esc leaves the night paused where it was (the clock didn't move) and nothing quit; asked again and confirmed, the game quits (the quit is counted by the check instead of closing the run) and a further request goes through; on the title the request isn't held. **Not verified:** a close from the desktop's window manager, which goes through the same request but couldn't be driven here. |
+| R7-3 | A steady throw check | Done | Night 1 ten times, five at 1280×720 and five at 1024×768 (load 14–43): the throw passed 10 of 10 (round 6: 3 of 5), every run with the same aim (pitch 17.3°, yaw 177.4°), the held cup settling 0.0 cm from where the solve expected it, and the cup coming to rest within 9 cm of the bin's centre; every run passed all 169 of its checks. Also passed on all five routes. |
+
+What R7-3 turned up: the round 6 diagnosis (a chase between pitch and the held cup) was only part
+of it. The old solver aimed from the cup's position but ignored that the hands hold it 16 cm to
+the right of the camera, so with the camera looking straight at the bin it usually found no
+pitch within its 12 cm tolerance and left the pitch wherever the look at the bin had put it
+(19–20°, or 32° and 12.6° in the failed runs). The new check solves pitch and yaw together for
+where the cup actually settles (using the hold maths the game itself uses, now shared as
+`Hands.HoldTarget`; the game's throw is unchanged), waits for the cup to settle, and checks
+both. Two new checks come with it: that a solution exists and that the cup settles where expected.
+
+Things fixed along the way:
+
+- The first full run with R7-1 failed its after-the-ending chat check: clicking through the
+  ending leaves one automatic advance pending, which closed the chat as soon as it was read
+  again. That's in the AutoPilot, not the game (a player's clicks are consumed); the check now
+  clears it first.
+- With a sixth title button (Case file, mid-story) the menu would have reached the tagline at
+  Largest; it now moves down towards the footer first, then grows only as far as there's room.
+- At Largest the case file's first night heading scrolled out of view with its first entry
+  selected; a selected entry now brings its night's heading into view with it.
+- The quit question's first wording wrapped onto a second line under its options; it's now
+  "Tonight starts over from 10 PM next time. Earlier nights are saved."
+
+Known limits:
+
+- The title's case file is the saved story's. Documents read during a night that was then quit
+  or restarted aren't in it (the night isn't saved), and after a Night Select replay it shows
+  the replayed story. Reading the ending's newspaper again isn't offered.
+- On the title the case file has no picture of the documents' places or the night's sheet; it's
+  the same list as the clipboard's.
+- Closing the game mid-night asks every time; there's no setting to turn the question off.
+
+Deferred: saving mid-night (every night's scripted events keep their state in local variables,
+so it means rewriting all seven nights' scripts), hints for missed secrets (the owner's call),
+and still WebGL, Windows and the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -955,7 +1015,11 @@ published; no web build; licence, releases, tags and signing left to the owner. 
    choices, the report and the morning chat; whether Largest is large enough on a TV across a
    room needs someone to look. Since round 6 the menus follow it too (Settings and the controls
    pages become a scrolling list at Large and Largest), which also wants a try with a real pad
-   and mouse.
+   and mouse; so does the title's Case file (round 7), the same kind of list.
 8. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
    dropping out have only met virtual devices. Ten minutes with a real Xbox and DualSense pad
    would settle it.
+9. **The question on closing mid-night** (new): closing the game during a night now asks first,
+   every time, like Quit to title. Some players find a question on Alt+F4 irritating; whether to
+   keep it, or add a setting, is a design call. Closing the window from the desktop once (rather
+   than through the game's own quit request) would also confirm it behaves the same.
