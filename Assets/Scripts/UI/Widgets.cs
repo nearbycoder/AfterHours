@@ -23,6 +23,8 @@ namespace AfterHours
             b.transition = Selectable.Transition.None;
             b.onClick.AddListener(() =>
             {
+                // A question (ChoiceMenu) has the keys: pad A on its answer also submits the button selected behind it.
+                if (ChoiceMenu.IsOpen || Time.frameCount == ChoiceMenu.ClosedFrame) return;
                 Sfx.Play("ui_click", null, 0.5f, 1f, 0.02f, AudioBus.Ui);
                 onClick?.Invoke();
             });

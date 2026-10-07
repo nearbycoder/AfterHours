@@ -247,6 +247,7 @@ namespace AfterHours
                     Check(card.Contains("UV torch") && card.Contains($"<b>{Controls.Display(Act.Torch)}</b>"), $"night 3: with the torch, the pause menu's controls list it on {Controls.Display(Act.Torch)}");
                     PauseMenu.Instance.Close();
                     yield return WaitUnblocked(3f);
+                    yield return ReplayAskChecks();
                 }
                 if (n == 2) yield return AutoPauseChecks();
             }
@@ -1542,6 +1543,64 @@ namespace AfterHours
             InputSystem.RemoveDevice(pad);
             GameInput.UsingPad = false;
             yield return WaitUnblocked(3f);
+        }
+
+        /// <summary>
+        /// Night 3, from the title: an earlier night in Night Select asks first, backing out keeps
+        /// the story on night 3, a confirmed replay moves Continue, and Night 3 in Night Select puts
+        /// it back.
+        /// </summary>
+        IEnumerator ReplayAskChecks()
+        {
+            var dir = root.Director;
+            int results = Story.State.Results.Count, chats = Story.State.Chats.Count;
+            Transform Card(int n) => FindAnyObjectByType<NightSelect>()?.transform.Find("Night" + n);
+            void Pick(int n) => Card(n)?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            root.ToTitle();
+            yield return Wait(1.5f);
+            Check(TitleScreen.Instance != null && GameObject.Find("Btn_Continue  ·  Night 3") != null, "mid-story, the title offers Continue on Night 3");
+            NightSelect.Show();
+            yield return Wait(0.6f);
+            vpad = InputSystem.AddDevice<Gamepad>("AutoPilotReplayPad"); // night 1's pad was unplugged
+            vpad.MakeCurrent();
+            GameInput.UsingPad = true;
+            Pick(1);
+            yield return Wait(0.5f);
+            Check(ChoiceMenu.IsOpen && NightSelect.IsOpen, "picking an earlier night mid-story asks first");
+            yield return Shot("replay_confirm");
+            yield return Press(GamepadButton.East);
+            yield return Wait(0.4f);
+            Check(!ChoiceMenu.IsOpen && NightSelect.IsOpen && StoryState.Load()?.Night == 3, "pad B backs out, with Night Select open and the save still on night 3");
+            // Pad A on Never mind: the d-pad also moves Night Select's own selection behind the question.
+            Pick(1);
+            yield return Wait(0.5f);
+            yield return Press(GamepadButton.DpadDown);
+            yield return Wait(0.2f);
+            yield return Press(GamepadButton.South);
+            yield return Wait(0.8f);
+            Check(!ChoiceMenu.IsOpen && NightSelect.IsOpen && TitleScreen.Instance != null && StoryState.Load()?.Night == 3,
+                "pad A on Never mind doesn't also pick the card behind the question");
+            // Confirmed: night 2 starts, and Continue moves to it.
+            Pick(2);
+            yield return Wait(0.5f);
+            ChoiceMenu.AutoPick = 0;
+            yield return WaitUnblocked(40f);
+            Check(dir.Def?.Number == 2 && dir.Running && StoryState.Load()?.Night == 2, "confirming replays night 2 and Continue moves to it");
+            root.ToTitle();
+            yield return Wait(1.5f);
+            Check(GameObject.Find("Btn_Continue  ·  Night 2") != null, "the title now offers Continue on Night 2");
+            // Night 3 is still there, and picking it (later than the save) doesn't ask.
+            NightSelect.Show();
+            yield return Wait(0.6f);
+            Pick(3);
+            yield return Wait(0.5f);
+            Check(!ChoiceMenu.IsOpen, "a later night doesn't ask");
+            yield return WaitUnblocked(40f);
+            Check(dir.Def?.Number == 3 && dir.Running && Story.State.Night == 3 && Story.State.Results.Count == results && Story.State.Chats.Count == chats,
+                $"Night Select puts the story back at the start of night 3 ({Story.State.Results.Count} results, {Story.State.Chats.Count} chats kept)");
+            GameInput.UsingPad = false;
+            InputSystem.RemoveDevice(vpad);
+            vpad = null;
         }
 
         // ---- the menus at larger text sizes (round 6) ----------------------------------------------

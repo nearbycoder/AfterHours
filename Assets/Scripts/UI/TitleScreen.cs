@@ -520,12 +520,24 @@ namespace AfterHours
                     b.transition = Selectable.Transition.None;
                     b.onClick.AddListener(() =>
                     {
+                        // Pad A on a question's answer also reaches the card selected behind it.
+                        if (ChoiceMenu.IsOpen || Time.frameCount == ChoiceMenu.ClosedFrame) return;
                         Sfx.Play("ui_click", null, 0.5f, 1f, 0f, AudioBus.Ui);
-                        var snap = night == 1 ? null : StoryState.LoadSnapshot(night);
-                        Story.State = snap ?? new StoryState();
-                        Close();
-                        if (TitleScreen.Instance) TitleScreen.Instance.Begin(night);
-                        else GameRoot.Instance.StartNight(night);
+                        void Replay()
+                        {
+                            var snap = night == 1 ? null : StoryState.LoadSnapshot(night);
+                            Story.State = snap ?? new StoryState();
+                            Close();
+                            if (TitleScreen.Instance) TitleScreen.Instance.Begin(night);
+                            else GameRoot.Instance.StartNight(night);
+                        }
+                        // In the middle of the story, an earlier night rolls the save back to it: ask first.
+                        if (ReplayAsks(saved, night))
+                            ChoiceMenu.Show($"Replay Night {night}?", $"Continue will pick up from Night {night} afterwards. Night {saved.Night} stays in Night Select.", new List<ChoiceMenu.Option>
+                            {
+                                new($"Replay Night {night}", $"{NightDefs.Days[night]} · {NightDefs.Titles[night]}", Replay),
+                            });
+                        else Replay();
                     });
                     var hv = card.gameObject.AddComponent<HoverFx>();
                     hv.Init(card, label, true); // opaque warm highlight; the paper never turns see-through
@@ -545,6 +557,10 @@ namespace AfterHours
             while (t.fontSize > min && t.GetPreferredValues(t.text, box.x, 0f).y > box.y + 0.5f)
                 t.fontSize = Mathf.Max(min, t.fontSize - 1f);
         }
+
+        /// <summary>A story in progress further on than <paramref name="night"/> (after the ending, or on that night, nothing is lost).</summary>
+        public static bool ReplayAsks(StoryState saved, int night) =>
+            saved != null && string.IsNullOrEmpty(saved.Ending) && saved.Night > night && saved.Night <= NightDefs.Count;
 
         /// <summary>The endings you've seen, in the free slot at the end of the second row. Unseen ones stay unnamed.</summary>
         void EndingsCard(float k)
@@ -575,7 +591,7 @@ namespace AfterHours
 
         void Update()
         {
-            if (GameInput.Menu.Back) Close();
+            if (GameInput.Menu.Back && !ChoiceMenu.IsOpen && Time.frameCount != ChoiceMenu.ClosedFrame) Close();
         }
     }
 }
