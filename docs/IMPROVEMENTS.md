@@ -863,6 +863,74 @@ Deferred: saving mid-night (every night's scripted events keep their state in lo
 so it means rewriting all seven nights' scripts), hints for missed secrets (the owner's call),
 and still WebGL, Windows and the art.
 
+## Round 7 scope (7 October 2026)
+
+Round 6 is merged. Its notes leave three things open that a player or the next round would run
+into. The case file (every document and morning chat you've read) lives on the clipboard, so it
+only exists during a night: after the ending, or between sessions, the story can't be looked
+back over, and Night 7's documents and its morning chat can't be read again at all. Closing the
+window in the middle of a night (the window's close button, Alt+F4, the taskbar) throws the
+night away without a word, while Quit to title has asked since round 4. And the AutoPilot's old
+Night 1 throw check failed 2 of 5 runs at the smaller window sizes in round 6, which makes every
+verification of the game less trustworthy.
+
+**Baseline (branch `improvements-7`, from `main` at 56d2d4a).** The Linux build succeeds with 0
+errors; an `audit` AutoPilot run is under Round 7 results below.
+
+Not chosen: saving mid-night (each night's scripted events keep their state in local variables;
+rewriting all seven nights' scripts is a round of its own), hints for missed secrets (the
+owner's call), and everything left with the owner.
+
+### R7-1. The case file from the title
+
+When the save has anything in its case file, the title gets a **Case file** button (under Night
+Select). It opens the same list as the clipboard's case file (newest night first, each night's
+documents with what became of them, then the next morning's chat) as a menu: the d-pad, the
+arrows, the mouse wheel and a click move through it, and it scrolls. Pad A, E, Enter or a click
+reads an entry again over the menu; pad B, E or Esc close it back to the list; pad B or Esc close
+the list. It's built from the save on disk, so it shows the story Continue would carry on (and,
+after the ending, the whole story, Night 7 and its morning included). Reading never changes the
+story or the save. The rows follow Text size.
+
+**Acceptance:** mid-story (on Night 3), the title has Case file, and its entries are exactly
+the clipboard's for that save; a document read again shows above the list, and closing it
+returns to the list with the save unchanged (same bytes); a morning chat opens and closes the
+same way; Esc closes the list without starting a night; after the ending the list includes Night
+7's documents and its morning chat (when there was one). At Largest the rows are 1.5× and the
+d-pad walks every row in view, at 1600×900, 1280×720 and 1024×768. With no save there's no button.
+**Verify:** EditMode tests (the entry list from a saved state, including the ended story and an
+empty save); AutoPilot checks on the Night 3 title visit and after the ending, every route;
+screenshots.
+
+### R7-2. Ask before the game closes in the middle of a night
+
+Closing the game while a night is being played (window close, Alt+F4, anything that asks the
+game to quit) opens the pause menu with the same kind of question Quit to title asks: "Quit the
+game? Tonight starts over from 10 PM when you come back. Earlier nights are saved." Quit closes
+the game; Never mind (or pad B, Esc) leaves you paused in the night. It doesn't ask on the
+title, Night Select, the shift report, the morning chat or the ending, where nothing is lost.
+Automated runs don't ask, except while the AutoPilot is testing it.
+
+**Acceptance:** on Night 1, a quit request leaves the game running with the pause menu and the
+question showing; Never mind leaves the night paused, where it was; with the clipboard open it
+closes first; confirming quits (and a second request then goes through); on the title the
+request isn't held. **Verify:** EditMode test of when it asks; AutoPilot checks on Night 1
+(`Application.Quit()` goes through the same request as a window close; a real close from the
+window manager can't be driven here); screenshot.
+
+### R7-3. A steady throw check
+
+The AutoPilot's real-input throw on Night 1 re-solved its aim every frame from wherever the held
+cup was. The held cup itself follows the camera's pitch, so each new pitch moved the cup and
+asked for another pitch; at high frame rates (small windows) that chase could end anywhere (the
+round 6 failures released at 32° and 12.6° instead of about 16.8°). The check will solve once
+for the pitch at which the cup, settled where the hands hold it, lands in the bin, hold that
+pitch until the cup has settled, and only then release. The game's throw doesn't change.
+
+**Acceptance:** the throw passes in 10 of 10 Night 1 runs at 1280×720 and 1024×768 (5 each),
+with the settled cup within 2 cm of where the solve expected it. **Verify:** those runs, and
+the five routes.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
