@@ -274,7 +274,9 @@ namespace AfterHours
 
             if (Hands != null && Hands.Holding != null)
             {
-                hud.Prompt(("LMB", "Throw (hold)"), ("E", Hands.PromptText()), ("Q", "Drop"));
+                // Toggled: one press starts the charge and the next throws.
+                string throwText = !Settings.Current.ToggleUse ? "Throw (hold)" : Hands.Charging ? "Throw" : "Aim a throw";
+                hud.Prompt(("LMB", throwText), ("E", Hands.PromptText()), ("Q", "Drop"));
                 return;
             }
             var t = Cleaning != null ? Cleaning.Target : null;

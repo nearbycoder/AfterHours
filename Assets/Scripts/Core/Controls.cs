@@ -37,7 +37,7 @@ namespace AfterHours
         public static readonly (Act act, string label)[] Labels =
         {
             (Act.Forward, "Move forward"), (Act.Back, "Move back"), (Act.Left, "Move left"), (Act.Right, "Move right"),
-            (Act.Sprint, "Brisk walk"), (Act.Crouch, "Crouch"), (Act.Use, "Clean · throw (hold)"),
+            (Act.Sprint, "Brisk walk"), (Act.Crouch, "Crouch"), (Act.Use, "Clean · throw"),
             (Act.Spray, "Spray"), (Act.Interact, "Interact · pick up"), (Act.Drop, "Drop · monitor off"),
             (Act.Torch, "UV torch"), (Act.Clipboard, "Clipboard · keep document"), (Act.Discard, "Throw a document away"),
         };
@@ -98,7 +98,7 @@ namespace AfterHours
 
         public static readonly (Act act, string label)[] PadLabels =
         {
-            (Act.Interact, "Interact · pick up"), (Act.Drop, "Drop · monitor off"), (Act.Use, "Clean · throw (hold)"),
+            (Act.Interact, "Interact · pick up"), (Act.Drop, "Drop · monitor off"), (Act.Use, "Clean · throw"),
             (Act.Spray, "Spray"), (Act.Sprint, "Brisk walk"), (Act.Crouch, "Crouch"), (Act.Torch, "UV torch"), (Act.Clipboard, "Clipboard"),
         };
 

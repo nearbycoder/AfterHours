@@ -105,8 +105,9 @@ namespace AfterHours
 
             Aim();
 
-            // Smart tool: when not mid-stroke, the tool follows the surface you look at.
-            if (!Suspended && Pinned == ToolKind.None && !input.Use && Target != null && Target.Tool != Equipped)
+            // Smart tool: when not mid-stroke, the tool follows the surface you look at. A toggled clean
+            // follows it too, so it carries on from the desk to the carpet.
+            if (!Suspended && Pinned == ToolKind.None && (!input.Use || GameInput.UseLatched) && Target != null && Target.Tool != Equipped)
             {
                 dwell += dt;
                 if (dwell > 0.12f) Equip(Target.Tool);

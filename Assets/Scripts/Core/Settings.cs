@@ -34,6 +34,8 @@ namespace AfterHours
         /// <summary>Crouch and brisk walk: false holds the button, true presses once to switch on and again to switch off.</summary>
         public bool ToggleCrouch;
         public bool ToggleSprint;
+        /// <summary>Clean and spray: false holds the button, true presses once to start and again to stop.</summary>
+        public bool ToggleUse;
         /// <summary>Write a local playtest log (see PlaytestLog and docs/PLAYTEST.md).</summary>
         public bool PlaytestLog;
         /// <summary>Keyboard and mouse bindings that differ from the defaults (see <see cref="Controls"/>).</summary>

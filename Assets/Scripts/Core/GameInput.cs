@@ -68,6 +68,28 @@ namespace AfterHours
         public void Reset() { On = false; moved = false; }
     }
 
+    /// <summary>
+    /// Clean and spray, held or toggled. Toggled, they're one switch with two positions: turning
+    /// one on turns the other off, so a press always does what it says.
+    /// </summary>
+    public class UseLatches
+    {
+        public readonly ToggleLatch Use = new(), Spray = new();
+
+        public (bool use, bool spray) Step(bool useHeld, bool sprayHeld, bool toggle, bool allowed = true)
+        {
+            bool useWas = Use.On, sprayWas = Spray.On;
+            bool use = Use.Step(useHeld, toggle, allowed);
+            bool spray = Spray.Step(sprayHeld, toggle, allowed);
+            if (!toggle) return (use, spray);
+            if (Use.On && !useWas) { Spray.Reset(); spray = false; }
+            else if (Spray.On && !sprayWas) { Use.Reset(); use = false; }
+            return (use, spray);
+        }
+
+        public void Reset() { Use.Reset(); Spray.Reset(); }
+    }
+
     public interface IInputProvider
     {
         InputFrame Read(InputFrame devices);
@@ -85,9 +107,16 @@ namespace AfterHours
         public static bool UsingPad;
         public static event System.Action DeviceChanged;
         static readonly ToggleLatch crouchLatch = new(), sprintLatch = new();
+        static readonly UseLatches useLatches = new();
 
         /// <summary>A new night starts standing and walking, whatever was toggled before.</summary>
-        public static void ResetToggles() { crouchLatch.Reset(); sprintLatch.Reset(); }
+        public static void ResetToggles() { crouchLatch.Reset(); sprintLatch.Reset(); ReleaseUse(); }
+
+        /// <summary>Stop a toggled clean or spray (picking something up, putting it down, any menu).</summary>
+        public static void ReleaseUse() => useLatches.Reset();
+
+        /// <summary>Clean is switched on by a toggle press rather than held down.</summary>
+        public static bool UseLatched => Settings.Current.ToggleUse && useLatches.Use.On;
 
         bool lastUse;
         Vector2 heldDir;
@@ -102,6 +131,7 @@ namespace AfterHours
             lastUse = f.Use;
             if (!GameplayEnabled)
             {
+                ReleaseUse();
                 f.Move = Vector2.zero; f.Look = Vector2.zero;
                 f.Use = f.UseDown = f.Spray = f.Interact = f.Drop = f.Torch = false;
                 f.ToolCycle = 0; f.ToolSlot = 0; f.Scroll = 0;
@@ -325,6 +355,7 @@ namespace AfterHours
             f.Crouch = crouchLatch.Step(f.Crouch, st.ToggleCrouch, GameplayEnabled);
             f.Sprint = sprintLatch.Step(f.Sprint, st.ToggleSprint, GameplayEnabled);
             if (st.ToggleSprint && GameplayEnabled) f.Sprint = sprintLatch.StopWhenIdle(f.Move.sqrMagnitude > 0.04f);
+            (f.Use, f.Spray) = useLatches.Step(f.Use, f.Spray, st.ToggleUse, GameplayEnabled);
             if (st.InvertY) f.Look.y = -f.Look.y;
             return f;
         }

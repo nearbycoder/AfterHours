@@ -43,6 +43,7 @@ namespace AfterHours
         {
             if (Holding != null || h == null || h.Locked) return;
             Holding = h;
+            GameInput.ReleaseUse(); // a toggled clean stops: the next press charges a throw
             h.Held = true;
             h.InFlight = false;
             heldLayer = h.gameObject.layer;
@@ -75,6 +76,7 @@ namespace AfterHours
             var h = Holding;
             if (h == null) return;
             Holding = null;
+            GameInput.ReleaseUse();
             h.Held = false;
             SetLayer(h.gameObject, heldLayer);
             h.Body.isKinematic = !keepPhysics;

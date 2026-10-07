@@ -947,8 +947,9 @@ namespace AfterHours
             yield return Wait(0.4f);
             GameObject.Find("Choice_Crouch mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
             GameObject.Find("Choice_Brisk walk mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            GameObject.Find("Choice_Clean and spray mode")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
             yield return Wait(0.3f);
-            Check(s.ToggleCrouch && s.ToggleSprint, "the controls page switches crouch and brisk walk to Toggle");
+            Check(s.ToggleCrouch && s.ToggleSprint && s.ToggleUse, "the controls page switches crouch, brisk walk and clean and spray to Toggle");
             yield return Shot("controls_toggle");
             FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
             yield return Wait(0.2f);
@@ -998,12 +999,142 @@ namespace AfterHours
             yield return Keys();
             yield return Wait(0.4f);
             Check(down && !player.Crouching, "hold crouch: crouched while C is held, up when it's let go");
+            yield return ToggleCleanChecks();
             Settings.Save();
             GameInput.Override = scripted;
             InputSystem.RemoveDevice(vkb);
             vpad.MakeCurrent();
             root.Player.Teleport(root.Player.transform.position, 0f, 0f);
             yield return Wait(0.2f);
+        }
+
+        /// <summary>
+        /// Toggled clean, through a virtual mouse and the pad: a tap starts cleaning the carpet and it
+        /// keeps getting cleaner with the button up; the next tap stops; the clipboard stops it; a
+        /// held item charges on one tap and flies on the next. Ends back on Hold. Device input is live.
+        /// </summary>
+        IEnumerator ToggleCleanChecks()
+        {
+            var s = Settings.Current;
+            // The dirtiest spot of an unfinished surface that can be reached.
+            GrimeSurface floor = null;
+            Vector3 spot = default, stand = default;
+            foreach (var id in new[] { "desk_russ", "desk_priya", "desk_theo", "coffeetable_reception", "floor_bullpen" })
+            {
+                if (!root.Office.Surfaces.TryGetValue(id, out var g) || !g.gameObject.activeSelf || g.Done) continue;
+                foreach (var p in g.DirtiestSpots(3))
+                    if (StandFor(g, p) is Vector3 at) { floor = g; spot = p; stand = at; break; }
+                if (floor != null) break;
+            }
+            Check(floor != null, $"toggle clean: a dirty surface within reach ({floor?.Id} at {spot})");
+            if (floor == null) { s.ToggleUse = false; yield break; }
+            var vmouse = InputSystem.AddDevice<Mouse>("AutoPilotToggleMouse");
+            vmouse.MakeCurrent();
+            IEnumerator Click(bool pad = false)
+            {
+                if (pad) InputSystem.QueueStateEvent(vpad, new GamepadState { rightTrigger = 1f });
+                else InputSystem.QueueStateEvent(vmouse, new MouseState().WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left));
+                yield return Wait(0.12f);
+                if (pad) InputSystem.QueueStateEvent(vpad, new GamepadState());
+                else InputSystem.QueueStateEvent(vmouse, new MouseState());
+                yield return Wait(0.12f);
+            }
+            // Scrub around the spot for a while with the button up (the aim moves; nothing is held).
+            var side = Vector3.Cross(Vector3.up, (spot - stand).normalized);
+            IEnumerator Scrub(float seconds)
+            {
+                for (float t = 0; t < seconds; t += Time.deltaTime)
+                {
+                    LookAtNow(spot + side * Mathf.Sin(t * 6f) * 0.18f);
+                    yield return null;
+                }
+            }
+            var look = spot - stand;
+            root.Player.Teleport(stand, Mathf.Atan2(look.x, look.z) * Mathf.Rad2Deg, 30f);
+            yield return Wait(0.4f);
+            yield return Scrub(0.8f);
+            Check(root.Cleaning.Target == floor && root.Cleaning.InReach, $"toggle clean: aiming at {floor.Id} ({root.Cleaning.Target?.Id}, in reach {root.Cleaning.InReach})");
+            float c0 = floor.Completion;
+            yield return Click();
+            yield return Scrub(1.6f);
+            float c1 = floor.Completion;
+            Check(GameInput.Frame.Use && c1 > c0 + 0.002f, $"toggle clean: one tap of the mouse button and {floor.Id} keeps getting cleaner with it up ({c0:P1} → {c1:P1}, {root.Cleaning.Equipped})");
+            yield return Click();
+            yield return Scrub(0.2f);
+            float c2 = floor.Completion;
+            yield return Scrub(1.0f);
+            float c3 = floor.Completion;
+            Check(!GameInput.Frame.Use && c3 - c2 < 0.0005f, $"toggle clean: the next tap stops it ({c2:P2} → {c3:P2})");
+            // The pad's trigger does the same.
+            vpad.MakeCurrent();
+            yield return Click(pad: true);
+            yield return Scrub(0.5f);
+            bool padOn = GameInput.Frame.Use;
+            yield return Click(pad: true);
+            yield return Wait(0.1f);
+            Check(padOn && !GameInput.Frame.Use, $"toggle clean: a tap of the right trigger starts it and the next stops it ({padOn}, {GameInput.Frame.Use})");
+            // A menu switches it off.
+            vmouse.MakeCurrent();
+            yield return Click();
+            bool on = GameInput.Frame.Use;
+            Clipboard.Instance.Show();
+            yield return Wait(0.5f);
+            Clipboard.Instance.Close();
+            yield return WaitUnblocked(2f);
+            yield return Wait(0.2f);
+            Check(on && !GameInput.Frame.Use, "toggle clean: opening the clipboard switches it off");
+            // A throw: one tap charges, the next throws.
+            var item = FindObjectsByType<TrashItem>(FindObjectsSortMode.None).Where(t => !t.Binned)
+                .OrderBy(t => (t.transform.position - root.Player.transform.position).sqrMagnitude).FirstOrDefault();
+            if (item != null)
+            {
+                var (itemPos, itemRot) = (item.transform.position, item.transform.rotation);
+                root.Hands.Grab(item);
+                yield return Wait(0.4f);
+                root.Player.Pitch = -10f;
+                yield return Click();
+                yield return Wait(0.4f);
+                bool charging = root.Hands.Charging && root.Hands.Holding == item;
+                yield return Click();
+                yield return Wait(0.2f);
+                Check(charging && root.Hands.Holding == null, $"toggle throw: one tap charges ({charging}), the next throws ({root.Hands.Holding == null})");
+                yield return Wait(1.5f);
+                PutBack(item, itemPos, itemRot);
+            }
+            else Check(false, "toggle throw: some rubbish to throw");
+            s.ToggleUse = false;
+            GameInput.ReleaseUse();
+            InputSystem.RemoveDevice(vmouse);
+        }
+
+        static void PutBack(Holdable item, Vector3 pos, Quaternion rot)
+        {
+            if (item == null || item.Held) return;
+            item.Body.linearVelocity = Vector3.zero;
+            item.Body.angularVelocity = Vector3.zero;
+            item.transform.SetPositionAndRotation(pos, rot);
+            item.Body.position = pos;
+            item.Body.rotation = rot;
+        }
+
+        /// <summary>
+        /// Somewhere to stand within reach of <paramref name="target"/> on <paramref name="surface"/>:
+        /// clear of furniture, with a line of sight to that surface. Null if there isn't one.
+        /// </summary>
+        static Vector3? StandFor(GrimeSurface surface, Vector3 target)
+        {
+            var flat = new Vector3(target.x, 0, target.z);
+            foreach (float d in new[] { 0.9f, 1.2f, 0.7f })
+                for (int i = 0; i < 24; i++)
+                {
+                    float a = i * 15f * Mathf.Deg2Rad;
+                    var stand = flat + new Vector3(Mathf.Sin(a), 0, Mathf.Cos(a)) * d;
+                    if (Physics.CheckCapsule(stand + Vector3.up * 0.4f, stand + Vector3.up * 1.6f, 0.3f, Layers.SolidMask, QueryTriggerInteraction.Ignore)) continue;
+                    var eye = stand + Vector3.up * 1.55f;
+                    if (!Physics.Raycast(eye, (target - eye).normalized, out var hit, 3.5f, Layers.SolidMask | Layers.GrimeMask, QueryTriggerInteraction.Ignore)) continue;
+                    if (hit.collider.GetComponent<GrimeSurface>() == surface) return stand;
+                }
+            return null;
         }
 
         /// <summary>The shift report explains the grade with the numbers it was computed from, on the paper.</summary>

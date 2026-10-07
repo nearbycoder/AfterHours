@@ -59,7 +59,7 @@ namespace AfterHours
             var dim = Ui.Image(root, "Dim", new Color(0.01f, 0.015f, 0.03f, 0.93f));
             Ui.Stretch(dim.rectTransform);
             dim.raycastTarget = true;
-            const float W = 1360, H = 820, ColW = 600;
+            const float W = 1360, H = 900, ColW = 600;
             var panel = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
             Ui.Place(panel.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
             // Tabs: the two pages. The current one is the primary (filled) button.
@@ -90,6 +90,7 @@ namespace AfterHours
             var modeCol = page == PadPage ? left : right;
             Widgets.Choice(modeCol, "Crouch mode", modes, st.ToggleCrouch ? 1 : 0, i => { st.ToggleCrouch = i == 1; GameInput.ResetToggles(); }, ColW);
             Widgets.Choice(modeCol, "Brisk walk mode", modes, st.ToggleSprint ? 1 : 0, i => { st.ToggleSprint = i == 1; GameInput.ResetToggles(); }, ColW);
+            Widgets.Choice(modeCol, "Clean and spray mode", modes, st.ToggleUse ? 1 : 0, i => { st.ToggleUse = i == 1; GameInput.ReleaseUse(); }, ColW);
             message = Ui.Label(panel.rectTransform, "", UiFont.Sans, 22, Ui.TextDim, TextAlignmentOptions.TopLeft);
             Ui.Place(message.rectTransform, new Vector2(0, 0), new Vector2(60, 110), new Vector2(1240, 60), new Vector2(0, 0));
             Note(null);
@@ -201,8 +202,8 @@ namespace AfterHours
         }
 
         void Note(string text) => message.text = text ?? (page == PadPage
-            ? "Start pauses and the d-pad's left and right pick tools; in menus and documents A, B, X and Y stay as they are. A button that's already in use swaps over. Toggle: press once to crouch or walk briskly, again to stop."
-            : "Esc pauses, Enter confirms and 1–4 pick tools; those stay fixed. A key that's already in use swaps over. Toggle: press once to crouch or walk briskly, again to stop.");
+            ? "Start pauses and the d-pad's left and right pick tools; in menus and documents A, B, X and Y stay as they are. A button that's already in use swaps over. Toggle: press once to start crouching, walking briskly, cleaning or spraying, and again to stop."
+            : "Esc pauses, Enter confirms and 1–4 pick tools; those stay fixed. A key that's already in use swaps over. Toggle: press once to start crouching, walking briskly, cleaning or spraying, and again to stop.");
 
         string LabelOf(Act a) => Array.Find(page == PadPage ? Controls.PadLabels : Controls.Labels, x => x.act == a).label;
 

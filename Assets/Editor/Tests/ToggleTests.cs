@@ -50,11 +50,46 @@ namespace AfterHours.Tests
         }
 
         [Test]
+        public void ToggledCleanStaysOnUntilTheNextPress()
+        {
+            var l = new UseLatches();
+            Assert.AreEqual((true, false), l.Step(true, false, true), "tap: cleaning");
+            Assert.AreEqual((true, false), l.Step(false, false, true), "let go: still cleaning");
+            Assert.AreEqual((true, false), l.Step(false, false, true));
+            Assert.AreEqual((false, false), l.Step(true, false, true), "tap again: stops");
+            Assert.AreEqual((false, false), l.Step(false, false, true));
+        }
+
+        [Test]
+        public void ToggledCleanAndSprayAreOneSwitch()
+        {
+            var l = new UseLatches();
+            l.Step(true, false, true);
+            l.Step(false, false, true);
+            Assert.AreEqual((false, true), l.Step(false, true, true), "spray while cleaning: spraying instead");
+            l.Step(false, false, true);
+            Assert.AreEqual((true, false), l.Step(true, false, true), "clean while spraying: cleaning instead");
+            l.Step(false, false, true);
+            l.Reset();
+            Assert.AreEqual((false, false), l.Step(false, false, true), "picking something up or a menu switches it off");
+        }
+
+        [Test]
+        public void HeldCleanAndSprayFollowTheButtons()
+        {
+            var l = new UseLatches();
+            Assert.AreEqual((true, true), l.Step(true, true, false), "held, both at once, as before");
+            Assert.AreEqual((false, false), l.Step(false, false, false));
+            Assert.AreEqual((false, false), l.Step(true, false, true, allowed: false), "a press during a menu doesn't latch");
+        }
+
+        [Test]
         public void OldSettingsFilesHold()
         {
             var old = JsonUtility.FromJson<Settings>("{\"MouseSensitivity\":1.5,\"Quality\":1,\"Bindings\":[]}");
             Assert.IsFalse(old.ToggleCrouch);
             Assert.IsFalse(old.ToggleSprint);
+            Assert.IsFalse(old.ToggleUse);
             var s = new Settings { ToggleCrouch = true };
             Assert.IsTrue(JsonUtility.FromJson<Settings>(JsonUtility.ToJson(s)).ToggleCrouch);
         }
