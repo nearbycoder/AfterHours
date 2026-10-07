@@ -28,6 +28,9 @@ namespace AfterHours
         public static bool IsOpen => instance != null && instance.open;
         bool open;
 
+        /// <summary>The frame a choice was made, so the key that made it (Esc, B) goes no further.</summary>
+        public static int ClosedFrame = -1;
+
         /// <summary>Automation: choose this index on the next frame.</summary>
         public static int AutoPick = -1;
 
@@ -147,6 +150,7 @@ namespace AfterHours
         {
             if (!open) return;
             open = false;
+            ClosedFrame = Time.frameCount;
             group.blocksRaycasts = false;
             var pick = options[i].Pick;
             Tween.Run(0.18f, k => group.alpha = 1 - k, Ease.InCubic, owner: this);

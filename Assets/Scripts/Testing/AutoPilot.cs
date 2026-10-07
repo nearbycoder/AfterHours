@@ -206,7 +206,8 @@ namespace AfterHours
                 ChoiceMenu.AutoPick = 99; // "Never mind" (clamped to the last option)
                 yield return Wait(0.4f);
                 yield return BrightnessChecks();
-                PauseMenu.Instance.Close();
+                yield return QuitChecks();
+                if (PauseMenu.IsOpen) PauseMenu.Instance.Close();
                 yield return WaitUnblocked(3f);
                 Check(!root.Blocked, "closing the pause menu hands control back");
             }
@@ -1028,6 +1029,36 @@ namespace AfterHours
                 return (l, y: Mathf.Min(c[0].y, c[3].y));
             }).OrderBy(x => x.y).FirstOrDefault();
             Check(low.l == null || low.y >= bottom - 2f, $"night {n}: every line of the report sits on the paper (lowest: {low.l?.name} at {low.y - bottom:F0} px above its edge)");
+        }
+
+        /// <summary>
+        /// Quit to title asks first: backing out keeps the night, confirming goes to the title,
+        /// and Continue starts the night again. Ends with Night 1 running from the start.
+        /// </summary>
+        IEnumerator QuitChecks()
+        {
+            var dir = root.Director;
+            float elapsed = dir.Elapsed;
+            var quit = GameObject.Find("Btn_Quit to title")?.GetComponent<UnityEngine.UI.Button>();
+            quit?.onClick.Invoke();
+            yield return Wait(0.5f);
+            Check(ChoiceMenu.IsOpen && PauseMenu.IsOpen && TitleScreen.Instance == null, "Quit to title asks first");
+            yield return Shot("quit_confirm");
+            vpad.MakeCurrent();
+            yield return Press(GamepadButton.East);
+            yield return Wait(0.4f);
+            Check(!ChoiceMenu.IsOpen && PauseMenu.IsOpen && TitleScreen.Instance == null && dir.Running && dir.Def.Number == 1 && dir.Elapsed >= elapsed,
+                $"pad B backs out with the night still running ({dir.Elapsed:F1}s in)");
+            quit?.onClick.Invoke();
+            yield return Wait(0.5f);
+            ChoiceMenu.AutoPick = 0; // "Quit to title"
+            yield return Wait(1.5f);
+            Check(TitleScreen.Instance != null && !PauseMenu.IsOpen, "confirming goes to the title");
+            bool canContinue = GameObject.Find("Btn_Continue  ·  Night 1") != null;
+            Check(canContinue, "the title offers Continue on Night 1");
+            TitleScreen.Instance?.Begin(1);
+            yield return WaitUnblocked(40f);
+            Check(dir.Running && dir.Def.Number == 1 && dir.Elapsed < 10f, $"Continue starts Night 1 again from the beginning ({dir.Elapsed:F1}s in)");
         }
 
         // ---- brightness (night 1, from the pause menu) ---------------------------------------------

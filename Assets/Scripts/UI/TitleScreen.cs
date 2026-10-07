@@ -177,7 +177,11 @@ namespace AfterHours
                     GameRoot.Instance.StartNight(n);
                 }),
             }), 460, 64);
-            Widgets.Button(col, "Quit to title", () => { Close(); GameRoot.Instance.ToTitle(); }, 460, 64);
+            // Quitting mid-night drops tonight's progress (Continue starts the night again), so ask.
+            Widgets.Button(col, "Quit to title", () => ChoiceMenu.Show("Quit to the title?", "Tonight starts over from 10 PM when you continue. Earlier nights are saved.", new List<ChoiceMenu.Option>
+            {
+                new("Quit to title", null, () => { Close(); GameRoot.Instance.ToTitle(); }),
+            }), 460, 64);
             MenuFocus.AttachAll(col.gameObject);
             Sfx.Play("ui_click", null, 0.5f, 0.8f, 0f, AudioBus.Ui);
         }
@@ -195,7 +199,7 @@ namespace AfterHours
         void Update()
         {
             var m = GameInput.Menu;
-            if ((m.Back || m.Pause) && !SettingsPanel.IsOpen && !ChoiceMenu.IsOpen) Close();
+            if ((m.Back || m.Pause) && !SettingsPanel.IsOpen && !ChoiceMenu.IsOpen && Time.frameCount != ChoiceMenu.ClosedFrame) Close();
         }
     }
 

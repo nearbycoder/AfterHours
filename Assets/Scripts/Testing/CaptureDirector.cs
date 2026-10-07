@@ -67,25 +67,48 @@ namespace AfterHours
             yield return Shot($"title_{size}");
             SettingsPanel.Show();
             yield return Wait(0.8f);
-            var panel = GameObject.Find("Settings")?.transform;
-            var rows = panel ? panel.GetComponentsInChildren<UnityEngine.UI.Selectable>().Select(x => (RectTransform)x.transform).ToList() : new System.Collections.Generic.List<RectTransform>();
             Rect ScreenRect(RectTransform rt)
             {
                 var c = new Vector3[4];
                 rt.GetWorldCorners(c);
                 return Rect.MinMaxRect(c[0].x, c[0].y, c[2].x, c[2].y);
             }
-            var rects = rows.Select(r => (r.name, rect: ScreenRect(r))).ToList();
-            int overlaps = 0, off = 0;
-            for (int i = 0; i < rects.Count; i++)
+            // Every row, plus the panel's notes (the controls page's message under its rows).
+            void Layout(string what, string layer)
             {
-                var a = rects[i].rect;
-                if (a.xMin < 0 || a.yMin < 0 || a.xMax > Screen.width || a.yMax > Screen.height) { off++; Log($"layout: {rects[i].name} leaves the screen ({a})"); }
-                for (int j = i + 1; j < rects.Count; j++)
-                    if (a.Overlaps(rects[j].rect)) { overlaps++; Log($"layout: {rects[i].name} overlaps {rects[j].name}"); }
+                var panel = Ui.Canvas.transform.Find(layer);
+                var rows = panel ? panel.GetComponentsInChildren<UnityEngine.UI.Selectable>().Select(x => (RectTransform)x.transform).ToList() : new System.Collections.Generic.List<RectTransform>();
+                if (panel) rows.AddRange(panel.GetComponentsInChildren<TMPro.TextMeshProUGUI>()
+                    .Where(t => t.transform.parent.name == "Panel" && t.text.Length > 60).Select(t => t.rectTransform));
+                var rects = rows.Select(r => (r.name, rect: ScreenRect(r))).ToList();
+                int overlaps = 0, off = 0;
+                for (int i = 0; i < rects.Count; i++)
+                {
+                    var a = rects[i].rect;
+                    if (a.xMin < 0 || a.yMin < 0 || a.xMax > Screen.width || a.yMax > Screen.height) { off++; Log($"layout: {rects[i].name} leaves the screen ({a})"); }
+                    for (int j = i + 1; j < rects.Count; j++)
+                        if (a.Overlaps(rects[j].rect)) { overlaps++; Log($"layout: {rects[i].name} overlaps {rects[j].name}"); }
+                }
+                Log($"layout {size}: {what} has {rects.Count} rows, {overlaps} overlaps, {off} off screen -> {(overlaps == 0 && off == 0 && rects.Count > 0 ? "OK" : "BAD")}");
             }
-            Log($"layout {size}: settings has {rects.Count} rows, {overlaps} overlaps, {off} off screen -> {(overlaps == 0 && off == 0 && rects.Count > 0 ? "OK" : "BAD")}");
+            Layout("settings", "Settings");
             yield return Shot($"settings_{size}");
+            ControlsPanel.Show(ControlsPanel.KeyboardPage);
+            yield return Wait(0.6f);
+            Layout("controls (keyboard)", "Controls");
+            yield return Shot($"controls_{size}");
+            FindAnyObjectByType<ControlsPanel>()?.SwitchTo(ControlsPanel.PadPage);
+            yield return Wait(0.6f);
+            Layout("controls (controller)", "Controls");
+            yield return Shot($"controls_pad_{size}");
+            FindAnyObjectByType<ControlsPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            BrightnessPanel.Show();
+            yield return Wait(0.6f);
+            Layout("brightness", "Brightness");
+            yield return Shot($"brightness_{size}");
+            FindAnyObjectByType<BrightnessPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
             FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
             yield return Wait(0.5f);
             NightSelect.Show();
