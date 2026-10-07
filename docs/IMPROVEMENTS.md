@@ -550,6 +550,47 @@ the owner. Hints for missed secrets were considered (where to look, on the repor
 room for every one of the 32 secrets and a decision on how much to give away, so they're noted
 for the owner rather than built.
 
+## Round 4 results (6 October 2026)
+
+All five items shipped on `improvements-4`, one commit each after the scope commit. Screenshots
+are in [`docs/media/improvements/round4/`](media/improvements/round4/). Final build: **all five routes pass, 0 failed, no crashes** (audit 355 checks, loose 351, cleanbooks 351, spotless 326, marian 346; round 3 ended at 305, 301, 301, 276 and 296).
+EditMode tests 58/58 (43 before). Each intermediate commit was also compiled and tested on its own
+(R4-1: 47/47, R4-3: 53/53, R4-5: 53/53, R4-2: 56/56). The Settings layout check (now also
+covering both controls pages and the brightness page) finds 0 overlaps and nothing off screen at
+1280×720, 1600×900, 1920×1080, 1680×1050 and 1440×1080. The real save and settings files under
+`~/.config/unity3d` were checksummed before and after the session (`save.json`, `prefs` and the night snapshots are unchanged; only `TestResults.xml`, which Unity's EditMode test runner writes there itself, changed, and every automated run used an `-ahProfile` folder). Load average during
+the runs was about 13–25 from other sessions, with a spike to about 99 as the marian route
+started (it passed). The first attempt at the five-route run was stopped by a 30-minute job
+limit during marian, which was then re-run on its own.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R4-1 | Brightness | Done | 4 EditMode tests (the default changes nothing, the curve rises in order and clamps, the value label, an old settings file keeps the look and is offered the page once; automated runs never are). AutoPilot on Night 1: Settings opens the page with the pause menu and Settings hidden behind it; the pad selects the slider; d-pad right ×10 reaches +10 (gamma offset 0.40), the left arrow ×20 reaches −10 (−0.15); Default restores 0; pad B closes it and marks it seen. Mean luma of the uncovered part of the frame (the closet doorway): 0.025 at −10, 0.063 at 0, 0.237 at +10; near-black pixels 86%, 60%, 12%. A first try with −0.25 to +0.5 left 95% near-black at the bottom, so the range was narrowed. **Not verified:** how it looks on other monitors, by eye. |
+| R4-2 | Hold or toggle for clean and spray | Done | 3 new EditMode tests (a toggled clean stays on until the next press; clean and spray are one switch; held behaves as before and menus ignore presses) and the old-settings test. AutoPilot with live devices: the controls page sets it; one tap of a virtual mouse on Russ's desk and it goes 0% → 2.6% with the button up; the next tap stops it (no change over a second); the pad's right trigger starts and stops it; opening the clipboard switches it off; holding rubbish, one tap charges a throw and the next throws it. |
+| R4-3 | The shift report says why | Done | 6 EditMode tests: grades match the old formula over 21×7×3 combinations; the summary line; the hints for every case, and that following any hint actually reaches S. AutoPilot on every night's report: the line matches the numbers the grade came from, a hint shows only below S, and every line sits on the paper (Night 2's 14 tasks used to push the secrets line off the bottom: 160 + 14×46 units of an 840-unit page; now the lines close up). In the runs, Night 2 is graded A with "For an S: the bonus tasks." |
+| R4-4 | Larger HUD text | Done | 2 EditMode tests (scales, an old settings file gets Normal). AutoPilot at 1600×900, 1280×720 and 1024×768 (4:3): at Normal, Large and Largest the longest prompt (holding something), a two-line caption and a toast stay on screen, apart and clear of the watch, and Largest is 1.5× Normal (prompt 23 → 34 px at 720p). Screenshots. |
+| R4-5 | Don't lose a night by accident | Done | AutoPilot on Night 1: Quit to title asks; pad B backs out with the pause menu still open and the night running; confirming goes to the title, which offers Continue on Night 1; Continue starts it again from the beginning. |
+
+Things fixed along the way:
+
+- Esc or pad B on a question over the pause menu (Restart, now also Quit) could close the pause
+  menu on the same frame, depending on update order. The answer now goes no further.
+- While a toggled clean is on, the automatic tool still follows the surface you look at (it
+  normally waits until the button is let go), so cleaning carries on from a desk to the carpet.
+- The throw prompt reads "Aim a throw" and then "Throw" with toggle on, instead of "Throw (hold)".
+
+Known limits:
+
+- The brightness page judges against whatever the title camera (or the paused night) is showing;
+  there's no fixed calibration image. The UI isn't affected by the setting, by design.
+- HUD text size covers the in-game HUD and the key hints under documents. Menus, the clipboard,
+  the shift report and documents keep their sizes; a full pass over every screen is still open.
+- Toggle mode is shared by clean and spray (one setting), and there's no separate toggle for the
+  throw.
+
+Deferred: saving mid-night, larger text everywhere, hints for missed secrets (see below), and
+still WebGL, Windows and the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -567,6 +608,11 @@ published; no web build; licence, releases, tags and signing left to the owner. 
 4. **Licence**: none has been chosen yet.
 5. **Playtests**: the kit is ready (`docs/PLAYTEST.md`). Choosing testers, and handing them a build
    (an unreleased one, or a new release), is the owner's call.
-6. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
+6. **Hints for missed secrets** (new): the report says "Secrets found 3/5" and nothing more.
+   A "still hidden: one in the break room" line would help replays, but every one of the 32
+   secrets needs a room, and how much to give away is a design call.
+7. **A look at brightness and text size on real screens**: both were checked by numbers and
+   screenshots on one monitor.
+8. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
    dropping out have only met virtual devices. Ten minutes with a real Xbox and DualSense pad
    would settle it.

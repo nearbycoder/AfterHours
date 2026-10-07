@@ -66,7 +66,7 @@ chat reacts, the next night has changed, and on the seventh night you decide wha
 | <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, mouse | left stick, right stick | move, look |
 | <kbd>Shift</kbd> | right bumper | brisk walk |
 | <kbd>C</kbd> or <kbd>Ctrl</kbd> | left stick click | crouch (reach under desks) |
-| left mouse (hold) | right trigger | clean with the current tool; with something in hand, hold to charge a throw |
+| left mouse (hold) | right trigger | clean with the current tool; with something in hand, hold to charge a throw (can be set to toggle) |
 | right mouse | left trigger | spray (squeegee and cloth) |
 | <kbd>E</kbd> | A | interact: pick up, put back, tuck a chair, light switch, door, monitor, inbox tray, read |
 | <kbd>Q</kbd> | B | drop what you're holding |
@@ -85,12 +85,14 @@ between keys and pad buttons depending on what you touched last, and show PlaySt
 **Keys, mouse buttons and pad buttons can be changed** in Settings → Keyboard, mouse and
 controller, which has a page for each: pick an action and press the new key or button. One that's
 already in use swaps over. Esc, Enter and 1–4 stay fixed; on a pad, Start, the d-pad's left and
-right, and A, B, X and Y inside menus and documents. Crouch and brisk walk can be set to
-**toggle** instead of hold. Prompts and hints show your keys by their names on your keyboard
+right, and A, B, X and Y inside menus and documents. Crouch, brisk walk, and clean and spray
+can be set to **toggle** instead of hold: one press starts, the next stops (and a throw charges
+on one press and flies on the next). Prompts and hints show your keys by their names on your keyboard
 layout, so on AZERTY they read Z Q S D rather than W A S D, and your pad buttons as bound.
 
 The game pauses itself if its window loses focus or the controller you're using disconnects
-mid-night.
+mid-night. The first time it starts, it offers a **brightness** page over the dark office (also
+in Settings → Display).
 
 **A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
 clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
@@ -156,8 +158,9 @@ a UV torch shows invisible-ink marks left by the cleaner before you, and any gri
 
 <img src="docs/media/screenshots/09-report.jpg" width="100%" alt="The shift report: an S grade stamped on the clipboard and before-and-after polaroids">
 
-Clocking out brings up the shift report: a grade from S to C, the secrets you found, and
-before-and-after polaroids of every room you cleaned. Then comes the next morning's office chat,
+Clocking out brings up the shift report: a grade from S to C with what it's made of (the
+shift sheet, the bonus tasks and how clean every surface is) and, below S, what would have
+made it one; the secrets you found; and before-and-after polaroids of every room you cleaned. Then comes the next morning's office chat,
 where the people whose desks you cleaned react to what you left for them, or to what went
 missing.
 
@@ -183,12 +186,13 @@ best grade and most secrets for each night, and the endings you've found (shown 
 screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
 Menus: title (Continue, New Game, Night Select, Settings, Quit), pause (Resume, Shift sheet,
-Settings, Restart this night, Quit to title) and settings in two columns: mouse and stick
-sensitivity, invert Y, controller vibration, field of view, head bob, four volume sliders, a
-graphics preset (Low, Medium, High), render scale, fullscreen, VSync, a frame-rate limit,
-captions, reduce flashing, a highlight on whatever you're aiming at, an opt-in playtest log, and
-pages for keyboard and mouse and for controller bindings, with hold or toggle for crouch and brisk
-walk. Progress
+Settings, Restart this night, Quit to title; both of the last two ask first) and settings in two
+columns: mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
+four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
+render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
+whatever you're aiming at, HUD text size (Normal, Large, Largest), and pages for keyboard and
+mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
+spray. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -295,15 +299,22 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   virtual keyboard, then checks F uses a light switch and E no longer does, and does the same for
   the pad (Interact on X, then □ on a DualShock). With a virtual pad it steps through the tools on
   the d-pad, and with a virtual DualShock 4 it checks the prompts switch to ✕. It taps crouch and
-  brisk walk in toggle and hold mode. On Night 2 it opens the case file, reads documents again
+  brisk walk in toggle and hold mode, and with clean on toggle it taps a virtual mouse and the
+  pad's trigger on a dirty desk and checks it keeps getting cleaner with the button up, stops on
+  the next tap and on opening the clipboard, and that a throw charges on one tap and flies on the
+  next. From the pause menu it opens the brightness page and moves it with the pad and the arrow
+  keys, backs out of Quit to title and then confirms it (Continue starts the night again), and
+  checks the HUD at each text size stays on screen. Every shift report is checked against the
+  numbers its grade came from. On Night 2 it opens the case file, reads documents again
   with the pad and the keyboard and checks nothing in the story changed, and checks the pause on
   focus loss (through the game's focus handler) and on unplugging the pad in use. Automated runs
   keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
-  buttons and survive a save, the hold-or-toggle logic, and the case file's reading list
-  (including saves from before it existed).
+  buttons and survive a save, the hold-or-toggle logic (including clean and spray), the case
+  file's reading list (including saves from before it existed), the grading and its hints, the
+  brightness curve and the HUD text sizes, and that settings files from earlier versions load.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
   then on for the run, and afterwards checks the log: every line is JSON, a night end for each
   night in order, every secret, the ending, clipboard opens, pauses, glints and recovered items.
@@ -361,7 +372,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with about 300 checks per route.
+  along five story routes, with 325–355 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -392,7 +403,9 @@ The design plan is in [`docs/PLAN.md`](docs/PLAN.md) and the original brief in
 mouse, and gamepad. Changes made since that release (round 1: the leftover helper, Settings v2,
 records, the macOS build and longer night music; round 2: the aim highlight, key remapping, pad
 tool cycling and PlayStation glyphs, and a playtest kit; round 3: the case file, controller
-remapping, hold or toggle for crouch and brisk walk, and pausing on focus or pad loss) are listed in
+remapping, hold or toggle for crouch and brisk walk, and pausing on focus or pad loss; round 4:
+brightness, hold or toggle for clean and spray, the grade breakdown on the shift report, HUD
+text size, and a question before Quit to title) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -414,6 +427,9 @@ still rough or untested:
   symbols were checked with a virtual DualShock 4 only. Pad buttons can be rebound, which was
   also only checked with virtual pads. The pause when a pad disconnects was tested by removing a
   virtual pad; a real wireless pad dropping out may report differently.
+- **Brightness was set by numbers on one screen.** The slider's range (from about 86% of a
+  dark view near-black to about 12%) was chosen by measuring screenshots, not by eye on
+  different monitors or TVs.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,
