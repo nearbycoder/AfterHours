@@ -4,7 +4,8 @@
 # and settings go there too), starts the built player inside it with a `-ahCapture` scenario, and
 # drives KWin whenever the game's log says "ready".
 #
-#   Tools/wmtest.sh [outdir] [title|night|window] [wayland|x11]
+#   Tools/wmtest.sh [outdir] [title|night|window|perf] [wayland|x11]
+#   Tools/wmtest.sh outdir run [wayland|x11] -- <player args>
 #     title   closes the window on the title (as the title bar's close button or Alt+F4 does):
 #             the game must exit
 #     night   closes it on Night 1: held behind the question; Never mind keeps the night paused
@@ -13,28 +14,41 @@
 #             reports where the window is each time (it must fit on the screen)
 #     perf    the perf probe on Night 2 (VSync on first, then uncapped) in a window the
 #             compositor is showing, unlike the desktop's background windows
+#     run     starts the player with the given arguments in a window (AH_W x AH_H, default
+#             1600x900) and waits for it to exit (at most AH_RUN_TIMEOUT seconds, default 1800);
+#             Tools/autopilot.sh uses it. AH_WM_XDG keeps the config folders (and so the game's
+#             saves) somewhere other than outdir, for runs that share a profile
 #     x11     runs the player on the private KWin's Xwayland instead of native Wayland
-#   AH_SCREEN=WxH sets the virtual screen (default 1600x900).
+#   AH_SCREEN=WxH sets the virtual screen (default 1600x900; 1920x1080 for run).
 set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GAME="$ROOT/Builds/Linux/AfterHours.x86_64"
 OUT="${1:-$ROOT/Recordings/wmtest}"
 WHAT="${2:-night}"
 BACKEND="${3:-wayland}"
+shift $(( $# < 3 ? $# : 3 ))
+[ "${1:-}" = "--" ] && shift
+EXTRA=("$@")
 SCREEN="${AH_SCREEN:-1600x900}"
+[ "$WHAT" = run ] && SCREEN="${AH_SCREEN:-1920x1080}"
 [ -x "$GAME" ] || { echo "No build yet. Run Tools/unity.sh build-linux first." >&2; exit 1; }
 
 if [ -z "${AH_WMTEST_RUN:-}" ]; then
   mkdir -p "$OUT" && OUT="$(cd "$OUT" && pwd)"
-  rm -rf "$OUT"; mkdir -p "$OUT"/{config,data,cache}
+  rm -rf "$OUT"; mkdir -p "$OUT"
+  XDG="${AH_WM_XDG:-$OUT}"
+  mkdir -p "$XDG"/{config,data,cache} && XDG="$(cd "$XDG" && pwd)"
   # Everything the nested KWin, the services its private bus starts and the game write goes under
-  # $OUT, and none of them can reach the desktop's displays.
-  export XDG_CONFIG_HOME="$OUT/config" XDG_DATA_HOME="$OUT/data" XDG_CACHE_HOME="$OUT/cache"
+  # $OUT (or AH_WM_XDG), and none of them can reach the desktop's displays.
+  export XDG_CONFIG_HOME="$XDG/config" XDG_DATA_HOME="$XDG/data" XDG_CACHE_HOME="$XDG/cache"
   unset WAYLAND_DISPLAY DISPLAY
   # A private session bus: the nested KWin registers as org.kde.KWin there, not on the desktop's.
   # AH_WMTEST_RUN marks every process of this run, for the clean-up below.
-  AH_WMTEST_RUN="$$-$RANDOM" exec dbus-run-session -- "$0" "$OUT" "$WHAT" "$BACKEND"
+  AH_WMTEST_RUN="$$-$RANDOM" exec dbus-run-session -- "$0" "$OUT" "$WHAT" "$BACKEND" -- "${EXTRA[@]}"
 fi
+# Services the private bus starts (portals, say) must talk to the private KWin: without
+# WAYLAND_DISPLAY they'd try the default "wayland-0", the desktop's.
+dbus-update-activation-environment WAYLAND_DISPLAY="ah-wmtest-$$" DISPLAY= 2> /dev/null
 LOG="$OUT/player.log"
 RESULT="$OUT/result.txt"
 : > "$RESULT"
@@ -47,15 +61,21 @@ case "$WHAT" in
   night) scen=(closetest -ahNight 1 -ahFresh) ;;
   window) scen=(windowtest) ;;
   perf) scen=(perf -ahNight 2 -ahFresh) ;;
+  run) scen=() ;;
   *) echo "unknown test $WHAT" >&2; exit 2 ;;
 esac
 win=(-screen-fullscreen 0 -screen-width 1280 -screen-height 720)
 [ "$WHAT" = window ] && win=(-screen-fullscreen 1)
+game_args=(-logFile "$LOG" -ahCapture "$OUT" "${scen[@]}" -ahProfile wmtest)
+if [ "$WHAT" = run ]; then
+  win=(-screen-fullscreen 0 -screen-width "${AH_W:-1600}" -screen-height "${AH_H:-900}")
+  game_args=("${EXTRA[@]}")
+fi
 cat > "$OUT/launch.sh" <<EOF
 #!/usr/bin/env bash
 echo \$\$ > "$OUT/game.pid"
 echo "WAYLAND_DISPLAY=\$WAYLAND_DISPLAY DISPLAY=\${DISPLAY:-}" > "$OUT/game.env"
-args=(${win[*]} -logFile "$LOG" -ahCapture "$OUT" ${scen[*]} -ahProfile wmtest)
+args=(${win[*]} $(printf '%q ' "${game_args[@]}"))
 [ "$BACKEND" = wayland ] && args+=(-force-wayland)
 exec "$GAME" "\${args[@]}"
 EOF
@@ -125,6 +145,14 @@ report_window() { # tag
 }
 
 say "wmtest: $WHAT, $BACKEND, screen $SCREEN, $(uptime | sed 's/.*load/load/')"
+if [ "$WHAT" = run ]; then
+  # Just the player: wait for it to start, then for it to finish.
+  end=$((SECONDS + 60)); while [ $SECONDS -lt $end ] && ! game_alive; do sleep 0.5; done
+  game_alive || { say "FAIL: the player never started"; exit 1; }
+  cat "$OUT/game.env" | tee -a "$RESULT"
+  if wait_exit "${AH_RUN_TIMEOUT:-1800}"; then say "player exited at $(date +%T)"; else say "FAIL: still running after ${AH_RUN_TIMEOUT:-1800} s, stopped"; exit 1; fi
+  exit 0
+fi
 ready="ready 1"; [ "$WHAT" = perf ] && ready="scenario perf"
 if ! wait_for "$ready" 120; then say "FAIL: the game never got ready"; exit 1; fi
 cat "$OUT/game.env" | tee -a "$RESULT"
