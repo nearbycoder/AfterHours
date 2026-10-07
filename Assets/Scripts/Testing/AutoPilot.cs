@@ -300,12 +300,13 @@ namespace AfterHours
             ReportChecks(n);
             if (large) ReportTextChecks(n);
             yield return Beat("report", n);
+            // The ending is read at the largest text size (its epilogue grows). Night 7 has no
+            // morning chat, so the ending is built as soon as the report goes.
+            if (PadChecks && n == NightDefs.Count) Settings.Current.TextSize = 2;
             Interstitial.AutoAdvance = true;
             yield return Wait(9f);
             yield return Shot($"n{n}_chat");
             if (large) yield return ChatChecks(n);
-            // The ending is read at the largest text size (its epilogue grows).
-            if (PadChecks && n == NightDefs.Count) Settings.Current.TextSize = 2;
             for (int i = 0; i < 40 && FindAnyObjectByType<ChatInterlude>() != null; i++)
             {
                 // What the morning showed, for reading it again from the case file the next night.
