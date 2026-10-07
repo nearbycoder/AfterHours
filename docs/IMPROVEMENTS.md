@@ -1117,6 +1117,107 @@ Deferred: saving mid-night (every night's scripted events keep their state in lo
 so it means rewriting all seven nights' scripts), hints for missed secrets and an off switch for
 the close question (the owner's calls), and still WebGL, Windows and the art.
 
+## Round 9 scope (7 October 2026)
+
+Round 8 is merged. The ranked list is used up apart from what's blocked or the owner's call, so
+this round again reads the code and the screens with a first-time player in mind, and finds four
+things they'd run into. Carrying a can through a dark office, pressing E on a light switch drops
+the can: with anything in your hands, E only places or drops it, so doors, switches and chairs
+need your hands empty, and the prompt says "Place" even where E would drop it. The game starts
+on High at the screen's full resolution and only Settings says a lower preset exists; on a weak
+GPU, a laptop or a large screen a first-time player gets a slideshow and no hint why. Turning
+Head bob off, the setting a motion-sensitive player reaches for, still leaves a camera kick on
+every throw and bump and a lurch of the field of view on reveals. And the layout checks cover
+16:9, 16:10 at 1680×1050 and 4:3, but not the Steam Deck's 1280×800 (a Linux handheld, and this
+is a Linux game) or ultrawide screens. Round 8's note that a caption can show under the pause
+menu is picked up too.
+
+Every test window this round runs in a private KWin (round 8's `Tools/wmtest.sh`), so the
+AutoPilot needs to run there first.
+
+**Baseline (branch `improvements-9`, from `main` at 41d03ab).** The Linux build succeeds with 0
+errors (187 MB). An `audit` AutoPilot run passed 493 checks with 0 failed, in the private KWin
+(load average 11 rising to 25 from other sessions).
+
+Not chosen: saving mid-night (each night's scripted events keep their state in local variables;
+rewriting all seven nights' scripts is a round of its own), hints for missed secrets and an off
+switch for the close question (the owner's calls), and everything left with the owner. A test of
+the game surviving the screen going to sleep or a monitor being unplugged (the README's Wayland
+crash) was tried first and dropped: the private KWin's virtual screens ignore both DPMS and
+turning an output off, so it couldn't show anything (see Round 9 results).
+
+### R9-0. The AutoPilot plays in a private KWin
+
+`Tools/wmtest.sh` gets a `run` mode that starts the player with any arguments in a window on a
+private KWin's virtual screen (its own D-Bus session and config folders) and waits for it to
+exit. `Tools/autopilot.sh` uses it by default, so no test window appears on the desktop and the
+game's saves and settings go to the run's folder instead of `~/.config/unity3d`. `AH_DESKTOP=1`
+keeps the old behaviour. The private bus's activated services are pointed at the private KWin
+rather than the desktop's.
+
+**Acceptance:** an `audit` run passes in the private KWin with nothing on the desktop and nothing
+written under `~/.config/unity3d`; nothing it started is left running. **Verify:** the baseline
+run above, the five final routes, checksums of `~/.config/unity3d` before and after, and the
+run's clean-up log.
+
+### R9-1. Hands full: doors, switches and chairs still work
+
+With something held, E on a door, a light switch or a chair uses it, and what you're holding
+stays in your hands. The prompt says so ("Throw (hold) · E Lights off · Q Drop") and the aim
+highlight shows on the thing. Anywhere else E still places the object (or puts it back); where
+there's nothing to stand it on, the prompt no longer offers E (it would only drop it, like Q).
+
+**Acceptance:** holding the coffee cup on Night 1, E on the reception switch turns the lights off
+and on again, E on the nearest door opens and closes it, E on an untucked chair tucks it in, and
+the cup is still held after each; aimed at the ceiling the prompt has no E, aimed at the floor it
+says Place; the throw that follows still lands. **Verify:** AutoPilot on Night 1, every route,
+pressing E on a virtual keyboard; screenshots.
+
+### R9-2. "Running slowly": offer a lower setting
+
+While a night is being played (not paused, nothing open), the game watches frame times. After an
+8-second warm-up, if the median frame over 12 seconds is slower than 36 ms (under about 28 fps;
+VSync halving a 60 Hz screen to 30 doesn't count), it asks once: "Running slowly. About 20
+frames a second. Lower the graphics to Medium?" with Keep (and don't ask again) and Never mind
+(not again this session). Lowering applies and saves at once; if it's still slow it can offer the
+next step (Low, then render scale 75% and 50%). It doesn't watch with a frame-rate limit of 40 or
+under, or when nothing is lower. The offer and the choice go in the playtest log, and
+`Tools/playtest_report.py` lists them. Off in automated runs unless a check turns it on.
+
+**Acceptance:** at full speed nothing is offered; held to 20 fps it's offered within the warm-up
+and window, naming the measured rate; lowering changes the preset and the settings file; still
+slow, the next step is offered; after Keep, never again; the playtest log has both offers and
+both choices. **Verify:** EditMode tests for the measurement and the steps; AutoPilot on Night 2
+(holding the real frame rate to 20 with `Application.targetFrameRate`); a screenshot.
+
+### R9-3. Camera motion off means a still camera
+
+The Head bob setting becomes **Camera motion**: off, it also stops the camera kick from throws
+and bumps (the vacuum's clunk) and the field-of-view punch of a surface coming clean or a reveal.
+Rumble keeps its own setting. The settings file keeps the same field, so a player who turned head
+bob off gets the still camera.
+
+**Acceptance:** with Camera motion off, a full-strength kick and a reveal's punch move the camera
+by nothing; on, by about a degree and a few degrees. **Verify:** AutoPilot on Night 1, every route.
+
+### R9-4. Steam Deck and ultrawide screens
+
+Run every layout check the AutoPilot has (HUD at each text size, documents, the clipboard, the
+pause menu and its card, Settings at Largest, the title and its Case file, Night Select, the
+report and the chat) at 1280×800 (Steam Deck), 2560×1080 (21:9) and 3840×1080 (32:9), and fix
+whatever doesn't fit.
+
+**Acceptance:** Nights 1 to 3 pass at all three sizes with no layout failures. **Verify:**
+AutoPilot through Night 3 at each size; screenshots.
+
+### R9-5. No caption under the pause menu
+
+Opening the pause menu clears a caption that's showing, and Night 1's "Your shift sheet is on the
+clipboard" doesn't appear if the game is already paused, as the clipboard has done since round 3.
+
+**Acceptance:** a caption showing when the pause menu opens is gone. **Verify:** AutoPilot on
+Night 1, every route.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
