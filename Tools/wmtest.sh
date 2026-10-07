@@ -11,6 +11,8 @@
 #             where it was; a second close asks again; Quit the game must end the process
 #     window  started fullscreen, Settings switches Fullscreen off, on and off again; KWin
 #             reports where the window is each time (it must fit on the screen)
+#     perf    the perf probe on Night 2 (VSync on first, then uncapped) in a window the
+#             compositor is showing, unlike the desktop's background windows
 #     x11     runs the player on the private KWin's Xwayland instead of native Wayland
 #   AH_SCREEN=WxH sets the virtual screen (default 1600x900).
 set -uo pipefail
@@ -44,6 +46,7 @@ case "$WHAT" in
   title) scen=(closetest) ;;
   night) scen=(closetest -ahNight 1 -ahFresh) ;;
   window) scen=(windowtest) ;;
+  perf) scen=(perf -ahNight 2 -ahFresh) ;;
   *) echo "unknown test $WHAT" >&2; exit 2 ;;
 esac
 win=(-screen-fullscreen 0 -screen-width 1280 -screen-height 720)
@@ -122,7 +125,8 @@ report_window() { # tag
 }
 
 say "wmtest: $WHAT, $BACKEND, screen $SCREEN, $(uptime | sed 's/.*load/load/')"
-if ! wait_for "ready 1" 120; then say "FAIL: the game never got ready"; exit 1; fi
+ready="ready 1"; [ "$WHAT" = perf ] && ready="scenario perf"
+if ! wait_for "$ready" 120; then say "FAIL: the game never got ready"; exit 1; fi
 cat "$OUT/game.env" | tee -a "$RESULT"
 case "$WHAT" in
   title)
@@ -157,6 +161,10 @@ case "$WHAT" in
       say "FAIL: fullscreen again isn't at the screen's resolution"
     fi
     wait_exit 15
+    ;;
+  perf)
+    wait_exit 120 || say "FAIL: the perf probe didn't finish"
+    grep "\[Capture\] perf" "$LOG" | tee -a "$RESULT"
     ;;
 esac
 grep -E "\[Quit\]|\[Capture\] (closetest|windowtest)|Exception" "$LOG" | tee -a "$RESULT"

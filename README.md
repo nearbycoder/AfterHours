@@ -124,8 +124,10 @@ and the next morning's chat.
   in the carpet nap and pulls confetti into the nozzle. Glass needs foam first, then a squeegee.
   Mopped floors stay wet for a few seconds, then dry.
 - **Rubbish and throwing.** Food and wrappers go in the black bins, cans and bottles in blue
-  recycling, paper in either. Hold the button to charge a throw and follow the arc; long shots get
-  a swish and a "Nice shot!". The wrong bin bounces the item back out, so nothing is ever lost.
+  recycling, paper in either. While you hold something, the label under the reticle says which
+  bin it goes in, and whether the bin you're aiming at takes it. Hold the button to charge a
+  throw and follow the arc; long shots get a swish and a "Nice shot!". The wrong bin bounces the
+  item back out, so nothing is ever lost.
 - **See what you can use.** Whatever the reticle is on (a paper ball, a light switch, a chair)
   gets a soft warm outline, so small things in dark rooms read as usable. It can be turned off
   in Settings.
@@ -158,7 +160,7 @@ a UV torch shows invisible-ink marks left by the cleaner before you, and any gri
   lists everything you've read, night by night, with what became of it, and each morning's
   office chat, so you can read any of it again before you decide. The title's **Case file**
   shows the same list for your saved story, so you can look back over it between sessions and
-  after the ending.
+  after the ending, when it also holds the ending itself to read again.
 - **Deliveries.** Leave a document in someone's inbox tray and they find it in the morning. Feed it
   to a shredder. Or write an anonymous sticky note from the leads you've pieced together.
 - **Suspicion.** One office belongs to someone who notices when things move. Anything you take or
@@ -245,7 +247,8 @@ previous one as a backup, so a crash or power cut mid-save can't lose a game.
 2. Unzip it and run `./AfterHours.x86_64`.
 
 You need 64-bit Linux and a GPU with OpenGL 3.2 or later (the player uses OpenGL Core). It starts
-fullscreen; switch to windowed in Settings. Saves and settings live in
+fullscreen; switch to windowed in Settings (the window opens at four fifths of the screen, and
+can be resized). Saves and settings live in
 `~/.config/unity3d/After Hours Team/After Hours/`. If the window never appears under XWayland, start it
 with `./AfterHours.x86_64 -force-wayland` to use Unity's native Wayland backend. Zips made by
 `Tools/package.py` (below) include an `AfterHours.sh` launcher that does this for you in a
@@ -277,6 +280,7 @@ python3 Tools/playtest_report.py <logs>   # per-night tables from playtest logs 
 Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml
 Tools/unity.sh                  # open the project in the editor
 Tools/play.sh                   # run the build windowed at 1600x900
+Tools/wmtest.sh [out] title|night|window|perf [wayland|x11]   # against a private KWin (below)
 ```
 
 `Tools/unity.sh` expects the editor at `~/Unity/Hub/Editor/6000.6.2f1/` (override with `UNITY=`).
@@ -305,7 +309,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
 
 - `Tools/autopilot.sh [outdir] [nightN|all] [route]` runs the built game with no human: it starts at
   the title and plays all seven nights through the real components (brush maths on every dirty
-  surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up, a charged throw
+  surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up (holding the cup, the label under the reticle
+  must name its bin, say so when aimed at a recycling bin, and show ✓ on the black one), a charged throw
   (aimed once for where the hands hold the cup, which must settle there before it's released)
   and the vacuum, a virtual gamepad for the menus), then checks the chosen route reaches its
   ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`. It also checks every
@@ -344,7 +349,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   save file's bytes didn't change, walks it at Largest, and checks Night Select asks before an earlier night (backing out keeps the
   save; pad A on Never mind doesn't also pick the card behind), that a confirmed replay moves
   Continue, and that Night 3 in Night Select puts the story back. The ending is read at Largest
-  (its epilogue must fit), the title's Case file must then start with Night 7's documents, and
+  (its epilogue must fit); the title's Case file must then start with the ending, which is read
+  again (the same headline, epilogue and stats as it showed) and closed with the pad and Esc,
+  followed by Night 7's documents; and
   Night Select's cards are checked at each size. Automated runs
   keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
@@ -352,9 +359,18 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
   buttons and survive a save, the hold-or-toggle logic (including clean and spray), the case
   file's reading list and morning chats (including saves from before they existed, whose chats
-  come from the night snapshots) and the title's list for a saved or finished story, the grading and its hints, the
-  brightness curve, the HUD text sizes and how far documents grow, and that settings files from
-  earlier versions load.
+  come from the night snapshots) and the title's list for a saved or finished story (the ending
+  first), the grading and its hints, the bin label for every kind of rubbish against both bins,
+  the window opened on leaving fullscreen, the brightness curve, the HUD text sizes and how far
+  documents grow, and that settings files from earlier versions load.
+- `Tools/wmtest.sh` runs the built game against a real window manager without touching the
+  desktop: a private KWin on a virtual screen, with its own D-Bus session and config folders
+  (the game's saves go there too). `title` and `night` close the game's window the way the title
+  bar's close button does (on the title it must exit; mid-night it must ask, Never mind must
+  keep the night paused where it was, and Quit the game must end it); `window` switches
+  Fullscreen off and on and has KWin report where the window is (it must fit on the screen);
+  `perf` runs the perf probe in a window the compositor is showing. Each runs on native Wayland
+  or, with `x11`, on the private KWin's Xwayland.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
   then on for the run, and afterwards checks the log: every line is JSON, a night end for each
   night in order, every secret, the ending, clipboard opens, pauses, glints and recovered items.
@@ -412,7 +428,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with 325–355 checks per route.
+  along five story routes, with 464–493 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -450,7 +466,9 @@ clipboard, choices, the report and the morning chat, scrolling back through the 
 controls in the pause menu; round 6: text size for the menus, with Settings as a scrolling list
 at the larger sizes, the morning chats in the case file, and a question before Night Select
 takes a story in progress back to an earlier night; round 7: the case file from the title, and a
-question before the game closes in the middle of a night) are listed in
+question before the game closes in the middle of a night; round 8: closing the window tested
+against a real window manager, a windowed mode that fits on the screen, a label saying which
+bin rubbish goes in, and the ending in the title's case file) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -484,14 +502,20 @@ still rough or untested:
   uses smaller shadow maps and FXAA instead of MSAA; Medium keeps SSAO with hard shadows and 2x
   MSAA. With VSync on, the perf probe measured 11 fps in a window that wasn't in front, which
   looks like the Wayland compositor throttling hidden windows (the AutoPilot runs uncapped for
-  that reason); whether a visible window holds the refresh rate wasn't checked.
+  that reason). In a window a compositor is actually showing (a private KWin on a virtual 60 Hz
+  screen, `Tools/wmtest.sh perf`), VSync held 60 fps (16.8 ms median, against 5.3 ms uncapped)
+  with the machine's load at about 9; at a load of about 22, when an uncapped frame took 14 ms,
+  it dropped to every second refresh (35 fps). A real monitor at its own refresh rate still
+  hasn't been measured.
 - **Wayland.** On the development machine the player hung at start-up under XWayland, so
   `Tools/play.sh` and the packaged `AfterHours.sh` launcher pass `-force-wayland`. A monitor
   powering off or reconnecting under KDE once crashed the player inside Unity's Wayland code, and
   one unattended AutoPilot run crashed there too (in `wl_display_dispatch_queue_pending`); a re-run
-  passed. Closing the game in the middle of a night asks first; that was tested through the
-  game's own quit request (which a window close goes through), not by closing the window from
-  the desktop.
+  passed. Closing the game in the middle of a night asks first. That was tested with a real
+  window manager closing the window (KWin, the way the title bar's close button does) on native
+  Wayland and on X11 (Xwayland), but in a private KWin on a virtual screen rather than on a
+  desktop someone is using; Alt+F4 on a real desktop goes through the same request. In that
+  private KWin the player also started fine on Xwayland.
 - **The art is stylised and procedural.** Every model is generated in Blender from code: chunky,
   bevelled and flat-shaded. It's consistent, but it isn't hand-modelled or textured to a
   commercial standard.

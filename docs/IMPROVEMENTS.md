@@ -1061,6 +1061,62 @@ back to the list with the ending still selected; the save's bytes don't change. 
 there's no such entry. **Verify:** EditMode test (the list for a finished story); AutoPilot checks
 after the ending, every route (four endings across the five routes); screenshot.
 
+## Round 8 results (7 October 2026)
+
+All four items shipped on `improvements-8`, one commit each after the scope commit, plus this
+update. The baseline `audit` run on `main` passed 484 checks with 0 failed (load 7 rising to 28
+from other sessions). Screenshots and the window measurements are in
+[`docs/media/improvements/round8/`](media/improvements/round8/). Final build: **all five routes
+pass, 0 failed, no crashes** (audit 493 checks, loose 489, cleanbooks 489, spotless 464, marian
+482; round 7 ended at 484, 480, 480, 455 and 473). The `audit` run was the item run on the final
+build (nothing in the game changed after it); the other four ran afterwards. EditMode tests 71/71
+(68 before). The R8-1, R8-2 and R8-3 commits were each compiled and tested on their own (68/68,
+69/69, 71/71). `Tools/wmtest.sh` was run again on the final build: title and night closes on
+Wayland and X11 all pass. The real save and settings files under `~/.config/unity3d` were
+checksummed before and after: `save.json`, `prefs` and the night snapshots are unchanged; only
+`TestResults.xml`, which Unity's test runner writes there itself, changed (every AutoPilot run
+used an `-ahProfile` folder, removed afterwards, and every `wmtest` run kept the game's saves in
+its own folder under `Recordings/`). Load average from other sessions was about 18–37 during
+the item runs and 15–33 during the final routes.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R8-1 | Close the window from a real window manager | Done (no game change was needed) | `Tools/wmtest.sh` runs a private KWin 6.7 on a virtual 1600×900 screen and closes the game's window with a KWin script (`closeWindow()`, what the title bar's close button does). Native Wayland and X11 (the private KWin's Xwayland), on the final build: on the title the game exits (`[Quit] request goes through`); on Night 1 the request is held (`[Quit] request held`), the game runs on with the pause menu and "Quit the game?" showing and time stopped; Never mind leaves the night paused with the clock unmoved; a second close asks again; Quit the game ends the process. Screenshots on both backends. **Not verified:** Alt+F4 or the close button on a desktop someone is using; it goes through the same request. |
+| R8-2 | Windowed mode gets a window that fits | Done | Before: switching Fullscreen off kept the window at the screen's size, a 1600×928 frame (28 px title bar) on a 900-tall screen. After, on Wayland and X11 at 1600×900: a 1280×720 window (1280×748 with its title bar) on the screen; at 1920×1080: 1536×864; fullscreen again is back at the screen's resolution. An EditMode test for the size at eight screen shapes. KWin places the window (top left in the private KWin); the game can't position it on Wayland. |
+| R8-3 | Which bin? | Done | An EditMode test over every kind of rubbish against both bins: the label always agrees with what the bin does. AutoPilot on Night 1, every route: holding the coffee cup the label reads "COFFEE CUP · BLACK BIN"; at the nearest recycling bin "BLUE RECYCLING ✗ · THIS ONE GOES IN BLACK"; at the reception bin "BLACK BIN ✓"; the throw that follows still lands (cup settled 0.2 cm from the solve). Screenshots. |
+| R8-4 | Read the ending again | Done | EditMode test: a finished story's list starts with the ending under its own heading, described as "Tuesday morning · The Meridian Daily" and "the ending: The Audit". AutoPilot after the ending, every route (all four endings): the ending is the first entry; pad A shows exactly the headline, epilogue and stats the ending showed when it was reached (7 or 8 lines), above the list; pad B and Esc close it back to the list with the ending selected; the save's bytes are unchanged. Screenshots. |
+
+Also measured with the same tool (`Tools/wmtest.sh perf`): in a window the compositor is
+actually showing, VSync held 60 fps on Night 2 (16.8 ms median; 5.3 ms uncapped) at a load of
+about 9, and dropped to every second refresh (35 fps; 14.1 ms uncapped) at a load of about 22.
+That answers round 1's question for a presented window on a virtual 60 Hz screen: the 11 fps
+measured before was the hidden window being throttled. A real monitor hasn't been measured.
+
+Things found along the way:
+
+- The first X11 run of `wmtest` left two services running (a portal backend and `ksecretd`) that
+  the private bus had started with the desktop's display in their environment, because the
+  isolated folders were set only after the bus started. They were identified by their
+  environment and stopped; the tool now isolates the bus itself and stops anything carrying its
+  run marker when it ends (it logs what it stopped in `cleanup.txt`).
+- In the private KWin the player started fine on Xwayland, unlike the hang at start-up seen
+  under the desktop's own XWayland; the launcher still prefers Wayland.
+- The Night 1 caption "Your shift sheet is on the clipboard" stays on screen under the pause menu
+  if the game is paused in its first seconds (visible in the close screenshots). It's harmless
+  and fades after 4 s; not changed.
+
+Known limits:
+
+- The bin label names the bin; it doesn't change the throw arc, and it only appears for rubbish
+  (mugs and documents have their own prompts).
+- Reading the ending again doesn't play the ending music; the title's music carries on.
+- Closing mid-night asks every time, as before; a second close while the question is up asks
+  again rather than quitting.
+
+Deferred: saving mid-night (every night's scripted events keep their state in local variables,
+so it means rewriting all seven nights' scripts), hints for missed secrets and an off switch for
+the close question (the owner's calls), and still WebGL, Windows and the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -1090,7 +1146,11 @@ published; no web build; licence, releases, tags and signing left to the owner. 
 8. **A physical controller**: rumble, PlayStation symbols, pad remapping and the pause on a pad
    dropping out have only met virtual devices. Ten minutes with a real Xbox and DualSense pad
    would settle it.
-9. **The question on closing mid-night** (new): closing the game during a night now asks first,
-   every time, like Quit to title. Some players find a question on Alt+F4 irritating; whether to
-   keep it, or add a setting, is a design call. Closing the window from the desktop once (rather
-   than through the game's own quit request) would also confirm it behaves the same.
+9. **The question on closing mid-night**: closing the game during a night asks first, every
+   time, like Quit to title. Since round 8 a real window manager closing the window is tested
+   (in a private KWin, Wayland and X11). Some players find a question on Alt+F4 irritating;
+   whether to keep it, add a setting, or let a second close while the question is up quit
+   straight away, is a design call. One Alt+F4 on a real desktop would still be worth doing.
+10. **A real monitor's frame rate with VSync on** (new): in a private compositor VSync held
+   60 fps at low load; on the development desktop it was only ever measured in a hidden window.
+   A minute with the game in front, VSync on, on a real monitor (or a 120/144 Hz one) settles it.
