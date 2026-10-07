@@ -205,6 +205,7 @@ namespace AfterHours
                 yield return Shot("restart_confirm");
                 ChoiceMenu.AutoPick = 99; // "Never mind" (clamped to the last option)
                 yield return Wait(0.4f);
+                yield return BrightnessChecks();
                 PauseMenu.Instance.Close();
                 yield return WaitUnblocked(3f);
                 Check(!root.Blocked, "closing the pause menu hands control back");
@@ -1001,6 +1002,60 @@ namespace AfterHours
             vpad.MakeCurrent();
             root.Player.Teleport(root.Player.transform.position, 0f, 0f);
             yield return Wait(0.2f);
+        }
+
+        // ---- brightness (night 1, from the pause menu) ---------------------------------------------
+
+        IEnumerator BrightnessChecks()
+        {
+            var s = Settings.Current;
+            Check(!BrightnessPanel.IsOpen, "automated runs aren't offered the first-launch brightness page");
+            GameObject.Find("Btn_Settings")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.4f);
+            FindObjectsByType<UnityEngine.UI.Button>(FindObjectsSortMode.None).FirstOrDefault(b => b.name.StartsWith("Btn_Brightness"))?.onClick.Invoke();
+            yield return Wait(0.6f);
+            CanvasGroup Layer(string name) => Ui.Canvas.transform.Find(name)?.GetComponent<CanvasGroup>();
+            var settingsLayer = Layer("Settings");
+            var pauseLayer = Layer("Pause");
+            Check(BrightnessPanel.IsOpen && settingsLayer != null && settingsLayer.alpha < 0.01f && pauseLayer != null && pauseLayer.alpha < 0.01f,
+                "Settings opens the brightness page, with the pause menu and Settings hidden behind it");
+            s.Brightness = 0.5f;
+            yield return Wait(0.3f);
+            Check(Mathf.Abs(PostFx.Instance.AppliedGamma) < 1e-4f, $"at the default the image is as designed (gamma offset {PostFx.Instance.AppliedGamma:F3})");
+            yield return Shot("brightness_default");
+            vpad.MakeCurrent();
+            yield return Wait(0.2f);
+            Check(Selected == "Slider_Brightness", $"the page selects its slider for the pad ({Selected})");
+            for (int i = 0; i < 10; i++) { yield return Press(GamepadButton.DpadRight); yield return Wait(0.05f); }
+            yield return Wait(0.3f);
+            Check(s.Brightness > 0.95f && PostFx.Instance.AppliedGamma > 0.3f, $"d-pad right turns the brightness up ({BrightnessPanel.Format(s.Brightness)}, gamma offset {PostFx.Instance.AppliedGamma:F2})");
+            yield return Shot("brightness_high");
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotBrightnessKeyboard");
+            vkb.MakeCurrent();
+            for (int i = 0; i < 20; i++)
+            {
+                InputSystem.QueueStateEvent(vkb, new KeyboardState(UnityEngine.InputSystem.Key.LeftArrow));
+                yield return null; yield return null;
+                InputSystem.QueueStateEvent(vkb, new KeyboardState());
+                yield return null; yield return null;
+                yield return Wait(0.05f);
+            }
+            yield return Wait(0.3f);
+            Check(s.Brightness < 0.05f && PostFx.Instance.AppliedGamma < -0.1f, $"the left arrow turns it down ({BrightnessPanel.Format(s.Brightness)}, gamma offset {PostFx.Instance.AppliedGamma:F2})");
+            yield return Shot("brightness_low");
+            InputSystem.RemoveDevice(vkb);
+            GameObject.Find("Btn_Default")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+            yield return Wait(0.3f);
+            Check(Mathf.Approximately(s.Brightness, 0.5f) && Mathf.Abs(PostFx.Instance.AppliedGamma) < 1e-4f, "Default puts it back");
+            vpad.MakeCurrent();
+            yield return Press(GamepadButton.East);
+            yield return Wait(0.4f);
+            Check(!BrightnessPanel.IsOpen && SettingsPanel.IsOpen && settingsLayer.alpha > 0.99f && pauseLayer.alpha > 0.99f,
+                "pad B closes the page and leaves Settings and the pause menu showing");
+            Check(s.BrightnessChecked, "closing the page marks it as seen, so it isn't offered at launch again");
+            FindAnyObjectByType<SettingsPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            Check(PauseMenu.IsOpen, "the pause menu is still open after Settings closes");
         }
 
         // ---- rebinding keys (night 1) -------------------------------------------------------------

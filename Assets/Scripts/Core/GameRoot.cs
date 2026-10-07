@@ -161,7 +161,11 @@ namespace AfterHours
                 if (snap != null) Story.State = snap;
                 StartNight(night);
             }
-            else ToTitle();
+            else
+            {
+                ToTitle();
+                if (BrightnessPanel.OfferOnLaunch(Settings.Current, Automated)) BrightnessPanel.Show();
+            }
         }
 
         /// <summary>Back to the title: the current night's office becomes the backdrop.</summary>

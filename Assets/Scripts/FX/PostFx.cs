@@ -21,6 +21,7 @@ namespace AfterHours
         ChromaticAberration chroma;
         FilmGrain grain;
         ShadowsMidtonesHighlights smh;
+        LiftGammaGain lgg;
 
         float dofTarget, dofWeight;
         float pulse, flicker, exposureTarget, exposure;
@@ -73,6 +74,10 @@ namespace AfterHours
             smh.shadows.Override(new Vector4(0.86f, 0.94f, 1.12f, -0.02f));
             smh.midtones.Override(new Vector4(1f, 0.99f, 0.98f, 0f));
             smh.highlights.Override(new Vector4(1.08f, 1.0f, 0.9f, 0f));
+
+            // Brightness (Settings): a gamma offset, so the dark lifts more than what's already lit.
+            lgg = profile.Add<LiftGammaGain>(true);
+            lgg.gamma.Override(new Vector4(1f, 1f, 1f, 0f));
 
             vignette = profile.Add<Vignette>(true);
             vignette.intensity.Override(0.3f);
@@ -137,6 +142,16 @@ namespace AfterHours
 
         public void SetExposure(float ev) => exposureTarget = ev;
 
+        /// <summary>The gamma offset for a brightness setting: 0.5 is none, 0 darkens, 1 lifts the shadows a lot.</summary>
+        public static float GammaFor(float brightness)
+        {
+            float b = Mathf.Clamp01(brightness);
+            return b < 0.5f ? Mathf.Lerp(-0.15f, 0f, b * 2f) : Mathf.Lerp(0f, 0.4f, (b - 0.5f) * 2f);
+        }
+
+        /// <summary>The gamma offset in use (automation checks this).</summary>
+        public float AppliedGamma => lgg.gamma.value.w;
+
         void Update()
         {
             float dt = GameTime.UnscaledDelta;
@@ -151,6 +166,8 @@ namespace AfterHours
             chroma.intensity.Override(reduce ? 0f : flicker * 0.6f + pulse * 0.15f);
             float flick = reduce ? 0f : flicker * (Mathf.PerlinNoise(Time.time * 30f, 0.3f) - 0.5f) * 1.6f;
             color.postExposure.Override(exposure + pulse * 0.25f + flick);
+            float g = GammaFor(Settings.Current.Brightness);
+            if (!Mathf.Approximately(lgg.gamma.value.w, g)) lgg.gamma.Override(new Vector4(1f, 1f, 1f, g));
         }
     }
 }

@@ -27,6 +27,10 @@ namespace AfterHours
         public bool Captions = true;
         public bool ReduceFlashing;
         public bool AimHighlight = true;
+        /// <summary>Image brightness, 0 to 1; 0.5 is the game as designed (see <see cref="PostFx.GammaFor"/>).</summary>
+        public float Brightness = 0.5f;
+        /// <summary>The brightness page offered on first launch has been seen and closed.</summary>
+        public bool BrightnessChecked;
         /// <summary>Crouch and brisk walk: false holds the button, true presses once to switch on and again to switch off.</summary>
         public bool ToggleCrouch;
         public bool ToggleSprint;

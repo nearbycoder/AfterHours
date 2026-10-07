@@ -120,7 +120,7 @@ namespace AfterHours
             float f = Mathf.PerlinNoise(GameTime.Unscaled * 3f, 0.5f);
             logo.alpha = f > 0.12f ? 1f : 0.55f;
             var kb = Keyboard.current;
-            if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen)
+            if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen)
                 Begin(Story.State.Night >= 1 && Story.State.Night <= NightDefs.Count ? Story.State.Night : 1);
         }
     }
@@ -247,8 +247,11 @@ namespace AfterHours
             Widgets.Slider(left, "Music", s.MusicVolume, v => s.MusicVolume = v, null, ColW, 250);
             Widgets.Slider(left, "Effects", s.SfxVolume, v => s.SfxVolume = v, null, ColW, 250);
             Widgets.Slider(left, "Ambience", s.AmbienceVolume, v => s.AmbienceVolume = v, null, ColW, 250);
+            Widgets.Heading(left, "Feedback", ColW);
+            Widgets.Toggle(left, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
 
             Widgets.Heading(right, "Display", ColW);
+            Widgets.Button(right, "Brightness  ›", () => BrightnessPanel.Show(), ColW, 56, 26);
             Widgets.Choice(right, "Graphics quality", GraphicsQuality.Names, GraphicsQuality.Level, i => { s.Quality = i; Settings.ApplyGraphics(); }, ColW);
             Widgets.Slider(right, "Render scale", Mathf.InverseLerp(0.5f, 1f, s.RenderScale), v => { s.RenderScale = Mathf.Lerp(0.5f, 1f, v); Settings.ApplyGraphics(); }, v => Mathf.RoundToInt(Mathf.Lerp(50, 100, v)) + "%", ColW, 250);
             Widgets.Toggle(right, "Fullscreen", s.Fullscreen, v => { s.Fullscreen = v; Settings.ApplyGraphics(); }, ColW);
@@ -260,8 +263,6 @@ namespace AfterHours
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
             Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
-            Widgets.Heading(right, "Feedback", ColW);
-            Widgets.Toggle(right, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
 
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));
@@ -278,7 +279,8 @@ namespace AfterHours
 
         void Update()
         {
-            if (GameInput.Menu.Back && !ControlsPanel.IsOpen && Time.frameCount != ControlsPanel.ClosedFrame) Close();
+            if (GameInput.Menu.Back && !ControlsPanel.IsOpen && Time.frameCount != ControlsPanel.ClosedFrame
+                && !BrightnessPanel.IsOpen && Time.frameCount != BrightnessPanel.ClosedFrame) Close();
         }
     }
 
