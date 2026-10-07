@@ -91,6 +91,7 @@ namespace AfterHours
             Check(FindAnyObjectByType<EndingScreen>() != null, "ending screen appears after night 7");
             yield return Wait(EndingTime);
             yield return Shot("ending");
+            if (PadChecks) EndingTextChecks();
             string expected = route == "marian" ? "cleanbooks" : route;
             if (route == "marian")
             {
@@ -102,6 +103,16 @@ namespace AfterHours
             yield return Wait(2f);
             Check(TitleScreen.Instance != null, "ending returns to the title");
             yield return Shot("back_to_title");
+            if (PadChecks)
+            {
+                // The title was built at Largest; it follows the change back to Normal.
+                var quitBtn = (RectTransform)TitleScreen.Instance.transform.Find("Menu/Btn_Quit");
+                float before = quitBtn ? ScreenRect(quitBtn).height * 1080f / Screen.height : 0f;
+                Settings.Current.TextSize = 0;
+                yield return Wait(0.3f);
+                float after = quitBtn ? ScreenRect(quitBtn).height * 1080f / Screen.height : 0f;
+                Check(Mathf.Abs(before - 96f) < 2f && Mathf.Abs(after - 64f) < 2f, $"the title follows a change of text size ({before:F0} → {after:F0} units a button)");
+            }
             int secretsFound = Story.State.Results.Sum(r => r.Secrets);
             if (PadChecks) yield return RecordsChecks(expected);
             if (PadChecks) PlaytestChecks(expected, secretsFound);
@@ -145,6 +156,7 @@ namespace AfterHours
             Check(card.Contains($"{rec.Endings.Count} / {Endings.Ids.Length}"), $"Night Select counts the endings found ({rec.Endings.Count} / {Endings.Ids.Length})");
             Check(StatsOf(7) != null, $"Night Select shows night 7's best ({StatsOf(7)})");
             yield return Shot("night_select_records");
+            yield return NightSelectTextChecks();
             // Replay night 2: the live save rolls back to that night's start...
             Card(2)?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
             yield return WaitUnblocked(40f);
@@ -200,6 +212,7 @@ namespace AfterHours
                 Check(PauseMenu.IsOpen, "the pause menu opens during a night");
                 yield return Shot("pause");
                 yield return PauseCardChecks();
+                yield return PauseTextChecks();
                 GameObject.Find("Btn_Restart this night")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
                 yield return Wait(0.5f);
                 Check(ChoiceMenu.IsOpen, "Restart this night asks first");
@@ -288,6 +301,8 @@ namespace AfterHours
             yield return Wait(9f);
             yield return Shot($"n{n}_chat");
             if (large) yield return ChatChecks(n);
+            // The ending is read at the largest text size (its epilogue grows).
+            if (PadChecks && n == NightDefs.Count) Settings.Current.TextSize = 2;
             for (int i = 0; i < 40 && FindAnyObjectByType<ChatInterlude>() != null; i++) { Interstitial.AutoAdvance = true; yield return Wait(0.25f); }
             Interstitial.AutoAdvance = false;
             if (large) Settings.Current.TextSize = 0;
@@ -1427,6 +1442,127 @@ namespace AfterHours
             yield return WaitUnblocked(3f);
         }
 
+        // ---- the menus at larger text sizes (round 6) ----------------------------------------------
+
+        static float Units(float px) => px * 1080f / Screen.height;
+        /// <summary>The scale the pause menu should reach at Largest: 1.5 where the screen is wide enough, less on 4:3.</summary>
+        static bool Wide => Screen.width / (float)Screen.height > 1.5f;
+
+        /// <summary>The pause menu at each text size: buttons and card grow, stay on screen and apart; then the brightness page.</summary>
+        IEnumerator PauseTextChecks()
+        {
+            var s = Settings.Current;
+            var pause = Ui.Canvas.transform.Find("Pause");
+            var card = (RectTransform)pause.Find("ControlsCard");
+            var list = card.Find("ControlsList").GetComponent<TMPro.TextMeshProUGUI>();
+            var menu = (RectTransform)pause.Find("Menu");
+            var btn = (RectTransform)menu.Find("Btn_Shift sheet");
+            var sub = pause.Find("Subtitle")?.GetComponent<TMPro.TextMeshProUGUI>();
+            for (int size = 0; size <= 2; size++)
+            {
+                s.TextSize = size;
+                yield return Wait(0.4f);
+                list.ForceMeshUpdate();
+                float k = Settings.TextScale, km = PauseMenu.Instance.MenuScale, kc = PauseMenu.Instance.CardScale;
+                var cr = ScreenRect(card);
+                var mr = ScreenRect(menu);
+                float h = Units(ScreenRect(btn).height);
+                bool sizeOk = size == 0 ? km == 1f && kc == 1f : km >= (Wide ? k - 0.01f : 1.2f) && kc >= 1f;
+                Check(sizeOk && Mathf.Abs(h - 64f * km) < 1.5f && Inside(cr, ScreenArea) && Inside(mr, ScreenArea) && !cr.Overlaps(mr)
+                      && Inside(TextRect(list), cr) && (sub == null || !TextRect(sub).Overlaps(cr)),
+                    $"pause menu at {Settings.TextSizes[size]}, {Screen.width}x{Screen.height}: buttons {km:F2}x ({h:F0} units), controls card {kc:F2}x, both on screen and apart, the card's text inside");
+                if (size > 0) yield return Shot($"pause_text_{Settings.TextSizes[size].ToLowerInvariant()}");
+            }
+            BrightnessPanel.Show();
+            yield return Wait(0.5f);
+            var panel = (RectTransform)Ui.Canvas.transform.Find("Brightness/Panel");
+            float scale = panel ? panel.localScale.x : 0f, want = BrightnessPanel.ScaleFor(Screen.width * 1080f / Screen.height, 1.5f);
+            Check(panel && Inside(ScreenRect(panel), ScreenArea) && scale > 1.1f && Mathf.Abs(scale - want) < 0.01f && ScreenRect(panel).width <= Screen.width * 0.61f,
+                $"the brightness page at Largest is {scale:F2}x, on screen and no wider than 60% of it");
+            yield return Shot("brightness_largest");
+            FindAnyObjectByType<BrightnessPanel>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            s.TextSize = 0;
+            yield return Wait(0.3f);
+        }
+
+        /// <summary>The title menu at each text size: buttons grow from the bottom, clear of the tagline and the footer.</summary>
+        IEnumerator TitleTextChecks()
+        {
+            var s = Settings.Current;
+            var title = TitleScreen.Instance.transform;
+            var menu = (RectTransform)title.Find("Menu");
+            var tag = title.Find("Tagline").GetComponent<TMPro.TextMeshProUGUI>();
+            var foot = title.Find("Footer").GetComponent<TMPro.TextMeshProUGUI>();
+            var quit = (RectTransform)menu.Find("Btn_Quit");
+            for (int size = 0; size <= 2; size++)
+            {
+                s.TextSize = size;
+                yield return Wait(0.3f);
+                foot.ForceMeshUpdate();
+                float k = Settings.TextScale, h = Units(ScreenRect(quit).height);
+                var mr = ScreenRect(menu);
+                var tr = TextRect(tag);
+                var fr = TextRect(foot);
+                Check(Mathf.Abs(h - 64f * k) < 1.5f && Inside(mr, ScreenArea) && Inside(fr, ScreenArea) && mr.yMax < tr.yMin && mr.yMin > fr.yMax,
+                    $"title at {Settings.TextSizes[size]}, {Screen.width}x{Screen.height}: buttons {h:F0} units ({64f * k:F0} expected), on screen, below the tagline ({Units(tr.yMin - mr.yMax):F0} units clear) and above the footer");
+                if (size == 2) yield return Shot("title_largest");
+            }
+            s.TextSize = 0;
+            yield return Wait(0.3f);
+        }
+
+        /// <summary>Night Select at each text size: every card's writing stays on its card; the grade line grows.</summary>
+        IEnumerator NightSelectTextChecks()
+        {
+            var s = Settings.Current;
+            FindAnyObjectByType<NightSelect>()?.SendMessage("Close");
+            yield return Wait(0.3f);
+            float stats0 = 0f;
+            for (int size = 0; size <= 2; size++)
+            {
+                s.TextSize = size;
+                NightSelect.Show();
+                yield return Wait(0.6f);
+                var ns = FindAnyObjectByType<NightSelect>().transform;
+                var cards = Enumerable.Range(1, NightDefs.Count).Select(n => (RectTransform)ns.Find("Night" + n)).Append((RectTransform)ns.Find("Endings")).ToList();
+                var off = new System.Collections.Generic.List<string>();
+                foreach (var c in cards)
+                    foreach (var t in c.GetComponentsInChildren<TMPro.TextMeshProUGUI>())
+                    {
+                        t.ForceMeshUpdate();
+                        if (!string.IsNullOrEmpty(t.text) && !Inside(TextRect(t), ScreenRect(c), 3f)) off.Add($"{c.name}/{t.name}");
+                    }
+                var stats = cards[0].Find("Stats")?.GetComponent<TMPro.TextMeshProUGUI>();
+                float fs = stats ? stats.fontSize : 0f;
+                if (size == 0) stats0 = fs;
+                var sub = ns.Find("Subtitle").GetComponent<TMPro.TextMeshProUGUI>();
+                Check(off.Count == 0 && Inside(TextRect(sub), ScreenArea) && (size == 0 || fs > stats0 + 0.5f),
+                    $"Night Select at {Settings.TextSizes[size]}: every card's writing stays on its card{(off.Count > 0 ? " (off: " + string.Join(", ", off) + ")" : "")}, grade line {fs:F0} (Normal {stats0:F0})");
+                if (size == 2) yield return Shot("night_select_largest");
+                ns.SendMessage("Close");
+                yield return Wait(0.3f);
+            }
+            s.TextSize = 0;
+            NightSelect.Show();
+            yield return Wait(0.6f);
+        }
+
+        /// <summary>The ending at Largest: the epilogue grows as far as all its lines fit above the stats.</summary>
+        void EndingTextChecks()
+        {
+            var ending = FindAnyObjectByType<EndingScreen>();
+            var labels = ending ? Ui.Canvas.transform.Find("Ending").GetComponentsInChildren<TMPro.TextMeshProUGUI>(true) : new TMPro.TextMeshProUGUI[0];
+            var epi = labels.FirstOrDefault(l => l.name == "Epilogue");
+            var stats = labels.FirstOrDefault(l => l.name == "Stats");
+            if (!epi || !stats) { Check(false, "the ending's epilogue and stats are there"); return; }
+            var def = Endings.Resolve(Story.State.Clone());
+            float need = epi.GetPreferredValues(string.Join("\n", def.Lines), epi.rectTransform.rect.width, 0f).y;
+            var er = ScreenRect(epi.rectTransform);
+            Check(epi.fontSize > 30.5f && need <= epi.rectTransform.rect.height + 1f && Inside(er, ScreenArea) && er.yMin >= ScreenRect(stats.rectTransform).yMax - 1f,
+                $"the ending at Largest: the epilogue is {epi.fontSize:F0} (Normal 30) and all {def.Lines.Count} lines fit its box ({need:F0} of {epi.rectTransform.rect.height:F0} units), above the stats");
+        }
+
         /// <summary>
         /// The pause menu's controls card (night 1, menu open): the bound keys, a rebind showing at
         /// once, pad buttons and PlayStation symbols, no torch before night 2, clear of the menu.
@@ -1621,6 +1757,7 @@ namespace AfterHours
             Check(TitleScreen.Instance != null && !PauseMenu.IsOpen, "confirming goes to the title");
             bool canContinue = GameObject.Find("Btn_Continue  ·  Night 1") != null;
             Check(canContinue, "the title offers Continue on Night 1");
+            yield return TitleTextChecks();
             TitleScreen.Instance?.Begin(1);
             yield return WaitUnblocked(40f);
             Check(dir.Running && dir.Def.Number == 1 && dir.Elapsed < 10f, $"Continue starts Night 1 again from the beginning ({dir.Elapsed:F1}s in)");

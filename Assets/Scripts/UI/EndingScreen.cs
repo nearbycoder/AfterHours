@@ -41,16 +41,33 @@ namespace AfterHours
             var title = Ui.Label(root, ending.Title.ToUpperInvariant(), UiFont.Type, 64, Ui.Accent, TextAlignmentOptions.Center);
             Ui.Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -400), new Vector2(1400, 80), new Vector2(0.5f, 1f));
             title.characterSpacing = 12;
-            lines = Ui.Label(root, "", UiFont.Sans, 30, Ui.Text, TextAlignmentOptions.Top);
-            Ui.Place(lines.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -510), new Vector2(1240, 480), new Vector2(0.5f, 1f));
+            // Text size: the epilogue grows as far as all its lines fit above the stats; the stats and hint grow with it.
+            float k = Settings.TextScale, canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            float wide = k > 1f ? Mathf.Min(1400f, canvasW - 80f) : 1400f, linesH = k > 1f ? 570f - (110f + 40f * k) : 480f;
+            lines = Ui.Label(root, "", UiFont.Sans, 30, Ui.Text, TextAlignmentOptions.Top, "Epilogue");
+            Ui.Place(lines.rectTransform, new Vector2(0.5f, 1f), new Vector2(0, -510), new Vector2(k > 1f ? wide : 1240, linesH), new Vector2(0.5f, 1f));
             lines.lineSpacing = 4;
             lines.paragraphSpacing = 26;
-            stats = Ui.Label(root, "", UiFont.Mono, 24, new Color(1f, 0.85f, 0.55f, 0.85f), TextAlignmentOptions.Center);
-            Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 100), new Vector2(1400, 40), new Vector2(0.5f, 0));
+            if (k > 1f)
+            {
+                string all = string.Join("\n", ending.Lines);
+                lines.fontSize = 30 * k;
+                while (lines.fontSize > 30 && lines.GetPreferredValues(all, wide, 0f).y > linesH) lines.fontSize -= 1f;
+            }
+            stats = Ui.Label(root, "", UiFont.Mono, 24, new Color(1f, 0.85f, 0.55f, 0.85f), TextAlignmentOptions.Center, "Stats");
+            Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 100), new Vector2(wide, 40 * k), new Vector2(0.5f, 0));
             stats.characterSpacing = 4;
             stats.alpha = 0;
-            hint = Ui.Label(root, "", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
-            Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(1400, 40), new Vector2(0.5f, 0));
+            hint = Ui.Label(root, "", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center, "Hint");
+            Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 40), new Vector2(wide, 40 * k), new Vector2(0.5f, 0));
+            foreach (var (t, size) in new[] { (stats, 24f), (hint, 22f) })
+            {
+                // Grow, but stay on one line (the stats line is long on a narrow screen).
+                t.enableAutoSizing = k > 1f;
+                if (k > 1f) t.textWrappingMode = TextWrappingModes.NoWrap;
+                t.fontSizeMin = size;
+                t.fontSizeMax = t.fontSize = size * k;
+            }
             nextAt = 2.5f;
         }
 

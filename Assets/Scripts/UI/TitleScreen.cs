@@ -16,9 +16,11 @@ namespace AfterHours
         public static TitleScreen Instance { get; private set; }
         RectTransform root, menu;
         CanvasGroup group;
-        TextMeshProUGUI logo;
+        TextMeshProUGUI logo, foot;
         float t;
         bool leaving;
+        /// <summary>The text size the menu is laid out for (it follows a change made in Settings).</summary>
+        float laidOut;
 
         static readonly (Vector3 pos, float yaw, float pitch)[] Shots =
         {
@@ -50,11 +52,10 @@ namespace AfterHours
             logo = Ui.Label(root, "AFTER HOURS", UiFont.Type, 120, new Color(0.95f, 0.93f, 0.86f), TextAlignmentOptions.Left);
             Ui.Place(logo.rectTransform, new Vector2(0, 1), new Vector2(120, -140), new Vector2(1100, 140), new Vector2(0, 1));
             logo.characterSpacing = 6;
-            var tag = Ui.Label(root, "Clean the office. Learn its secrets. Decide what survives.", UiFont.Hand, 40, new Color(0.62f, 0.85f, 0.95f, 0.9f), TextAlignmentOptions.Left);
+            var tag = Ui.Label(root, "Clean the office. Learn its secrets. Decide what survives.", UiFont.Hand, 40, new Color(0.62f, 0.85f, 0.95f, 0.9f), TextAlignmentOptions.Left, "Tagline");
             Ui.Place(tag.rectTransform, new Vector2(0, 1), new Vector2(128, -280), new Vector2(1100, 60), new Vector2(0, 1));
 
             menu = Widgets.Column(root, "Menu", 14);
-            Ui.Place(menu, new Vector2(0, 0), new Vector2(120, 520), new Vector2(460, 460), new Vector2(0, 1));
             var st = Story.State;
             bool canContinue = StoryState.Load() != null && st.Night >= 1 && st.Night <= NightDefs.Count && string.IsNullOrEmpty(st.Ending);
             if (canContinue)
@@ -69,13 +70,31 @@ namespace AfterHours
             string footText = "BrightStar Janitorial · Meridian Tower, Suite 1408 · Night shift"
                               + (endings > 0 ? $"    <color=#FFD27Acc>Endings found {endings} / {Endings.Ids.Length}</color>" : "")
                               + (PlaytestLog.Enabled ? "    <color=#9FF5D8cc>● Playtest log on</color>" : "");
-            var foot = Ui.Label(root, footText, UiFont.Sans, 18, new Color(1, 1, 1, 0.35f), TextAlignmentOptions.BottomLeft);
-            Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(1200, 30), new Vector2(0, 0));
+            foot = Ui.Label(root, footText, UiFont.Sans, 18, new Color(1, 1, 1, 0.35f), TextAlignmentOptions.BottomLeft, "Footer");
+            Layout();
 
             group.alpha = 0;
             Tween.Run(1.2f, k => { if (group) group.alpha = k; }, Ease.OutCubic); // Continue can close the title first
             float y0 = -140;
             Tween.Run(1.6f, k => { if (logo) logo.rectTransform.anchoredPosition = new Vector2(120 + (1 - k) * -40, y0); }, Ease.OutCubic);
+        }
+
+        /// <summary>
+        /// The menu and footer at the current text size. Larger sizes scale the buttons from their
+        /// bottom edge, so they grow up towards the tagline; the logo and tagline are already large.
+        /// </summary>
+        void Layout()
+        {
+            float k = laidOut = Settings.TextScale;
+            float colH = 0;
+            foreach (RectTransform c in menu) colH += c.sizeDelta.y;
+            colH += 14 * Mathf.Max(0, menu.childCount - 1);
+            float top = k > 1f ? Mathf.Max(520f, 138f + colH * k) : 520f;
+            Ui.Place(menu, new Vector2(0, 0), new Vector2(120, top), new Vector2(460, colH), new Vector2(0, 1));
+            menu.localScale = Vector3.one * k;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            foot.fontSize = 18 * k;
+            Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(124, 40), new Vector2(k > 1f ? canvasW - 124 - 60 : 1200, 30 * k), new Vector2(0, 0));
         }
 
         void NewGame()
@@ -119,6 +138,7 @@ namespace AfterHours
             // Logo flickers like a tube light warming up.
             float f = Mathf.PerlinNoise(GameTime.Unscaled * 3f, 0.5f);
             logo.alpha = f > 0.12f ? 1f : 0.55f;
+            if (laidOut != Settings.TextScale && !SettingsPanel.IsOpen) Layout();
             var kb = Keyboard.current;
             if (((kb != null && kb.enterKey.wasPressedThisFrame) || GameInput.Menu.Start) && !ChoiceMenu.IsOpen && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen)
                 Begin(Story.State.Night >= 1 && Story.State.Night <= NightDefs.Count ? Story.State.Night : 1);
@@ -132,7 +152,9 @@ namespace AfterHours
     {
         public static PauseMenu Instance { get; private set; }
         public static bool IsOpen => Instance != null;
-        RectTransform root;
+        RectTransform root, menu;
+        TextMeshProUGUI sub;
+        float laidOut;
 
         public static void Show()
         {
@@ -157,11 +179,9 @@ namespace AfterHours
             var dir = NightDirector.Instance;
             if (dir?.Def != null)
             {
-                var sub = Ui.Label(root, $"Night {dir.Def.Number} · {dir.Def.Day} · {dir.ClockText()} {dir.ClockSub().Split(' ')[0]}", UiFont.Sans, 26, Ui.TextDim, TextAlignmentOptions.Left);
-                Ui.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(124, -236), new Vector2(800, 40), new Vector2(0, 1));
+                sub = Ui.Label(root, $"Night {dir.Def.Number} · {dir.Def.Day} · {dir.ClockText()} {dir.ClockSub().Split(' ')[0]}", UiFont.Sans, 26, Ui.TextDim, TextAlignmentOptions.Left, "Subtitle");
             }
-            var col = Widgets.Column(root, "Menu", 14);
-            Ui.Place(col, new Vector2(0, 1), new Vector2(120, -320), new Vector2(460, 500), new Vector2(0, 1));
+            var col = menu = Widgets.Column(root, "Menu", 14);
             Widgets.Button(col, "Resume", Close, 460, 70, 30, true);
             Widgets.Button(col, "Shift sheet", () => { Close(); Clipboard.Instance?.Show(); }, 460, 64);
             Widgets.Button(col, "Settings", () => SettingsPanel.Show(), 460, 64);
@@ -205,6 +225,42 @@ namespace AfterHours
             var foot = Ui.Label(card, "Keys and buttons can be changed in Settings.", UiFont.Sans, 20, Ui.TextDim, TextAlignmentOptions.BottomLeft, "Hint");
             Ui.Place(foot.rectTransform, new Vector2(0, 0), new Vector2(36, 26), new Vector2(570, 30), new Vector2(0, 0));
             RefreshControls();
+            Layout();
+        }
+
+        /// <summary>The menu's scale at the current text size, and the card's (as far as the space beside the menu allows).</summary>
+        public float MenuScale { get; private set; } = 1f;
+        public float CardScale { get; private set; } = 1f;
+
+        /// <summary>
+        /// Text size scales the buttons and the subtitle, and the controls card as far as it fits
+        /// beside them, never below Normal. On narrow screens the margins close up first, then the
+        /// buttons grow less, so the card always fits at its Normal size.
+        /// </summary>
+        void Layout()
+        {
+            float k = laidOut = Settings.TextScale;
+            float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
+            const float MenuW = 460, CardW = 700;
+            float left = 120, right = 110, gap = 40, km = k, kc = 1f;
+            if (k > 1f)
+            {
+                float Room(float menuScale) => canvasW - left - MenuW * menuScale - gap - right;
+                if (Room(k) < CardW) { left = 60; right = 50; }
+                km = Mathf.Clamp((canvasW - left - gap - right - CardW) / MenuW, 1f, k);
+                kc = Mathf.Clamp(Mathf.Min(k, Room(km) / CardW, 1000f / Mathf.Max(1f, controlsCard.sizeDelta.y)), 1f, k);
+            }
+            MenuScale = km;
+            CardScale = kc;
+            if (sub)
+            {
+                sub.fontSize = 26 * km;
+                Ui.Place(sub.rectTransform, new Vector2(0, 1), new Vector2(left + 4, -236), new Vector2(800 * km, 40 * km), new Vector2(0, 1));
+            }
+            Ui.Place(menu, new Vector2(0, 1), new Vector2(left, -320), new Vector2(MenuW, 500), new Vector2(0, 1));
+            menu.localScale = Vector3.one * km;
+            Ui.Place(controlsCard, new Vector2(1, 0.5f), new Vector2(-right, -20), controlsCard.sizeDelta, new Vector2(1, 0.5f));
+            controlsCard.localScale = Vector3.one * kc;
         }
 
         /// <summary>The card's rows: the key or button as a cap, then what it does.</summary>
@@ -241,6 +297,7 @@ namespace AfterHours
             float h = controls.GetPreferredValues(text, 630f, 0f).y;
             controls.rectTransform.sizeDelta = new Vector2(630f, h);
             controlsCard.sizeDelta = new Vector2(700f, 82f + h + 76f);
+            if (menu) Layout(); // the card's height decides how far it can grow
         }
 
         public void Close()
@@ -259,6 +316,7 @@ namespace AfterHours
             if ((m.Back || m.Pause) && !SettingsPanel.IsOpen && !ChoiceMenu.IsOpen && Time.frameCount != ChoiceMenu.ClosedFrame) Close();
             // Follow rebinds made in Settings and a switch between keyboard and pad.
             if ((controlsRefresh -= GameTime.UnscaledDelta) <= 0f) { controlsRefresh = 0.25f; RefreshControls(); }
+            if (laidOut != Settings.TextScale && !SettingsPanel.IsOpen) Layout();
         }
     }
 
@@ -325,7 +383,7 @@ namespace AfterHours
             Widgets.Toggle(right, "Captions", s.Captions, v => s.Captions = v, ColW);
             Widgets.Toggle(right, "Reduce flashing and flicker", s.ReduceFlashing, v => s.ReduceFlashing = v, ColW);
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
-            Widgets.Choice(right, "HUD text size", Settings.TextSizes, Mathf.Clamp(s.TextSize, 0, 2), i => s.TextSize = i, ColW);
+            Widgets.Choice(right, "Text size", Settings.TextSizes, Mathf.Clamp(s.TextSize, 0, 2), i => s.TextSize = i, ColW);
             Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
 
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
@@ -373,8 +431,11 @@ namespace AfterHours
             dim.raycastTarget = true;
             var title = Ui.Label(root, "Night Select", UiFont.Type, 60, Ui.Text, TextAlignmentOptions.Center);
             Ui.Place(title.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -70), new Vector2(1200, 80), new Vector2(0.5f, 1));
-            var sub = Ui.Label(root, "Replay any night you've reached, from the state you started it in.", UiFont.Sans, 24, Ui.TextDim, TextAlignmentOptions.Center);
-            Ui.Place(sub.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -150), new Vector2(1200, 40), new Vector2(0.5f, 1));
+            // Text size grows the writing on the cards within them (the number photo gives up the room).
+            float k = Settings.TextScale;
+            var sub = Ui.Label(root, "Replay any night you've reached, from the state you started it in.", UiFont.Sans, 24 * k, Ui.TextDim, TextAlignmentOptions.Center, "Subtitle");
+            Ui.Place(sub.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -150), new Vector2(1200 * k, 40 * k), new Vector2(0.5f, 1));
+            float statsH = 28 * k, labelH = 76 * k, labelY = 12 + statsH + 6, photoH = 340 - 16 - (labelY + labelH) - 2;
             var saved = StoryState.Load();
             for (int n = 1; n <= NightDefs.Count; n++)
             {
@@ -392,17 +453,19 @@ namespace AfterHours
                 rt.localRotation = Quaternion.Euler(0, 0, (n * 37 % 7 - 3) * 0.7f);
                 card.raycastTarget = unlocked;
                 var photo = Ui.Image(rt, "Photo", unlocked ? Palette.Hex("1B2433") : new Color(0, 0, 0, 0.3f), Ui.Rounded(4));
-                Ui.Place(photo.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -16), new Vector2(248, 200), new Vector2(0.5f, 1));
-                var num = Ui.Label(photo.rectTransform, unlocked ? n.ToString() : "?", UiFont.Type, 110, unlocked ? new Color(0.95f, 0.85f, 0.6f) : new Color(1, 1, 1, 0.2f), TextAlignmentOptions.Center);
+                Ui.Place(photo.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -16), new Vector2(248, photoH), new Vector2(0.5f, 1));
+                var num = Ui.Label(photo.rectTransform, unlocked ? n.ToString() : "?", UiFont.Type, 110 * photoH / 200f, unlocked ? new Color(0.95f, 0.85f, 0.6f) : new Color(1, 1, 1, 0.2f), TextAlignmentOptions.Center);
                 Ui.Stretch(num.rectTransform);
-                var label = Ui.Label(rt, unlocked ? $"{NightDefs.Days[n]}\n<size=80%>{NightDefs.Titles[n]}</size>" : "Locked", UiFont.Hand, 30, unlocked ? Ui.Ink : Ui.TextDim, TextAlignmentOptions.Center);
+                var label = Ui.Label(rt, unlocked ? $"{NightDefs.Days[n]}\n<size=80%>{NightDefs.Titles[n]}</size>" : "Locked", UiFont.Hand, 30 * k, unlocked ? Ui.Ink : Ui.TextDim, TextAlignmentOptions.Center, "Label");
                 // Day and title sit between the photo and the stats line.
-                Ui.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 46), new Vector2(260, 76), new Vector2(0.5f, 0));
+                Ui.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, labelY), new Vector2(260, labelH), new Vector2(0.5f, 0));
                 label.lineSpacing = -12;
+                FitWithin(label, 30f);
                 if (res != null && unlocked)
                 {
-                    var stats = Ui.Label(rt, $"<b>{res.Grade}</b>   secrets {res.Secrets}/{res.SecretsTotal}", UiFont.SansMedium, 19, Palette.Hex("6A3FA0"), TextAlignmentOptions.Center);
-                    Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 12), new Vector2(260, 28), new Vector2(0.5f, 0));
+                    var stats = Ui.Label(rt, $"<b>{res.Grade}</b>   secrets {res.Secrets}/{res.SecretsTotal}", UiFont.SansMedium, 19 * k, Palette.Hex("6A3FA0"), TextAlignmentOptions.Center, "Stats");
+                    Ui.Place(stats.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 12), new Vector2(260, statsH), new Vector2(0.5f, 0));
+                    FitWithin(stats, 19f);
                 }
                 if (unlocked)
                 {
@@ -421,14 +484,23 @@ namespace AfterHours
                     hv.Init(card, label, true); // opaque warm highlight; the paper never turns see-through
                 }
             }
-            EndingsCard();
+            EndingsCard(k);
             var back = Widgets.Button(root, "Back", Close, 200, 60);
             Ui.Place(back, new Vector2(0.5f, 0), new Vector2(0, 50), new Vector2(200, 60), new Vector2(0.5f, 0));
             MenuFocus.AttachAll(root.gameObject);
         }
 
+        /// <summary>At larger sizes, a card's text shrinks back (never below <paramref name="min"/>) rather than leave its box.</summary>
+        static void FitWithin(TextMeshProUGUI t, float min)
+        {
+            if (t.fontSize <= min) return;
+            var box = t.rectTransform.sizeDelta;
+            while (t.fontSize > min && t.GetPreferredValues(t.text, box.x, 0f).y > box.y + 0.5f)
+                t.fontSize = Mathf.Max(min, t.fontSize - 1f);
+        }
+
         /// <summary>The endings you've seen, in the free slot at the end of the second row. Unseen ones stay unnamed.</summary>
-        void EndingsCard()
+        void EndingsCard(float k)
         {
             var rec = Records.Current;
             var card = Ui.Panel(root, "Endings", new Color(0.1f, 0.12f, 0.17f, 1f), 8);
@@ -441,9 +513,10 @@ namespace AfterHours
             var sb = new System.Text.StringBuilder();
             foreach (var id in Endings.Ids)
                 sb.Append(rec.HasEnding(id) ? $"<color=#FFD27A>✓ {Endings.TitleOf(id)}</color>\n" : "<color=#FFFFFF55>· · ·</color>\n");
-            var list = Ui.Label(rt, sb.ToString(), UiFont.Hand, 30, Ui.Text, TextAlignmentOptions.Top);
+            var list = Ui.Label(rt, sb.ToString(), UiFont.Hand, 30 * k, Ui.Text, TextAlignmentOptions.Top, "List");
             Ui.Place(list.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -140), new Vector2(250, 180), new Vector2(0.5f, 1));
             list.lineSpacing = -6;
+            FitWithin(list, 30f);
         }
 
         void Close()

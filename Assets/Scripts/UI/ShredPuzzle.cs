@@ -83,6 +83,16 @@ namespace AfterHours
             Ui.Place(title.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -40), new Vector2(1200, 50), new Vector2(0.5f, 1));
             hint = Ui.Label(root, $"{GameInput.MenuGlyph("A / D")}  choose   ·   {GameInput.MenuGlyph("E")}  pick up / swap   ·   {GameInput.MenuGlyph("Esc")}  give up for now", UiFont.SansMedium, 22, Ui.TextDim, TextAlignmentOptions.Center);
             Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(1200, 40), new Vector2(0.5f, 0));
+            float k = Settings.TextScale;
+            if (k > 1f)
+            {
+                // Text size: the key hint grows on one line, as far as the screen is wide.
+                Ui.Place(hint.rectTransform, new Vector2(0.5f, 0), new Vector2(0, 30), new Vector2(((RectTransform)Ui.Canvas.transform).rect.width - 80f, 40 * k), new Vector2(0.5f, 0));
+                hint.enableAutoSizing = true;
+                hint.textWrappingMode = TextWrappingModes.NoWrap;
+                hint.fontSizeMin = 22;
+                hint.fontSizeMax = hint.fontSize = 22 * k;
+            }
             Layout(true);
             GameRoot.Instance?.SetBlocked("puzzle", true, true);
             group.alpha = 0;

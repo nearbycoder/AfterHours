@@ -73,8 +73,13 @@ namespace AfterHours
             Ui.Place(reset, new Vector2(0, 0), new Vector2(50, 40), new Vector2(200, 60), new Vector2(0, 0));
             var done = Widgets.Button(panel.rectTransform, "Done", Close, 220, 60, 28, true);
             Ui.Place(done, new Vector2(1, 0), new Vector2(-50, 40), new Vector2(220, 60), new Vector2(1, 0));
+            // Text size scales the whole panel, up to 60% of the screen's width so the office it's judged against stays in view.
+            panel.rectTransform.localScale = Vector3.one * ScaleFor(((RectTransform)Ui.Canvas.transform).rect.width, Settings.TextScale);
             MenuFocus.AttachAll(panel.gameObject);
         }
+
+        /// <summary>The panel's scale at a text size, on a canvas this many units wide (it's always 1080 tall).</summary>
+        public static float ScaleFor(float canvasW, float k) => Mathf.Max(1f, Mathf.Min(k, 0.6f * canvasW / 760f, 1000f / 440f));
 
         /// <summary>Set the value and move the slider to match (the Default button).</summary>
         void SetValue(float v)
