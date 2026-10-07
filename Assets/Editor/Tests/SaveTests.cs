@@ -124,5 +124,17 @@ namespace AfterHours.Tests
             Assert.AreEqual(fresh.SfxVolume, s.SfxVolume, 1e-4f, "fields missing from the file keep their defaults");
             Assert.AreEqual(fresh.HeadBob, s.HeadBob);
         }
+
+        [Test]
+        public void ClosingTheGameAsksOnlyWhenANightWouldBeLost()
+        {
+            // asks, confirmed, in a night, paused (title card, title backdrop), on the title
+            Assert.IsTrue(GameRoot.QuitLosesNight(true, false, true, false, false), "a night being played asks");
+            Assert.IsFalse(GameRoot.QuitLosesNight(true, true, true, false, false), "once confirmed it goes through");
+            Assert.IsFalse(GameRoot.QuitLosesNight(true, false, false, false, false), "the report, chat and ending don't ask (the night is saved)");
+            Assert.IsFalse(GameRoot.QuitLosesNight(true, false, true, true, false), "the night behind the title or its title card doesn't ask");
+            Assert.IsFalse(GameRoot.QuitLosesNight(true, false, true, false, true), "the title doesn't ask");
+            Assert.IsFalse(GameRoot.QuitLosesNight(false, false, true, false, false), "automated runs don't ask");
+        }
     }
 }

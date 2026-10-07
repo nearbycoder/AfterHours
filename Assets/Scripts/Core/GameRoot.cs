@@ -56,12 +56,26 @@ namespace AfterHours
         /// </summary>
         public static bool AutoPause = !Automated;
 
+        /// <summary>
+        /// Ask before the game closes in the middle of a night (the window's close button, Alt+F4):
+        /// a night is only saved when it ends. Off for automated runs; the AutoPilot turns it on to test it.
+        /// </summary>
+        public static bool QuitAsks = !Automated;
+        /// <summary>How the game quits once the player has said so (automation can watch it instead).</summary>
+        public static Action QuitNow = Application.Quit;
+        bool quitConfirmed;
+
+        /// <summary>Quitting would lose a night being played (not the title, a report, a chat or the ending).</summary>
+        public static bool QuitLosesNight(bool asks, bool confirmed, bool inNight, bool paused, bool onTitle) =>
+            asks && !confirmed && inNight && !paused && !onTitle;
+
         void Awake()
         {
             Layers.ApplyCollisionMatrix();
             QualitySettings.vSyncCount = 1;
             Application.targetFrameRate = -1;
             gameObject.AddComponent<GameInput>();
+            Application.wantsToQuit += WantsToQuit;
             PostFx.Create();
             AudioDirector.Create();
 
@@ -112,6 +126,28 @@ namespace AfterHours
                 ShiftHelper.Create(Director);
                 PlaytestLog.Create(Director).transform.SetParent(transform, false);
             }
+        }
+
+        void OnDestroy() => Application.wantsToQuit -= WantsToQuit;
+
+        /// <summary>Unity asks before quitting (a window close, Alt+F4, Application.Quit): hold it if a night would be lost.</summary>
+        public bool WantsToQuit()
+        {
+            if (!QuitLosesNight(QuitAsks, quitConfirmed, InNight, Director != null && Director.Paused, TitleScreen.Instance != null)) return true;
+            AskBeforeQuit();
+            return false;
+        }
+
+        /// <summary>The night pauses (the clipboard closes first) and the same kind of question as Quit to title asks.</summary>
+        void AskBeforeQuit()
+        {
+            PlaytestLog.Log("quit_asked");
+            if (blockers.Count == 1 && blockers.Contains("clipboard") && Clipboard.Instance) Clipboard.Instance.Close();
+            if (blockers.Count == 0 && !PauseMenu.IsOpen) PauseMenu.Show();
+            ChoiceMenu.Show("Quit the game?", "Tonight starts over from 10 PM next time. Earlier nights are saved.", new List<ChoiceMenu.Option>
+            {
+                new("Quit the game", null, () => { quitConfirmed = true; QuitNow(); }),
+            });
         }
 
         void OnEnable() => UnityEngine.InputSystem.InputSystem.onDeviceChange += OnDeviceChange;
@@ -171,6 +207,7 @@ namespace AfterHours
         /// <summary>Back to the title: the current night's office becomes the backdrop.</summary>
         public void ToTitle()
         {
+            quitConfirmed = false;
             if (InNight && !Director.Paused) PlaytestLog.Log("quit_to_title", ("open", PlaytestLog.OpenTasks()));
             var saved = StoryState.Load();
             if (saved != null) Story.State = saved;

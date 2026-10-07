@@ -228,6 +228,7 @@ namespace AfterHours
                 Check(!root.Blocked, "closing the pause menu hands control back");
                 yield return TextSizeChecks();
                 yield return ReadingTextChecks();
+                yield return CloseAskChecks();
             }
             if (n > 1 && PadChecks)
             {
@@ -2202,6 +2203,56 @@ namespace AfterHours
             TitleScreen.Instance?.Begin(1);
             yield return WaitUnblocked(40f);
             Check(dir.Running && dir.Def.Number == 1 && dir.Elapsed < 10f, $"Continue starts Night 1 again from the beginning ({dir.Elapsed:F1}s in)");
+        }
+
+        // ---- closing the game mid-night (round 7) --------------------------------------------------
+
+        /// <summary>
+        /// A quit request mid-night (Application.Quit goes through the same request as a window
+        /// close) is held: the clipboard closes, the night pauses and a question asks; Esc leaves
+        /// it paused; confirming quits. On the title nothing is held.
+        /// </summary>
+        IEnumerator CloseAskChecks()
+        {
+            var dir = root.Director;
+            bool padWas = GameInput.UsingPad;
+            var vkb = InputSystem.AddDevice<Keyboard>("AutoPilotQuitKeyboard");
+            int quits = 0;
+            var realQuit = GameRoot.QuitNow;
+            GameRoot.QuitNow = () => quits++;
+            GameRoot.QuitAsks = true;
+            Clipboard.Instance.Show();
+            yield return Wait(0.5f);
+            Application.Quit(); // held: the run goes on
+            yield return Wait(0.6f);
+            float elapsed = dir.Elapsed;
+            Check(ChoiceMenu.IsOpen && PauseMenu.IsOpen && !Clipboard.Instance.Open && dir.Running && dir.Def.Number == 1 && Time.timeScale == 0f,
+                "closing the game mid-night asks first: the clipboard closes and the night pauses behind the question");
+            yield return Shot("quit_game_confirm");
+            vkb.MakeCurrent();
+            InputSystem.QueueStateEvent(vkb, new KeyboardState(UnityEngine.InputSystem.Key.Escape));
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(vkb, new KeyboardState());
+            yield return Wait(0.5f);
+            Check(!ChoiceMenu.IsOpen && PauseMenu.IsOpen && dir.Running && Mathf.Abs(dir.Elapsed - elapsed) < 0.05f && quits == 0,
+                $"Esc on the question leaves the night paused where it was ({dir.Elapsed:F1}s in) and the game running");
+            Application.Quit();
+            yield return Wait(0.6f);
+            Check(ChoiceMenu.IsOpen && PauseMenu.IsOpen, "asked again over the pause menu");
+            ChoiceMenu.AutoPick = 0; // "Quit the game"
+            yield return Wait(0.5f);
+            Check(quits == 1 && root.WantsToQuit(), $"confirming quits ({quits} quit), and the request then goes through");
+            PauseMenu.Instance?.Close();
+            root.ToTitle();
+            yield return Wait(1.5f);
+            Check(TitleScreen.Instance != null && root.WantsToQuit() && !ChoiceMenu.IsOpen, "on the title a quit request isn't held");
+            GameRoot.QuitAsks = false;
+            GameRoot.QuitNow = realQuit;
+            InputSystem.RemoveDevice(vkb);
+            GameInput.UsingPad = padWas;
+            TitleScreen.Instance?.Begin(1);
+            yield return WaitUnblocked(40f);
+            Check(dir.Running && dir.Def.Number == 1 && !root.Blocked, "Continue starts Night 1 again");
         }
 
         // ---- brightness (night 1, from the pause menu) ---------------------------------------------

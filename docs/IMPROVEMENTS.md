@@ -905,7 +905,7 @@ Night 3 title visit and after the ending, every route; screenshots.
 
 Closing the game while a night is being played (window close, Alt+F4, anything that asks the
 game to quit) opens the pause menu with the same kind of question Quit to title asks: "Quit the
-game? Tonight starts over from 10 PM when you come back. Earlier nights are saved." Quit closes
+game? Tonight starts over from 10 PM next time. Earlier nights are saved." Quit closes
 the game; Never mind (or pad B, Esc) leaves you paused in the night. It doesn't ask on the
 title, Night Select, the shift report, the morning chat or the ending, where nothing is lost.
 Automated runs don't ask, except while the AutoPilot is testing it.

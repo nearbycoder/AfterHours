@@ -202,8 +202,8 @@ screen and in Night Select, unnamed until you reach them), survive replays and N
 
 Menus: title (Continue, New Game, Night Select, Case file once you've read something, Settings,
 Quit), pause (Resume, Shift sheet,
-Settings, Restart this night, Quit to title; both of the last two ask first; and a card listing
-the controls as you have them bound) and settings in two
+Settings, Restart this night, Quit to title; both of the last two ask first, and so does closing
+the game in the middle of a night; and a card listing the controls as you have them bound) and settings in two
 columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
 four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
 render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
@@ -320,7 +320,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   pad's trigger on a dirty desk and checks it keeps getting cleaner with the button up, stops on
   the next tap and on opening the clipboard, and that a throw charges on one tap and flies on the
   next. From the pause menu it opens the brightness page and moves it with the pad and the arrow
-  keys, backs out of Quit to title and then confirms it (Continue starts the night again), and
+  keys, backs out of Quit to title and then confirms it (Continue starts the night again), asks the
+  game to quit with the clipboard open (it must close, pause the night and ask; Esc keeps playing;
+  on the title the request goes through), and
   checks the HUD at each text size stays on screen. It opens every document at Normal and Largest
   and checks the text stays on the paper and the paper on screen, and checks choices at Largest.
   The pause menu's controls card is checked against the bindings, after a rebind and with a
