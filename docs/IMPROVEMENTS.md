@@ -1218,6 +1218,62 @@ clipboard" doesn't appear if the game is already paused, as the clipboard has do
 **Acceptance:** a caption showing when the pause menu opens is gone. **Verify:** AutoPilot on
 Night 1, every route.
 
+## Round 9 results (7 October 2026)
+
+Five items shipped on `improvements-9` (R9-0 to R9-3 and R9-5), one commit each after the scope
+commit, plus a fix the final audit run found and this update; R9-4 needed no change. The
+baseline `audit` run on `main` passed 493 checks with 0 failed, already in the private KWin.
+Screenshots are in [`docs/media/improvements/round9/`](media/improvements/round9/). Final build:
+**all five routes pass, 0 failed, no crashes** (audit 520 checks, loose 516, cleanbooks 516,
+spotless 491, marian 509; round 8 ended at 493, 489, 489, 464 and 482), every one in the
+private KWin. EditMode tests 77/77 (71 before). The real save and settings files under
+`~/.config/unity3d` were checksummed before and after: `save.json`, `prefs` and the night snapshots are unchanged; only `TestResults.xml`, which Unity's test runner writes there itself, changed (no AutoPilot run wrote there at all this round). Every run's clean-up log
+shows one process of its own stopped (its private D-Bus daemon), and nothing was left running. Load average from other sessions was about
+11–35 during the item runs (with a spike to 59 while building) and 14–28 during the final routes.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R9-0 | The AutoPilot plays in a private KWin | Done | Every AutoPilot run this round (the baseline, the item runs, three screen sizes and the five final routes) ran through `Tools/wmtest.sh run` on a 1920×1080 virtual screen: nothing appeared on the desktop, each run's saves and settings were written under its own `wm/config/`, and its clean-up stopped only its private bus. The baseline passed exactly as round 8's final run did (493). |
+| R9-1 | Hands full: doors, switches and chairs | Done | AutoPilot on Night 1, every route, with E pressed on a virtual keyboard while holding the coffee cup: the reception switch is found and highlighted and the prompt reads "Throw (hold) · E Lights off · Q Drop"; E turns the lights off and on again; E opens the closet door, and aimed at the swung door closes it; E tucks in Dana's chair; the cup is held after each. Aimed at the ceiling the prompt offers only the throw and Q; at the floor, Place. The throw that follows still lands. Screenshots. |
+| R9-2 | Running slowly: offer a lower setting | Done | 6 EditMode tests (only after the warm-up and a whole window; 30 fps from VSync, a hitch a second and long stalls don't count; the window rolls on; the rate named is the recent one; the steps; when it's worth watching). AutoPilot on Night 2, every route: at full speed (76–151 fps at loads of 12–16 in the final routes) nothing in 23 s; held to 20 fps by `Application.targetFrameRate` it asks within 10–11 s (the window was already full of fast frames), naming 20 fps (the check's message prints the window's median as 0 ms because the window is cleared when the offer opens); Lower changes the preset to Medium and the settings file; still slow, it offers Low 20 s later; Keep is saved and nothing more is offered in 23 s; the playtest log has both offers and both choices. Screenshot. **Not verified:** slow real hardware. |
+| R9-3 | Camera motion off means a still camera | Done | AutoPilot on Night 1, every route: with Camera motion off a full-strength kick (a charged throw's) and a −4° punch (the whiteboard's reveal) move the camera by 0.00° and 0.00°; on, by about 1.1° and 2.5°. The row reads Camera motion at every text size (screenshot at Largest on 1280×800). |
+| R9-4 | Steam Deck and ultrawide screens | Done (no change needed) | AutoPilot through Night 3 at 1280×800, 2560×1080 and 3840×1080: 349 checks each, 0 failed, including the HUD at each text size, all 38 documents at Normal and Largest (32 at the full 1.5×), choices, the pause menu and its card, Settings and both controls pages at Largest (22, 16 and 11 rows), the title with 5 and 6 buttons, the title's Case file, Night Select, the clipboard's three pages and the report and chat at Largest. Screenshots. **Not verified:** a real Steam Deck (its pad, its 7-inch screen at arm's length, its GPU). |
+| R9-5 | No caption under the pause menu | Done | AutoPilot on Night 1, every route: a caption showing when the pause menu opens is gone. |
+
+Found by the final runs: the first final `audit` run failed one check. The offer said "about 25
+frames a second" while the game ran at 20, because the rate it named was the median of the
+whole 12-second window, which (right after the check's full-speed phase) still held fast frames.
+It now names the rate over the last 3 seconds; the median still decides when to ask. The five
+routes were then run again on the rebuilt game.
+
+Tried and dropped: a test that the game survives the screen going to sleep or a monitor being
+unplugged (the README's Wayland crash after a monitor powered off). `kscreen-doctor`, run so it
+could only reach the private KWin (a runtime folder holding just that socket, the in-process
+backend, the private bus), asked for DPMS off and for one of two virtual screens to be turned
+off; the virtual backend reported both screens still on and enabled afterwards, so the game
+was never actually put through either. The game kept running and drawing through the attempt,
+but that says nothing. It needs a real monitor.
+
+Known limits:
+
+- The slow-frame threshold (36 ms, about 28 fps) and its timings are a judgement, tested by
+  holding the frame rate down on a fast machine. The playtest log records every offer, so the
+  first testers' logs will show whether it asks too often or not enough.
+- Doors, switches and chairs are the things that work with your hands full; monitors, trays,
+  shredders, readable things and the punch clock still want them empty (they open a screen or
+  a choice). A chair under the reticle now takes E rather than having the held thing placed on
+  its seat.
+- The trailer recorder turns head bob off for steady shots, which now also turns off the kicks;
+  the trailer wasn't re-cut, so the published one is unchanged.
+- The AutoPilot's windows are now in a private KWin, which is always focused and never hidden;
+  the desktop case (focus lost to other windows, a throttled hidden window) is still covered by
+  `AH_DESKTOP=1` and the focus-independent input from round 3, but wasn't run this round.
+
+Deferred: saving mid-night (each night's scripted events keep their state in local variables,
+so it means rewriting all seven nights' scripts), hints for missed secrets and an off switch for
+the close question (the owner's calls), a real-monitor sleep test, and still WebGL, Windows and
+the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -1252,6 +1308,13 @@ published; no web build; licence, releases, tags and signing left to the owner. 
    (in a private KWin, Wayland and X11). Some players find a question on Alt+F4 irritating;
    whether to keep it, add a setting, or let a second close while the question is up quit
    straight away, is a design call. One Alt+F4 on a real desktop would still be worth doing.
-10. **A real monitor's frame rate with VSync on** (new): in a private compositor VSync held
+10. **A real monitor's frame rate with VSync on**: in a private compositor VSync held
    60 fps at low load; on the development desktop it was only ever measured in a hidden window.
    A minute with the game in front, VSync on, on a real monitor (or a 120/144 Hz one) settles it.
+11. **A Steam Deck** (new): the game is Linux-only and every layout check passes at 1280×800,
+   but nobody has played it on a Deck: whether its GPU holds a steady frame rate on High (or the
+   new offer of a lower setting kicks in), how Largest reads on its 7-inch screen, and whether
+   Steam Input's pad behaves like the virtual one. Ten minutes on a Deck would settle it.
+12. **A monitor going to sleep** (new): the README records one crash inside Unity's Wayland code
+   when a monitor powered off under KDE. It can't be reproduced in a private KWin (its virtual
+   screens ignore DPMS), so it needs someone to let the screen sleep with the game paused.

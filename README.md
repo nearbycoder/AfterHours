@@ -68,7 +68,7 @@ chat reacts, the next night has changed, and on the seventh night you decide wha
 | <kbd>C</kbd> or <kbd>Ctrl</kbd> | left stick click | crouch (reach under desks) |
 | left mouse (hold) | right trigger | clean with the current tool; with something in hand, hold to charge a throw (can be set to toggle) |
 | right mouse | left trigger | spray (squeegee and cloth) |
-| <kbd>E</kbd> | A | interact: pick up, put back, tuck a chair, light switch, door, monitor, inbox tray, read |
+| <kbd>E</kbd> | A | interact: pick up, put back, tuck a chair, light switch, door, monitor, inbox tray, read (doors, switches and chairs work with your hands full) |
 | <kbd>Q</kbd> | B | drop what you're holding |
 | <kbd>F</kbd> | d-pad up | UV torch (from Night 2) |
 | <kbd>Tab</kbd> | Select / View | clipboard: tonight's tasks, secrets, leads and what's in your pocket; <kbd>A</kbd>/<kbd>D</kbd> (d-pad ◀ ▶) turns to the case file (what you've read, and each morning's chat) |
@@ -132,7 +132,9 @@ and the next morning's chat.
   gets a soft warm outline, so small things in dark rooms read as usable. It can be turned off
   in Settings.
 - **Putting things back.** Moved objects have home spots: a ghost shows where something belongs and
-  it snaps into place. Chairs tuck in, monitors switch off, lights go out when you leave.
+  it snaps into place. Chairs tuck in, monitors switch off, lights go out when you leave. Doors,
+  light switches and chairs work with your hands full, so a can doesn't have to be put down to
+  reach a switch in the dark.
 - **Never stuck on the last can.** The shift sheet says which rooms still have work on each task.
   After a minute with no progress, whatever's left glints and the nearest few chime, so you can
   find them by ear. Anything thrown out of reach (on top of something tall, wedged out of sight or
@@ -206,12 +208,13 @@ Menus: title (Continue, New Game, Night Select, Case file once you've read somet
 Quit), pause (Resume, Shift sheet,
 Settings, Restart this night, Quit to title; both of the last two ask first, and so does closing
 the game in the middle of a night; and a card listing the controls as you have them bound) and settings in two
-columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, head bob,
+columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, camera motion (head bob, and the kick of a throw or a reveal),
 four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
 render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
 whatever you're aiming at, text size (Normal, Large, Largest), and pages for keyboard and
 mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
-spray. Progress
+spray. If a night runs slowly (under about 28 frames a second), the game offers the next lower
+graphics setting once; Keep means it won't ask again. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
 
@@ -281,6 +284,7 @@ Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml
 Tools/unity.sh                  # open the project in the editor
 Tools/play.sh                   # run the build windowed at 1600x900
 Tools/wmtest.sh [out] title|night|window|perf [wayland|x11]   # against a private KWin (below)
+Tools/wmtest.sh out run wayland -- <player args>              # any run, in a private KWin
 ```
 
 `Tools/unity.sh` expects the editor at `~/Unity/Hub/Editor/6000.6.2f1/` (override with `UNITY=`).
@@ -307,10 +311,13 @@ Tools/.venv/bin/python Tools/audio/build_music.py
 
 **Testing.**
 
-- `Tools/autopilot.sh [outdir] [nightN|all] [route]` runs the built game with no human: it starts at
+- `Tools/autopilot.sh [outdir] [nightN|all] [route]` runs the built game with no human, in a
+  private KWin on a virtual screen (below), so no window appears on the desktop and its saves
+  stay in the run's folder (`AH_DESKTOP=1` runs it on the desktop instead): it starts at
   the title and plays all seven nights through the real components (brush maths on every dirty
   surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up (holding the cup, the label under the reticle
-  must name its bin, say so when aimed at a recycling bin, and show ✓ on the black one), a charged throw
+  must name its bin, say so when aimed at a recycling bin, and show ✓ on the black one; still
+  holding it, E on a virtual keyboard must use a light switch, a door and a chair), a charged throw
   (aimed once for where the hands hold the cup, which must settle there before it's released)
   and the vacuum, a virtual gamepad for the menus), then checks the chosen route reaches its
   ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`. It also checks every
@@ -320,7 +327,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   the unfinished things glint. It also checks the aim highlight goes on and off with the reticle
   and the setting, and rebinds Interact to F through the real controls page by pressing F on a
   virtual keyboard, then checks F uses a light switch and E no longer does, and does the same for
-  the pad (Interact on X, then □ on a DualShock). With a virtual pad it steps through the tools on
+  the pad (Interact on X, then □ on a DualShock). It checks that with Camera motion off a throw's
+  kick and a reveal's punch leave the camera still, and that a caption doesn't stay under the
+  pause menu. With a virtual pad it steps through the tools on
   the d-pad, and with a virtual DualShock 4 it checks the prompts switch to ✕. It taps crouch and
   brisk walk in toggle and hold mode, and with clean on toggle it taps a virtual mouse and the
   pad's trigger on a dirty desk and checks it keeps getting cleaner with the button up, stops on
@@ -343,7 +352,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   with the pad and the keyboard and checks nothing in the story changed, reads Tuesday
   morning's chat again (the same messages as that morning, from the first; scrolled at Largest), turns the clipboard's
   three pages at Large and Largest and scrolls the long shift sheet, and checks the pause on
-  focus loss (through the game's focus handler) and on unplugging the pad in use. On Night 3 it
+  focus loss (through the game's focus handler) and on unplugging the pad in use, then holds the
+  frame rate to 20 and checks the game offers a lower setting, lowers it, offers the next step and
+  stops asking after Keep (and offers nothing at full speed). On Night 3 it
   goes to the title and opens the Case file (the save's list, the clipboard's less that night's
   reads), reads a document and a morning again over it with the pad and the keyboard, checks the
   save file's bytes didn't change, walks it at Largest, and checks Night Select asks before an earlier night (backing out keeps the
@@ -361,7 +372,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   file's reading list and morning chats (including saves from before they existed, whose chats
   come from the night snapshots) and the title's list for a saved or finished story (the ending
   first), the grading and its hints, the bin label for every kind of rubbish against both bins,
-  the window opened on leaving fullscreen, the brightness curve, the HUD text sizes and how far
+  the window opened on leaving fullscreen, when slow frames call for a lower setting and which,
+  the brightness curve, the HUD text sizes and how far
   documents grow, and that settings files from earlier versions load.
 - `Tools/wmtest.sh` runs the built game against a real window manager without touching the
   desktop: a private KWin on a virtual screen, with its own D-Bus session and config folders
@@ -369,7 +381,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   bar's close button does (on the title it must exit; mid-night it must ask, Never mind must
   keep the night paused where it was, and Quit the game must end it); `window` switches
   Fullscreen off and on and has KWin report where the window is (it must fit on the screen);
-  `perf` runs the perf probe in a window the compositor is showing. Each runs on native Wayland
+  `perf` runs the perf probe in a window the compositor is showing; `run` starts the player with
+  any arguments and waits for it to finish (the AutoPilot uses it). Each runs on native Wayland
   or, with `x11`, on the private KWin's Xwayland.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
   then on for the run, and afterwards checks the log: every line is JSON, a night end for each
@@ -428,7 +441,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with 464–493 checks per route.
+  along five story routes, with 491–520 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -468,7 +481,9 @@ at the larger sizes, the morning chats in the case file, and a question before N
 takes a story in progress back to an earlier night; round 7: the case file from the title, and a
 question before the game closes in the middle of a night; round 8: closing the window tested
 against a real window manager, a windowed mode that fits on the screen, a label saying which
-bin rubbish goes in, and the ending in the title's case file) are listed in
+bin rubbish goes in, and the ending in the title's case file; round 9: doors, switches and chairs
+with your hands full, an offer of lower graphics when a night runs slowly, a still camera with
+Camera motion off, and checks on Steam Deck and ultrawide screens) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -493,7 +508,8 @@ still rough or untested:
 - **Brightness and text size were set by numbers on one screen.** The brightness slider's range
   (from about 86% of a dark view near-black to about 12%) was chosen by measuring screenshots,
   not by eye on different monitors or TVs. Text size was checked by measuring where text lands
-  (on the paper, on screen, at 1.25× or 1.5×) at three window sizes, not by people reading it at a
+  (on the paper, on screen, at 1.25× or 1.5×) at three window sizes (since round 9 also at the
+  Steam Deck's 1280×800 and at 21:9 and 32:9, though not on a Deck), not by people reading it at a
   distance. Since round 6 the menus follow it too, checked the same way; nobody has used the
   scrolling Settings list at Largest with a real pad or mouse.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
@@ -506,7 +522,9 @@ still rough or untested:
   screen, `Tools/wmtest.sh perf`), VSync held 60 fps (16.8 ms median, against 5.3 ms uncapped)
   with the machine's load at about 9; at a load of about 22, when an uncapped frame took 14 ms,
   it dropped to every second refresh (35 fps). A real monitor at its own refresh rate still
-  hasn't been measured.
+  hasn't been measured. Since round 9 a night that runs under about 28 fps offers the next lower
+  setting once; that was tested by holding the frame rate down on this machine, not on slow
+  hardware, and the threshold is a guess until playtest logs (which record the offer) say more.
 - **Wayland.** On the development machine the player hung at start-up under XWayland, so
   `Tools/play.sh` and the packaged `AfterHours.sh` launcher pass `-force-wayland`. A monitor
   powering off or reconnecting under KDE once crashed the player inside Unity's Wayland code, and
@@ -515,7 +533,8 @@ still rough or untested:
   window manager closing the window (KWin, the way the title bar's close button does) on native
   Wayland and on X11 (Xwayland), but in a private KWin on a virtual screen rather than on a
   desktop someone is using; Alt+F4 on a real desktop goes through the same request. In that
-  private KWin the player also started fine on Xwayland.
+  private KWin the player also started fine on Xwayland. A monitor going to sleep or being
+  unplugged couldn't be tested there: its virtual screens ignore both.
 - **The art is stylised and procedural.** Every model is generated in Blender from code: chunky,
   bevelled and flat-shaded. It's consistent, but it isn't hand-modelled or textured to a
   commercial standard.
