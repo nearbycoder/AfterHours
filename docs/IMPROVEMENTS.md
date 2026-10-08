@@ -1405,6 +1405,76 @@ so it means rewriting all seven nights' scripts), hints for missed secrets and a
 the close question (the owner's calls), a real-monitor sleep test, and still WebGL, Windows and
 the art.
 
+## Round 11 scope (8 October 2026)
+
+Round 10 is merged. The ranked list is still used up apart from what's blocked or the owner's
+call, so this round again reads the code as a player would, this time looking at what the
+accessibility settings promise and whether the game keeps it:
+
+- **Night 7's storm ignores Reduce flashing.** Every 35–70 s a thunderclap switches every lit
+  room's lights off and on again within 0.08–0.3 s (`NightDefsLater`, `SetLights(false, true)`,
+  which skips the tube-start code that Reduce flashing softens). The screen's own flicker is
+  already off with the setting, but the lights going black and back is exactly a flash. It also
+  flips the rooms' `LightsOn` for that moment, which the lights task and switches read.
+- **The thunder has no caption.** Every other story sound does ("[The elevator dings…]"); a
+  player who can't hear it sees the lights stutter for no reason.
+- **Captions off was never checked for the glint's caption** (round 10's open item).
+- **No mono audio.** The glint's chimes are there to be found by ear, and the office's sounds
+  are placed in 3D. A player who hears with one ear, or plays with one earbud, loses whatever is
+  panned to the other side. Mono audio is a standard setting and isn't here.
+- **The glint's caption names rooms but not which way.** Round 10 recorded the limit: "[Chimes
+  from reception]" while the player stands in the bullpen facing away from it. A player who
+  can't hear where a chime is (or has mono on) has only the room name.
+
+Not chosen: saving mid-night (each night's scripted events keep their state in local variables;
+rewriting all seven nights' scripts is a round of its own), hints for missed secrets and an off
+switch for the close question (the owner's calls), and everything left with the owner.
+
+### R11-1. The storm respects Reduce flashing
+
+The storm's stutter goes through the room's lights as a short dip instead of switching them off
+and on, so the rooms stay lit as far as tasks, switches and the clipboard are concerned. With
+Reduce flashing off it looks as before (black for 0.08–0.3 s). With it on, the lights dim
+smoothly to about half and come back, with no black frame.
+
+**Acceptance:** on Night 7, a forced thunderclap with Reduce flashing off takes the lit room's
+lights to 0 and back; with it on, the lights never go below 0.45 of full and never change faster
+than 2.5 (of full) a second; in both, the room's `LightsOn` stays true throughout. The frame's
+mean brightness is measured from screen captures before and at the darkest point, with and
+without the setting. **Verify:** AutoPilot on Night 7, every route (per-frame light levels, two
+captures each way); screenshots.
+
+### R11-2. Thunder gets a caption; Captions off is checked
+
+Each thunderclap shows "[Thunder]", or "[Thunder. The lights stutter.]" when a room is lit.
+
+**Acceptance:** with Captions on, the thunder's caption shows; with Captions off, neither it nor
+the glint's caption shows (the glint still fires and still works out where it is).
+**Verify:** AutoPilot on Night 7 (thunder) and Night 1 (glint with Captions off), every route.
+
+### R11-3. Mono audio
+
+Settings → Sound gets **Mono audio** (off by default). On, the game's final mix is folded to
+one channel and played on both sides, so nothing is lost to a missing ear. Settings files from
+before load with it off. The playtest log records it with the other settings.
+
+**Acceptance:** with a sound placed to the player's right, the mix going into the downmix has a
+clear left–right difference, and with Mono on the output's left and right are identical; with
+Mono off, the output keeps the difference. **Verify:** EditMode tests for the downmix and an old
+settings file; AutoPilot on Night 1, every route (measured on the audio thread at the listener);
+the Settings layout checks at each text size. **Not verified:** listening on headphones.
+
+### R11-4. The glint's caption says which way
+
+The caption gives the direction from where the player is facing: "[A chime behind you, in
+reception]", "[Chimes ahead in the bullpen, and to your left in reception]". Ahead, to your
+left, to your right or behind you, for the nearest chime in each room.
+
+**Acceptance:** on Night 1's idle check the caption names each room with the direction of its
+nearest chime as the AutoPilot works it out from the player's facing; turned to face the nearest
+chime it says "ahead", turned away "behind you". **Verify:** EditMode tests for the wording and
+the four directions; AutoPilot on Night 1, every route; screenshot.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
