@@ -226,7 +226,7 @@ namespace AfterHours
         }
 
         TextMeshProUGUI controls;
-        RectTransform controlsCard;
+        RectTransform controlsCard, caps;
         float controlsRefresh;
 
         /// <summary>The right half: what each control does, with the keys or pad buttons in use now.</summary>
@@ -281,28 +281,88 @@ namespace AfterHours
             controlsCard.localScale = Vector3.one * kc;
         }
 
-        /// <summary>The card's rows: the key or button as a cap, then what it does.</summary>
-        public static string ControlsText()
+        /// <summary>The card's rows: the keys or buttons (a "·" between alternatives), then what it does.</summary>
+        public static List<(string[] keys, string what)> ControlsRows()
         {
             var s = Settings.Current;
             bool pad = GameInput.UsingPad;
-            static string Cap(string g) => $"<mark=#FFFFFF2E padding=\"10,10,5,5\"><b>{g}</b></mark>";
             string Key(Act a) => GameInput.ActGlyph(a);
             string Hold(bool toggle) => toggle ? "toggle" : "hold";
-            var rows = new List<(string key, string what)>
+            var rows = new List<(string[] keys, string what)>
             {
-                (pad ? $"{GameInput.PadGlyph("L-STICK")}  {GameInput.PadGlyph("R-STICK")}" : $"{Key(Act.Forward)} {Key(Act.Left)} {Key(Act.Back)} {Key(Act.Right)}  ·  Mouse", "Move and look"),
-                (Key(Act.Sprint), $"Brisk walk ({Hold(s.ToggleSprint)})"),
-                (Key(Act.Crouch), $"Crouch ({Hold(s.ToggleCrouch)}): under desks"),
-                (Key(Act.Use), $"Clean ({Hold(s.ToggleUse)}); throw when holding"),
-                (Key(Act.Spray), "Spray: foam glass, then wipe"),
-                (Key(Act.Interact), "Use, pick up, put back, read"),
-                (Key(Act.Drop), "Drop what you're holding"),
+                (pad ? new[] { GameInput.PadGlyph("L-STICK"), GameInput.PadGlyph("R-STICK") } : new[] { Key(Act.Forward), Key(Act.Left), Key(Act.Back), Key(Act.Right), "·", "Mouse" }, "Move and look"),
+                (new[] { Key(Act.Sprint) }, $"Brisk walk ({Hold(s.ToggleSprint)})"),
+                (new[] { Key(Act.Crouch) }, $"Crouch ({Hold(s.ToggleCrouch)}): under desks"),
+                (new[] { Key(Act.Use) }, $"Clean ({Hold(s.ToggleUse)}); throw when holding"),
+                (new[] { Key(Act.Spray) }, "Spray: foam glass, then wipe"),
+                (new[] { Key(Act.Interact) }, "Use, pick up, put back, read"),
+                (new[] { Key(Act.Drop) }, "Drop what you're holding"),
             };
-            if (Story.State.Has("has_uv_torch")) rows.Add((Key(Act.Torch), "UV torch: missed spots glow"));
-            rows.Add((Key(Act.Clipboard), "Clipboard: tasks, case file"));
-            rows.Add((pad ? "◀ ▶" : "1–4  ·  Wheel", "Pick a tool (or automatic)"));
-            return string.Join("\n", rows.Select(r => $"{Cap(r.key)}<indent=40%>{r.what}</indent>"));
+            if (Story.State.Has("has_uv_torch")) rows.Add((new[] { Key(Act.Torch) }, "UV torch: missed spots glow"));
+            rows.Add((new[] { Key(Act.Clipboard) }, "Clipboard: tasks, case file"));
+            rows.Add((pad ? new[] { "◀", "▶" } : new[] { "1–4", "·", "Wheel" }, "Pick a tool (or automatic)"));
+            return rows;
+        }
+
+        /// <summary>
+        /// The card's text: each row's keys (in &lt;b&gt;, kept as layout and for the checks but not
+        /// drawn; <see cref="LayCaps"/> draws them as caps), then what it does.
+        /// </summary>
+        public static string ControlsText() =>
+            string.Join("\n", ControlsRows().Select(r => $"<color=#00000000><b>{string.Join(" ", r.keys)}</b></color><indent=40%>{r.what}</indent>"));
+
+        /// <summary>
+        /// Draw each row's keys as caps (like the HUD's prompts; pad face buttons round and in their
+        /// colours) where the row's hidden key text sits, a "·" between alternatives.
+        /// </summary>
+        void LayCaps()
+        {
+            if (caps) Destroy(caps.gameObject);
+            caps = Ui.Rect(controls.rectTransform, "Caps");
+            caps.anchorMin = caps.anchorMax = new Vector2(0, 1);
+            caps.pivot = new Vector2(0, 1);
+            caps.anchoredPosition = Vector2.zero;
+            caps.sizeDelta = controls.rectTransform.sizeDelta;
+            controls.ForceMeshUpdate();
+            var info = controls.textInfo;
+            var rows = ControlsRows();
+            bool pad = GameInput.UsingPad;
+            int row = 0, firstChar = 0;
+            for (int c = 0; c <= info.characterCount && row < rows.Count; c++)
+            {
+                if (c < info.characterCount && info.characterInfo[c].character != '\n') continue;
+                // Row `row` runs from firstChar to c: its first line's middle is where its caps go.
+                var line = info.lineInfo[info.characterInfo[Mathf.Min(firstChar, info.characterCount - 1)].lineNumber];
+                float y = (line.ascender + line.descender) * 0.5f; // in the label's local space, its pivot top-left
+                // Each row's caps in a strip, shrunk if they'd reach the words (the indent is 40% of the label).
+                var strip = Ui.Rect(caps, "CapRow_" + row);
+                strip.anchorMin = strip.anchorMax = new Vector2(0, 1);
+                strip.pivot = new Vector2(0, 0.5f);
+                strip.anchoredPosition = new Vector2(0, y);
+                float x = 0f;
+                int k = 0;
+                foreach (var key in rows[row].keys)
+                {
+                    if (key == "·")
+                    {
+                        var dot = Ui.Label(strip, "·", UiFont.SansBold, 24, Ui.TextDim, TextAlignmentOptions.Center, "Sep");
+                        Ui.Place(dot.rectTransform, new Vector2(0, 0.5f), new Vector2(x, 0), new Vector2(14, 30), new Vector2(0, 0.5f));
+                        x += 18f;
+                        continue;
+                    }
+                    var cap = Ui.KeyCap(strip, key, 30f, keyboard: !pad, pad: pad);
+                    cap.name = $"Cap_{row}_{k++}";
+                    cap.anchorMin = cap.anchorMax = new Vector2(0, 0.5f);
+                    cap.pivot = new Vector2(0, 0.5f);
+                    cap.anchoredPosition = new Vector2(x, 0);
+                    x += cap.sizeDelta.x + 5f;
+                }
+                float room = controls.rectTransform.sizeDelta.x * 0.4f - 12f, used = x - 5f;
+                strip.sizeDelta = new Vector2(used, 30f);
+                if (used > room) strip.localScale = Vector3.one * (room / used);
+                row++;
+                firstChar = c + 1;
+            }
         }
 
         void RefreshControls()
@@ -315,6 +375,7 @@ namespace AfterHours
             float h = controls.GetPreferredValues(text, 630f, 0f).y;
             controls.rectTransform.sizeDelta = new Vector2(630f, h);
             controlsCard.sizeDelta = new Vector2(700f, 82f + h + 76f);
+            LayCaps();
             if (menu) Layout(); // the card's height decides how far it can grow
         }
 

@@ -2817,10 +2817,44 @@ namespace AfterHours
                 int a = line.IndexOf("<b>"), b = line.IndexOf("</b>");
                 return a >= 0 && b > a ? line.Substring(a + 3, b - a - 3) : null;
             }
+            // Round 12: the keys are drawn as caps over the row's hidden key text, one cap a key.
+            void CapsCheck(string device)
+            {
+                var caps = card.GetComponentsInChildren<RectTransform>().Where(t => t.name.StartsWith("Cap_")).ToList();
+                var rects = caps.Select(c => (c.name, r: ScreenRect(c))).ToList();
+                var cardRect = ScreenRect(card);
+                var listRect = ScreenRect(list.rectTransform);
+                float words = listRect.xMin + listRect.width * 0.4f; // where each row's words start (its indent)
+                var bad = new System.Collections.Generic.List<string>();
+                for (int i = 0; i < rects.Count; i++)
+                {
+                    if (!Inside(rects[i].r, cardRect)) bad.Add(rects[i].name + " off the card");
+                    if (rects[i].r.xMax > words) bad.Add($"{rects[i].name} reaches the words ({rects[i].r.xMax:F0} > {words:F0})");
+                    for (int j = i + 1; j < rects.Count; j++) if (rects[i].r.Overlaps(rects[j].r)) bad.Add($"{rects[i].name} touches {rects[j].name}");
+                }
+                var lines = list.text.Split('\n');
+                var wrong = new System.Collections.Generic.List<string>();
+                for (int row = 0; row < lines.Length; row++)
+                {
+                    int x = lines[row].IndexOf("<b>"), y = lines[row].IndexOf("</b>");
+                    // Keys are spaced in the text ("W A S D · Mouse"; a key's own name may have a space, "Mouse 4").
+                    string want = x >= 0 && y > x ? lines[row].Substring(x + 3, y - x - 3).Replace("· ", "") : "";
+                    string got = string.Join(" ", caps.Where(c => c.name.StartsWith($"Cap_{row}_")).OrderBy(c => c.anchoredPosition.x)
+                        .Select(c => c.GetComponentInChildren<TMPro.TextMeshProUGUI>()?.text));
+                    if (want != got) wrong.Add($"row {row}: {got} for {want}");
+                }
+                // Each row's caps sit on its own line, beside its words.
+                var rowY = Enumerable.Range(0, lines.Length).Select(r => caps.Where(c => c.name.StartsWith($"Cap_{r}_")).Select(c => ScreenRect(c).center.y).DefaultIfEmpty(float.NaN).First()).ToList();
+                bool ordered = rowY.Zip(rowY.Skip(1), (u, v) => float.IsNaN(u) || float.IsNaN(v) || u > v + 10f).All(o => o);
+                Check(caps.Count >= lines.Length && bad.Count == 0 && wrong.Count == 0 && ordered,
+                    $"with {device}, the controls card draws {caps.Count} keycaps for its {lines.Length} rows, matching the bindings, apart, in order, clear of the words and on the card{(bad.Count + wrong.Count > 0 ? " — " + string.Join("; ", bad.Concat(wrong).Take(4)) : "")}");
+            }
             bool wasPad = GameInput.UsingPad;
             GameInput.UsingPad = false;
             yield return Wait(0.4f);
             list.ForceMeshUpdate();
+            CapsCheck("the keyboard");
+            yield return Shot("pause_card_keyboard");
             var cr = ScreenRect(card);
             Check(Inside(cr, ScreenArea) && !cr.Overlaps(ScreenRect(menu)) && !list.isTextOverflowing && Inside(TextRect(list), cr),
                 $"the pause menu's controls card is on screen at {Screen.width}x{Screen.height}, clear of the menu, with its text inside");
@@ -2836,11 +2870,14 @@ namespace AfterHours
             GameInput.UsingPad = true;
             yield return Wait(0.4f);
             string padRow = Row("Use, pick up");
+            CapsCheck("a pad");
+            yield return Shot("pause_card_pad");
             var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotCardDS4");
             ds.MakeCurrent();
             GameInput.UsingPad = true;
             yield return Wait(0.4f);
             string psRow = Row("Use, pick up");
+            CapsCheck("a DualShock 4");
             Check(padRow == "A" && psRow == "✕" && Row("Pick a tool") == "◀ ▶", $"with a pad the card shows its buttons (interact {padRow}; on a DualShock {psRow})");
             yield return Shot("pause_card_playstation");
             InputSystem.RemoveDevice(ds);
