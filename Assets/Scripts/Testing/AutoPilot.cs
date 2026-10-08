@@ -100,6 +100,7 @@ namespace AfterHours
             bool padWas = GameInput.UsingPad; // the keyboard checks leave the keyboard as the last device touched
             if (PadChecks) yield return KeyboardTitleChecks();
             if (PadChecks) yield return MenuFadeTitleChecks();
+            if (PadChecks) yield return KeyFocusChecks();
             StoryState.DeleteAll();
             Story.State = new StoryState();
             if (PadChecks) Check(PlaytestLog.CurrentFile == null, $"with the playtest log off nothing is written (it was {(logWasOn ? "on" : "off")} in this profile's settings)");
@@ -263,6 +264,7 @@ namespace AfterHours
                 yield return Wait(0.4f);
                 yield return MenuFadeChecks("The pause menu", "Pause", PauseMenu.Show, () => PauseMenu.IsOpen);
                 yield return WaitUnblocked(3f);
+                yield return PauseKeyFocusChecks();
                 Hud.Instance.Caption("[A caption that's still up when the game is paused]", 4f);
                 yield return Wait(0.4f);
                 PauseMenu.Show();
@@ -843,6 +845,134 @@ namespace AfterHours
             yield return MenuFadeChecks("The controls page", "Controls", () => ControlsPanel.Show(), () => ControlsPanel.IsOpen);
             Check(TitleScreen.Instance != null && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen && !ControlsPanel.IsOpen,
                 "and the title is still up behind them, with all four closed");
+        }
+
+        /// <summary>A virtual mouse moved to the middle of <paramref name="target"/> (or by a nudge), as the Input System sees a real one.</summary>
+        IEnumerator MouseTo(Mouse mouse, RectTransform target, Vector2? nudge = null)
+        {
+            Vector2 from = mouse.position.ReadValue();
+            Vector2 to = target ? RectTransformUtility.WorldToScreenPoint(null, target.TransformPoint(target.rect.center)) : from + (nudge ?? new Vector2(40, 0));
+            for (int i = 1; i <= 4; i++)
+            {
+                var at = Vector2.Lerp(from, to, i / 4f);
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = at, delta = (to - from) / 4f });
+                yield return null;
+            }
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = to });
+            yield return Wait(0.4f);
+        }
+
+        static SelectGlow Glow(string name) => GameObject.Find(name)?.GetComponent<SelectGlow>();
+
+        /// <summary>
+        /// Round 12: the selection shows when the keyboard moves it, as it does for the pad; the
+        /// mouse moving hands the highlight to the pointer, which also lights Settings rows; buttons
+        /// dip when pressed.
+        /// </summary>
+        IEnumerator KeyFocusChecks()
+        {
+            var title = TitleScreen.Instance;
+            if (title == null) { Check(false, "the title is up for the focus checks"); yield break; }
+            bool padWas = GameInput.UsingPad;
+            var es = EventSystem.current;
+            var buttons = title.transform.Find("Menu").GetComponentsInChildren<HoverFx>().ToList();
+            var mouse = InputSystem.AddDevice<Mouse>("AutoPilotFocusMouse");
+            mouse.MakeCurrent();
+            yield return MouseTo(mouse, null, new Vector2(30, 30));
+            es.SetSelectedGameObject(null);
+            Check(!GameInput.ShowFocus, "after the mouse moves, menus don't show a keyboard or pad selection");
+            yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+            yield return Wait(0.2f);
+            string first = Selected;
+            Check(GameInput.KeyNav && first == buttons[0].name, $"an arrow key with nothing selected selects the title's first button ({first})");
+            yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+            yield return Wait(0.3f);
+            var lit = buttons.Where(b => b.Glow > 0.9f).Select(b => b.name).ToList();
+            var dark = buttons.Where(b => b.Glow < 0.1f).Count();
+            Check(lit.Count == 1 && lit[0] == Selected && dark == buttons.Count - 1, $"on the title, the button the arrow keys are on is lit and no other ({Selected}; lit {string.Join(", ", lit)})");
+            yield return Shot("title_keyboard_focus");
+            // The mouse takes over: the keyboard's highlight goes, the pointer's comes.
+            var quit = (RectTransform)title.transform.Find("Menu/Btn_Quit");
+            yield return MouseTo(mouse, quit);
+            yield return Wait(0.3f);
+            lit = buttons.Where(b => b.Glow > 0.9f).Select(b => b.name).ToList();
+            Check(!GameInput.KeyNav && lit.Count == 1 && lit[0] == "Btn_Quit", $"moving the mouse hands the highlight to the button under the pointer (lit {string.Join(", ", lit)})");
+            yield return MouseTo(mouse, null, new Vector2(5, 5) - mouse.position.ReadValue()); // the corner, clear of every row
+
+            // Settings, with the keys: its rows light as the arrows reach them.
+            SettingsPanel.Show();
+            yield return Wait(0.4f);
+            yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+            yield return Wait(0.2f);
+            string row1 = Selected;
+            yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+            yield return Wait(0.3f);
+            string row2 = Selected;
+            var glows = Ui.Canvas.transform.Find("Settings").GetComponentsInChildren<SelectGlow>().ToList();
+            var litRows = glows.Where(g => g.Lit).Select(g => g.name).ToList();
+            Check(row2 != row1 && litRows.Count == 1 && litRows[0] == row2, $"in Settings, the row the arrow keys are on is lit and no other ({row1} → {row2}; lit {string.Join(", ", litRows)})");
+            yield return Shot("settings_keyboard_focus");
+            // The fidelity slider with the arrow keys.
+            for (int i = 0; i < 16 && Selected != "Steps_Graphics fidelity"; i++) yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+            int q = Settings.Current.Quality;
+            yield return TitleKey(UnityEngine.InputSystem.Key.RightArrow);
+            int up = Settings.Current.Quality;
+            yield return TitleKey(UnityEngine.InputSystem.Key.LeftArrow);
+            Check(Selected == "Steps_Graphics fidelity" && up == Mathf.Min(q + 1, GraphicsQuality.Highest) && Settings.Current.Quality == q,
+                $"the arrow keys reach Graphics fidelity and move it a notch and back ({GraphicsQuality.Names[q]} → {GraphicsQuality.Names[up]} → {GraphicsQuality.Names[Settings.Current.Quality]})");
+            // The pointer over a row lights it, and the keyboard's row goes dark.
+            var invert = (RectTransform)GameObject.Find("Toggle_Invert look Y").transform;
+            yield return MouseTo(mouse, invert);
+            yield return Wait(0.3f);
+            litRows = glows.Where(g => g.Lit).Select(g => g.name).ToList();
+            Check(litRows.Count == 1 && litRows[0] == "Toggle_Invert look Y", $"the mouse pointer over a Settings row lights that row only (lit {string.Join(", ", litRows)})");
+            yield return Shot("settings_mouse_hover");
+            var slider = (RectTransform)GameObject.Find("Slider_Music").transform;
+            yield return MouseTo(mouse, slider, null);
+            yield return Wait(0.3f);
+            Check(Glow("Slider_Music")?.Lit == true, "and a slider row lights anywhere along it, not only on its track");
+            // A button pressed with Enter dips and comes back.
+            var bright = GameObject.Find("Btn_Brightness  ›");
+            var hb = bright ? bright.GetComponent<HoverFx>() : null;
+            yield return MouseTo(mouse, null, new Vector2(5, 5) - mouse.position.ReadValue());
+            es.SetSelectedGameObject(bright);
+            Vector3 home = bright ? bright.transform.localScale : Vector3.one;
+            titleKb.MakeCurrent();
+            InputSystem.QueueStateEvent(titleKb, new KeyboardState(UnityEngine.InputSystem.Key.Enter));
+            yield return null; yield return null; yield return null;
+            float dip = hb ? hb.Pressing : 0f, scale = bright ? bright.transform.localScale.x / Mathf.Max(1e-3f, home.x) : 1f;
+            InputSystem.QueueStateEvent(titleKb, new KeyboardState());
+            yield return Wait(0.6f);
+            Check(BrightnessPanel.IsOpen && dip > 0.6f && scale < 1f && hb.Pressing == 0f,
+                $"Enter on a button dips it (press {dip:F2}, scale {scale:F3} of its size) and it recovers (press {(hb ? hb.Pressing : -1f):F2} at 0.6 s)");
+            yield return TitleKey(UnityEngine.InputSystem.Key.Escape);
+            yield return TitleKey(UnityEngine.InputSystem.Key.Escape);
+            Check(!BrightnessPanel.IsOpen && !SettingsPanel.IsOpen, "Esc backs out of the brightness page and Settings");
+            InputSystem.RemoveDevice(mouse);
+            if (padWas && vpad != null) vpad.MakeCurrent();
+            GameInput.UsingPad = padWas;
+            GameInput.KeyNav = false;
+        }
+
+        /// <summary>Round 12: the pause menu shows the keyboard's selection too.</summary>
+        IEnumerator PauseKeyFocusChecks()
+        {
+            bool padWas = GameInput.UsingPad;
+            PauseMenu.Show();
+            yield return Wait(0.4f);
+            GameInput.UsingPad = GameInput.KeyNav = false;
+            EventSystem.current.SetSelectedGameObject(null);
+            yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+            yield return Wait(0.3f);
+            var buttons = Ui.Canvas.transform.Find("Pause/Menu").GetComponentsInChildren<HoverFx>().ToList();
+            var lit = buttons.Where(b => b.Glow > 0.9f).Select(b => b.name).ToList();
+            Check(lit.Count == 1 && lit[0] == Selected && Selected == "Btn_Resume", $"in the pause menu, an arrow key selects Resume and lights it ({Selected}; lit {string.Join(", ", lit)})");
+            yield return Shot("pause_keyboard_focus");
+            yield return TitleKey(UnityEngine.InputSystem.Key.Escape);
+            yield return WaitUnblocked(3f);
+            if (padWas && vpad != null) vpad.MakeCurrent();
+            GameInput.UsingPad = padWas;
+            GameInput.KeyNav = false;
         }
 
         Keyboard titleKb;

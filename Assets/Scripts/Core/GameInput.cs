@@ -105,6 +105,13 @@ namespace AfterHours
         public static MenuFrame Menu;
         /// <summary>True when the gamepad was the last device touched; prompts show pad buttons.</summary>
         public static bool UsingPad;
+        /// <summary>
+        /// The keyboard is moving the selection (arrow keys, or the movement keys, in a menu) rather
+        /// than the mouse; moving or clicking the mouse ends it (round 12).
+        /// </summary>
+        public static bool KeyNav;
+        /// <summary>Menus show which button or row is selected: the pad or the keys are moving it, not the mouse.</summary>
+        public static bool ShowFocus => UsingPad || KeyNav;
         public static event System.Action DeviceChanged;
         static readonly ToggleLatch crouchLatch = new(), sprintLatch = new();
         static readonly UseLatches useLatches = new();
@@ -160,9 +167,10 @@ namespace AfterHours
                 m.Keep = m.Clipboard = Bound(Act.Clipboard);
                 m.Alt = Bound(Act.Discard);
                 if (kb.anyKey.wasPressedThisFrame) UsingPad = false;
+                if (m.Up || m.Down || m.Left || m.Right || kb.tabKey.wasPressedThisFrame) KeyNav = true;
             }
             if (mouse != null && (mouse.delta.ReadValue().sqrMagnitude > 9f || mouse.leftButton.wasPressedThisFrame || mouse.rightButton.wasPressedThisFrame))
-                UsingPad = false;
+                UsingPad = KeyNav = false;
             if (pad != null)
             {
                 // D-pad or stick, with key-repeat when held.
@@ -191,7 +199,7 @@ namespace AfterHours
                                  || pad.rightTrigger.wasPressedThisFrame || pad.leftTrigger.wasPressedThisFrame
                                  || pad.leftShoulder.wasPressedThisFrame || pad.rightShoulder.wasPressedThisFrame
                                  || pad.leftStickButton.wasPressedThisFrame || pad.rightStickButton.wasPressedThisFrame;
-                if (padActive) UsingPad = true;
+                if (padActive) { UsingPad = true; KeyNav = false; }
             }
             if (UsingPad != wasPad) DeviceChanged?.Invoke();
             return m;

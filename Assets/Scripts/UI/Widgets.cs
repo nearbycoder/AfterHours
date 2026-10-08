@@ -21,15 +21,16 @@ namespace AfterHours
             t.alignment = TextAlignmentOptions.MidlineLeft;
             var b = bg.gameObject.AddComponent<UnityEngine.UI.Button>();
             b.transition = Selectable.Transition.None;
+            var hover = bg.gameObject.AddComponent<HoverFx>();
+            hover.Init(bg, t, primary);
             b.onClick.AddListener(() =>
             {
                 // A question (ChoiceMenu) has the keys: pad A on its answer also submits the button selected behind it.
                 if (ChoiceMenu.IsOpen || Time.frameCount == ChoiceMenu.ClosedFrame) return;
+                hover.Press(); // clicked, Enter or pad A: the button dips
                 Sfx.Play("ui_click", null, 0.5f, 1f, 0.02f, AudioBus.Ui);
                 onClick?.Invoke();
             });
-            var hover = bg.gameObject.AddComponent<HoverFx>();
-            hover.Init(bg, t, primary);
             return rt;
         }
 
@@ -39,7 +40,7 @@ namespace AfterHours
             row.sizeDelta = new Vector2(width, 56);
             var glow = Ui.Panel(row, "Glow", new Color(1, 1, 1, 0f), 10);
             Ui.Stretch(glow.rectTransform, -8);
-            glow.raycastTarget = false;
+            glow.raycastTarget = true; // the whole row answers the mouse pointer, not just the track
             var l = Ui.Label(row, label, UiFont.Sans, 26, Ui.Text, TextAlignmentOptions.MidlineLeft);
             Ui.Place(l.rectTransform, new Vector2(0, 0.5f), new Vector2(0, 0), new Vector2(labelWidth, 50), new Vector2(0, 0.5f));
             var track = Ui.Panel(row, "Track", new Color(1, 1, 1, 0.12f), 6);
@@ -268,8 +269,11 @@ namespace AfterHours
         }
     }
 
-    /// <summary>Hover lift + glow on menu buttons.</summary>
-    public class HoverFx : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler
+    /// <summary>
+    /// Hover lift + glow on menu buttons: under the mouse, or selected while the pad or the keys
+    /// are moving the selection; and a short dip when it's pressed.
+    /// </summary>
+    public class HoverFx : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, ISelectHandler, IDeselectHandler, IPointerDownHandler
     {
         Image bg;
         TextMeshProUGUI label;
@@ -277,7 +281,16 @@ namespace AfterHours
         Color baseCol;
         Vector2 labelHome;
         Vector3 scaleHome = Vector3.one;
-        float k;
+        float k, press;
+
+        /// <summary>How lit the button is (1 fully, under the pointer or selected while the pad or keys move the selection); automation reads it.</summary>
+        public float Glow => k;
+        /// <summary>How far into a press's dip the button is (1 just pressed, 0 at rest); automation reads it.</summary>
+        public float Pressing => press;
+
+        /// <summary>The button was pressed (click, Enter or pad A): dip and come back.</summary>
+        public void Press() => press = 1f;
+        public void OnPointerDown(PointerEventData e) => press = Mathf.Max(press, 0.6f);
 
         public void Init(Image b, TextMeshProUGUI l, bool p) { bg = b; label = l; primary = p; baseCol = b.color; labelHome = l.rectTransform.anchoredPosition; }
 
@@ -295,20 +308,22 @@ namespace AfterHours
         public void OnSelect(BaseEventData e)
         {
             selected = true;
-            if (GameInput.UsingPad) Sfx.Play("ui_hover", null, 0.25f, 1f, 0.03f, AudioBus.Ui);
+            if (GameInput.ShowFocus) Sfx.Play("ui_hover", null, 0.25f, 1f, 0.03f, AudioBus.Ui);
         }
 
         public void OnDeselect(BaseEventData e) => selected = false;
 
         void Update()
         {
-            // Mouse hover, or pad selection (a mouse click also selects, which shouldn't stick).
-            bool on = over || (selected && GameInput.UsingPad);
+            // Mouse hover, or the selection while the pad or keys move it (a mouse click also selects, which shouldn't stick).
+            bool on = over || (selected && GameInput.ShowFocus);
             k = Mathf.MoveTowards(k, on ? 1f : 0f, GameTime.UnscaledDelta * 8f);
-            float e = Ease.OutCubic(k);
-            bg.color = primary ? Color.Lerp(baseCol, new Color(1f, 0.86f, 0.5f, 1f), e) : Color.Lerp(baseCol, new Color(1f, 0.78f, 0.34f, 0.18f), e);
+            press = Mathf.MoveTowards(press, 0f, GameTime.UnscaledDelta * 5f);
+            float e = Ease.OutCubic(k), p = Mathf.Sin(press * Mathf.PI * 0.5f);
+            var col = primary ? Color.Lerp(baseCol, new Color(1f, 0.86f, 0.5f, 1f), e) : Color.Lerp(baseCol, new Color(1f, 0.78f, 0.34f, 0.18f), e);
+            bg.color = Color.Lerp(col, primary ? new Color(1f, 0.93f, 0.72f, 1f) : new Color(1f, 0.8f, 0.4f, 0.32f), p * 0.7f);
             label.rectTransform.anchoredPosition = labelHome + new Vector2(e * 10f, 0);
-            transform.localScale = scaleHome * (1f + e * 0.02f);
+            transform.localScale = scaleHome * (1f + e * 0.02f - p * 0.035f);
         }
     }
 

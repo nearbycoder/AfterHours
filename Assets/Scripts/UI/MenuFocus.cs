@@ -51,7 +51,7 @@ namespace AfterHours
                 Wire();
                 wired = true;
             }
-            if (open.Count == 0 || open[^1] != this || !GameInput.UsingPad) return;
+            if (open.Count == 0 || open[^1] != this || !GameInput.ShowFocus) return;
             var es = EventSystem.current;
             if (es == null) return;
             var cur = es.currentSelectedGameObject;
@@ -160,21 +160,32 @@ namespace AfterHours
         }
     }
 
-    /// <summary>Soft highlight behind a row while it is selected with the pad or keys.</summary>
-    public class SelectGlow : MonoBehaviour, ISelectHandler, IDeselectHandler
+    /// <summary>
+    /// Soft highlight behind a row while it is selected with the pad or keys, or under the mouse
+    /// pointer (a little fainter).
+    /// </summary>
+    public class SelectGlow : MonoBehaviour, ISelectHandler, IDeselectHandler, IPointerEnterHandler, IPointerExitHandler
     {
         public Graphic Target;
         public Color On = new(1f, 0.78f, 0.34f, 0.16f);
+        public Color Hover = new(1f, 0.78f, 0.34f, 0.1f);
         public Color Off = new(1, 1, 1, 0f);
-        bool selected;
+        bool selected, over;
+
+        /// <summary>Lit: selected with the pad or keys, or under the pointer (automation reads it).</summary>
+        public bool Lit => (selected && GameInput.ShowFocus) || over;
 
         public void OnSelect(BaseEventData e) => selected = true;
         public void OnDeselect(BaseEventData e) => selected = false;
+        public void OnPointerEnter(PointerEventData e) => over = true;
+        public void OnPointerExit(PointerEventData e) => over = false;
+        void OnDisable() => over = false;
 
         void Update()
         {
             if (!Target) return;
-            Target.color = Color.Lerp(Target.color, selected && GameInput.UsingPad ? On : Off, 1f - Mathf.Exp(-GameTime.UnscaledDelta * 14f));
+            var want = selected && GameInput.ShowFocus ? On : over ? Hover : Off;
+            Target.color = Color.Lerp(Target.color, want, 1f - Mathf.Exp(-GameTime.UnscaledDelta * 14f));
         }
     }
 }
