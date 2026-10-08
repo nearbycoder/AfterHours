@@ -1488,6 +1488,53 @@ text size and at 1280×720, 1600×900, 1920×1080, 1680×1050, 1440×1080 and 12
 the `menus` capture at those sizes; a new AutoPilot check on Settings and the keyboard and mouse
 page at Normal, every route; screenshots.
 
+## Round 11 results (8 October 2026)
+
+Five items shipped on `improvements-11`, one commit each after the scope commit (R11-5 was found
+in the first run's screenshots and added to the scope with its commit), plus a fix to one of the
+AutoPilot's own new checks and this update. Commits: scope `73b4d97`, R11-1 `69efde9`, R11-2 `b6437e4`,
+R11-3 `92c1c17`, R11-4 `ce7d8ae`, R11-5 `930cd00`, the check's fix `12ad680`. The baseline `audit` run on `main` passed 550 checks
+with 0 failed, in the private KWin. Screenshots are in
+[`docs/media/improvements/round11/`](media/improvements/round11/). Final build (`12ad680`):
+**all five routes pass, 0 failed, no crashes** (audit 562 checks, loose
+558, cleanbooks 558, spotless 533, marian 551; round 10 ended at 550, 546, 546, 521 and 539),
+every one in the private KWin. EditMode tests 86/86 (80 before), compiled from the same code. The real save and settings files under
+`~/.config/unity3d` were checksummed before and after: After Hours' `save.json`, `prefs` and night snapshots are unchanged; only its `TestResults.xml`, which Unity's test runner writes there itself, changed (no AutoPilot run wrote there). Every run's clean-up log shows one process of its own stopped, and nothing of this session's was left running. Load average from other
+sessions was 10–34 during the item runs (78 at the start of the layout captures, which don't
+depend on timing) and 16–20 at the start of each final route (the scripts waited for it to fall under 24).
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R11-1 | The storm respects Reduce flashing | Done | 2 EditMode tests (out and back without the setting; with it, a dip to 0.5 and no faster than 2.5 a second, for stutters of 0.08–0.3 s). AutoPilot on Night 7, every route: a forced thunderclap with the bullpen lit, sampled every frame with a screen capture each. Off: the lights go to 0.00 and back, the frame's mean brightness falls to 11–15% of before (the designed blackout). On: lowest 0.50, fastest change 2.1 a second, the frame keeps 59% of its brightness. Both ways the room stays switched on throughout. Screenshots side by side. **Not verified:** by anyone sensitive to flashing. |
+| R11-2 | Thunder gets a caption; Captions off checked | Done | AutoPilot, every route. Night 7: "[Thunder. The lights stutter.]" shows with a room lit, "[Thunder]" with every room dark, and nothing with Captions off. Night 1: with Captions off a glint still fires and works out its caption ("[Chimes behind you in reception]") but shows nothing (round 10's open item). |
+| R11-3 | Mono audio | Done | 3 EditMode tests (stereo and 5.1 fold to the average, mono untouched, an old settings file loads with it off). AutoPilot on Night 1, every route, on the audio thread at the listener, with a vacuum loop 1.5 m to the player's right and music and ambience muted: going in, the left carries almost nothing; with Mono off the output is the input; on, the output's side signal is 0.000000 and left and right are equal. The playtest log's session line records it. **Not verified:** listening, on headphones or with one ear. |
+| R11-4 | The glint's caption says which way | Done | EditMode tests for the wording (one room, several, outside every room) and the four quarters (wrapping angles, height ignored). AutoPilot on Night 1, every route: the caption matches the way the AutoPilot works out on its own from the camera's facing ("[Chimes behind you in reception]", standing in the bullpen facing away); turned to face the nearest chime it says "ahead", turned away "behind you". The idle check's chimes are all in one room, so captions naming two or three rooms are only covered by the EditMode test. Screenshot. |
+| R11-5 | Settings fits again | Done | The `menus` capture at 1280×720, 1600×900, 1920×1080, 1680×1050, 1440×1080 and 1280×800, each at Normal, Large and Largest: Settings (25 rows at Normal), both controls pages and the brightness page, 0 overlaps and nothing off screen at all 72 combinations. New AutoPilot check, every route: Settings and the keyboard and mouse page at Normal, no row or button over another, all on the panel. Before and after screenshots. **Not run:** the new checks against the old build (the baseline screenshot shows the overlap). |
+
+Found by the first final run: both mono checks failed on the `audit` route. The downmix worked
+(the output's side signal was 0 with Mono on), but the check's own premise didn't hold: with
+music and ambience playing, the test sound came in only 1.1–1.3 times louder on the right, under
+the check's 1.5. It now mutes them while it measures, and the sound sits closer; the five routes
+were then run again on the rebuilt game.
+
+Known limits:
+
+- The storm's softer stutter was judged by the numbers above (no black frame, no change faster
+  than 2.5 a second); there's no standard threshold it was measured against. Without the setting
+  the stutter is as before, and it no longer flips the rooms' switched-on state for that moment
+  (before, a clap during clock-out could in principle have counted the lights as off).
+- Mono audio folds everything, music included. Its level is the average of the channels, so a
+  sound panned hard to one side comes out at half its amplitude on each.
+- The glint's direction is in quarters from where the player faces, for each room's nearest chime;
+  it says nothing about height (a can on top of a cabinet is "ahead").
+- Settings at Normal is now 1040 of the canvas's 1080 units tall; another row in its right column
+  would need a different layout (the AutoPilot's overlap check will say so).
+
+Deferred: saving mid-night (each night's scripted events keep their state in local variables,
+so it means rewriting all seven nights' scripts), hints for missed secrets and an off switch for
+the close question (the owner's calls), a real-monitor sleep test, and still WebGL, Windows and
+the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -1532,7 +1579,10 @@ published; no web build; licence, releases, tags and signing left to the owner. 
 12. **A monitor going to sleep**: the README records one crash inside Unity's Wayland code
    when a monitor powered off under KDE. It can't be reproduced in a private KWin (its virtual
    screens ignore DPMS), so it needs someone to let the screen sleep with the game paused.
-13. **The label's backing** (new): the label under the reticle and the captions now sit on a dark,
+13. **The label's backing**: the label under the reticle and the captions now sit on a dark,
    0.85-opaque rounded backing, so they read on lit walls (5.9:1 where they were 1.4:1). It's
    a visible change to the HUD's look; a lighter backing would need the text itself darker or
    outlined to keep 4.5:1 there.
+14. **Reduce flashing and mono audio with real players** (new): the storm's softer stutter and
+   the mono mix were checked by measurement only. Someone sensitive to flashing, and someone who
+   plays with one ear or one earbud, would settle whether they're enough.

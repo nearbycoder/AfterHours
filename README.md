@@ -140,7 +140,8 @@ and the next morning's chat.
 - **Never stuck on the last can.** The shift sheet says which rooms still have work on each task,
   and a line under the wristwatch names the room you're in, in the same words. After a minute
   with no progress, whatever's left glints and the nearest few chime, so you can find them by
-  ear, and a caption says which rooms the chimes come from. Anything thrown out of reach (on top of something tall, wedged out of sight or
+  ear, and a caption says which rooms the chimes come from and which way they are ("behind
+  you in reception"). Anything thrown out of reach (on top of something tall, wedged out of sight or
   out of the building) turns up at your feet.
 
 <img src="docs/media/screenshots/04-throw.jpg" width="49%" alt="A charged throw into the reception bin: Nice shot!"> <img src="docs/media/screenshots/05-vacuum.jpg" width="49%" alt="Vacuum stripes in the bullpen carpet">
@@ -212,8 +213,9 @@ Quit), pause (Resume, Shift sheet,
 Settings, Restart this night, Quit to title; both of the last two ask first, and so does closing
 the game in the middle of a night; and a card listing the controls as you have them bound) and settings in two
 columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, camera motion (head bob, and the kick of a throw or a reveal),
-four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
-render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
+four volume sliders, mono audio, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
+render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing (which also
+softens Night 7's storm, whose lights otherwise drop out with each thunderclap), a highlight on
 whatever you're aiming at, text size (Normal, Large, Largest), handwriting (as written or plain), and pages for keyboard and
 mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
 spray. If a night runs slowly (under about 28 frames a second), the game offers the next lower
@@ -327,8 +329,14 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   night for props overlapping, sunk into furniture or floating. On Night 1 it loses a can out of
   the world, on a high ledge and in a sealed crate (each must come back), leaves one on the open
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
-  the unfinished things glint and that a caption names the rooms of the ones that chime, once
-  (not on the repeat). On every night it checks the line under the watch names the room the
+  the unfinished things glint and that a caption names the rooms of the ones that chime and
+  which way each is from where the player faces (turned towards the nearest it must say
+  "ahead", turned away "behind you"), once (not on the repeat), and that with Captions off the
+  glint shows none. It plays a sound to the player's right and measures the mix on the audio
+  thread: with Mono audio on, left and right must come out identical. On Night 7 it forces a
+  thunderclap with Reduce flashing off and on and measures the lit room's lights frame by frame
+  (off: out and back; on: never below half, never faster than 2.5 a second; the room stays
+  switched on), and checks the thunder's caption and that Captions off hides it. On every night it checks the line under the watch names the room the
   player is standing in, and on Night 1 it measures the label under the reticle against the
   lit white wall by the reception switch from a screen capture (it must read at 4.5:1 or
   better). At the title it walks the menu with the arrow keys of a virtual keyboard and checks
@@ -336,7 +344,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   and the setting, and rebinds Interact to F through the real controls page by pressing F on a
   virtual keyboard, then checks F uses a light switch and E no longer does, and does the same for
   the pad (Interact on X, then □ on a DualShock). It checks that with Camera motion off a throw's
-  kick and a reveal's punch leave the camera still, and that a caption doesn't stay under the
+  kick and a reveal's punch leave the camera still, that no row or button in Settings or the
+  controls page overlaps another at Normal text size, and that a caption doesn't stay under the
   pause menu. With a virtual pad it steps through the tools on
   the d-pad, and with a virtual DualShock 4 it checks the prompts switch to ✕. It taps crouch and
   brisk walk in toggle and hold mode, and with clean on toggle it taps a virtual mouse and the
@@ -384,7 +393,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   first), the grading and its hints, the bin label for every kind of rubbish against both bins,
   the window opened on leaving fullscreen, when slow frames call for a lower setting and which,
   the brightness curve, which fonts Plain handwriting changes and by how much, the glint's
-  caption, the HUD text sizes and how far
+  caption (and which way it says), the storm's stutter with and without Reduce flashing, the
+  mono downmix, the HUD text sizes and how far
   documents grow, and that settings files from earlier versions load.
 - `Tools/wmtest.sh` runs the built game against a real window manager without touching the
   desktop: a private KWin on a virtual screen, with its own D-Bus session and config folders
@@ -452,7 +462,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with 521–550 checks per route.
+  along five story routes, with 533–562 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -496,7 +506,9 @@ bin rubbish goes in, and the ending in the title's case file; round 9: doors, sw
 with your hands full, an offer of lower graphics when a night runs slowly, a still camera with
 Camera motion off, and checks on Steam Deck and ultrawide screens; round 10: the room's name
 under the watch, a caption saying where the leftovers chime, plain lettering for handwriting,
-and a backing for the label under the reticle) are listed in
+and a backing for the label under the reticle; round 11: Reduce flashing for Night 7's storm, a
+caption for the thunder, mono audio, which way the glint's chimes are, and Settings fitting at
+Normal text size again) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -510,7 +522,9 @@ still rough or untested:
   numerically. That includes the longer night music: its length, loudness (within 0.2 LU of the
   loops it replaced), loop seam and how much neighbouring four-bar blocks repeat
   (`build_music.py --check`). Nobody has listened to it critically. The trailer still uses the
-  original loops; it hasn't been re-cut.
+  original loops; it hasn't been re-cut. Mono audio (round 11) was checked by measuring the
+  mix on the audio thread (left and right identical with it on), not by listening on
+  headphones or with one ear.
 - **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
   gamepad, through the same code path. Rumble (short pulses on throws, the vacuum's clunk, a
   surface coming clean and a made shot; off in Settings) is sent the same way but has never been
@@ -527,7 +541,9 @@ still rough or untested:
   scrolling Settings list at Largest with a real pad or mouse. Plain handwriting (round 10) was
   sized by measuring the fonts and checked by where the text lands, and the backing under the
   reticle's label by measuring contrast on one lit wall (5.9:1, from 1.4:1); nobody who finds
-  handwriting hard has tried it yet.
+  handwriting hard has tried it yet. Reduce flashing's softer storm (round 11: the lights dim to
+  half and back instead of going black; the frame keeps about 59% of its brightness rather than
+  11–15%) was judged by those numbers, not by anyone sensitive to flashing.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,
