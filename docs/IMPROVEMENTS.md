@@ -1535,6 +1535,111 @@ so it means rewriting all seven nights' scripts), hints for missed secrets and a
 the close question (the owner's calls), a real-monitor sleep test, and still WebGL, Windows and
 the art.
 
+## Round 12 scope (8 October 2026)
+
+Round 11 is merged. This round's focus comes from the owner: AAA polish, meaning finished
+graphics, UI and user experience, plus a **Graphics Fidelity** setting with at least four steps
+(Low to Ultra). The setting is required, and at least half of the items must come from the
+focus. I read the code and last round's screenshots the way a player would meet them:
+
+- **Graphics stop at today's look.** Settings has a Low / Medium / High preset (round 1), and
+  High is the game as it was built, so nothing goes past it. A stronger GPU gets nothing more:
+  the room lights' shadows stay at 1024 px tiles, desk lamps cast none, SSAO runs at its
+  medium sample count, and floors are filtered at the textures' own anisotropic level. Glass, the
+  break room's tile and the whiteboard can't reflect the room, because there are no reflection
+  probes and no sky to reflect. Low still renders full-size textures, film grain and
+  full-strength particles.
+- **Most menus pop.** The clipboard, the inspect view and the questions fade and scale in, but
+  the pause menu, Settings, the controls pages, the brightness page, Night Select and the case
+  file appear and vanish within a frame.
+- **Keyboard focus is invisible.** The arrow keys (and WASD) move the selection through every
+  menu (round 10 checks Enter on the title), but buttons and rows only light up for the pad
+  (`HoverFx` and `SelectGlow` test `GameInput.UsingPad`, which any key press clears). A keyboard
+  player walks Settings blind. A mouse pointer over a Settings row shows nothing either; only
+  buttons react to hover, and nothing reacts to a press.
+- **The pause menu's controls card** draws its keys as square highlights from a text tag, so
+  they run into each other ("L-STICK R-STICK" reads as one block) and don't match the rounded
+  caps the HUD uses for the same keys.
+
+Not chosen: saving mid-night (round 11's reason still holds: each night's scripted events keep
+their state in local variables, and rewriting all seven nights' scripts is a round of its own),
+re-modelling or re-texturing the art (the style stays; this round raises how it's lit and
+rendered), hints for missed secrets and an off switch for the close question (the owner's
+calls), and everything else left with the owner.
+
+### R12-1. Graphics Fidelity: Low, Medium, High, Ultra
+
+Settings → Display's **Graphics quality** choice becomes **Graphics fidelity**, a slider with four
+notches: Low, Medium, High (the default, today's look) and Ultra. It is the same saved setting
+(`Quality`, now 0–3), so older settings files keep the step they had. A line under it says
+what the step does. It works with the mouse (click a notch or drag), the keyboard (left and right)
+and the pad (d-pad). What each step changes:
+
+- **Low** (weak GPUs): no SSAO, shadows from the moon only (hard, 1024 px, shorter distance),
+  FXAA instead of MSAA, bloom at quarter resolution, no film grain, half-size textures, half
+  the particles. Room lights and grime stay as readable as before.
+- **Medium**: hard shadows everywhere, SSAO, 2× MSAA, SMAA, three quarters of the particles (as
+  today's Medium, plus the particles).
+- **High**: unchanged from today.
+- **Ultra**: a box-projected reflection probe in every room, re-rendered when its lights change,
+  so glass, tile, the whiteboard and desks reflect the room; desk lamps cast soft shadows; room
+  lights get 2048 px shadow tiles in an 8192 atlas, and the moon 4096 px with four cascades
+  reaching further; SSAO at its highest sample count; 16× anisotropic filtering on every texture;
+  half as many particles again.
+
+The running-slowly offer (round 9) steps down through it: Ultra, High, Medium, Low, then render
+scale.
+
+**Acceptance:** the slider has four steps and each one changes what the engine renders (the URP
+asset, the renderer's SSAO, the lights, the cameras, texture filtering, probes, particles), read
+back at runtime. It's saved, a settings file from before loads with its old step, and mouse,
+keys and pad can each move it. Same-pose screenshots and frame times exist for every step
+(median and 95th percentile, uncapped, with the machine's load noted). Low must be faster than
+High; High must look and time as before. Held at 20 fps on Ultra, the game offers High, then
+Medium. **Verify:** EditMode tests for the step table (every step at least as much as the one
+below), the old settings file and the slow-frames steps. A new `fidelity` capture: three views,
+four steps each, screenshots and timings. AutoPilot, every route: the slider with the pad, the
+arrow keys and the mouse, the values the engine reports at each step, and the slow-frames check
+from Ultra. Settings layout at every text size and six window sizes (`menus` capture).
+
+### R12-2. Menus open and close smoothly
+
+The pause menu, Settings, both controls pages, the brightness page, Night Select and the
+title's case file fade in with a slight rise in scale (about 0.2 s) and fade out (about
+0.15 s), like the clipboard and questions already do. Closing still takes effect at once: the
+menu stops taking input and is out of navigation in that frame, and only its picture fades.
+
+**Acceptance:** each of those menus starts transparent and is fully shown within 0.3 s of
+opening; after closing, nothing in it is selectable or receives input while it fades, and it's
+gone within 0.3 s. Opening one straight after closing another works as before. **Verify:**
+AutoPilot, every route (alpha and scale read during the transition, all existing menu checks
+pass), and a frame sequence for the README.
+
+### R12-3. Focus you can see with keys and mouse
+
+The highlight a pad shows on the selected button or row also shows when the keyboard is moving
+the selection (arrow keys, WASD, Tab), and goes away when the mouse moves. A mouse pointer over
+a Settings or controls row lights it the same way. Buttons press in (a short scale-down and
+brighten) when clicked, tapped or confirmed. With no selection, the first arrow press selects
+the menu's first item, as the pad already does.
+
+**Acceptance:** on the title, Settings and the pause menu, after an arrow key press on a
+virtual keyboard the selected item's highlight is lit (and no other); after the mouse moves it
+follows the pointer; a pointer over a Settings row lights that row; a button pressed with Enter
+dips in scale and recovers. **Verify:** AutoPilot, every route, with a virtual keyboard and
+mouse; screenshots.
+
+### R12-4. Keycaps on the controls card
+
+The pause menu's controls card draws each key or button as a rounded cap, like the HUD's
+prompts (pad face buttons round and in their colours), with the action beside it, instead of
+a highlighted run of text.
+
+**Acceptance:** each row's caps sit apart (no two touch), inside the card, matching the bound
+keys; the card fits at every text size and window size as before. **Verify:** AutoPilot, every
+route (the existing card checks read the caps), screenshots with keyboard, an Xbox-style pad and
+a DualShock 4.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
