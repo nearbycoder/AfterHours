@@ -99,6 +99,8 @@ def main():
     if not sessions:
         sys.exit("no logs found")
     per_night = {}
+    # Graphics Fidelity steps as the log records them (0-3; round 12 added Ultra).
+    fidelity = lambda q: ["Low", "Medium", "High", "Ultra"][q] if isinstance(q, int) and 0 <= q <= 3 else q
     for f, events in sessions:
         start = next((e for e in events if e.get("type") == "session_start"), {})
         print(f"\n## {os.path.basename(f)}")
@@ -108,10 +110,10 @@ def main():
         # The game offered a lower graphics setting because a night ran slowly (and what was chosen).
         for e in events:
             if e.get("type") == "slow_frames":
-                print(f"Running slowly on Night {e.get('night', '?')}: about {e.get('fps')} fps at quality {e.get('quality')},"
+                print(f"Running slowly on Night {e.get('night', '?')}: about {e.get('fps')} fps on {fidelity(e.get('quality'))},"
                       f" render scale {e.get('scale')}")
             elif e.get("type") == "slow_frames_choice":
-                print(f"  chose to {e.get('choice')}" + (f" (quality {e.get('quality')}, render scale {e.get('scale')})" if e.get("choice") == "lower" else ""))
+                print(f"  chose to {e.get('choice')}" + (f" ({fidelity(e.get('quality'))}, render scale {e.get('scale')})" if e.get("choice") == "lower" else ""))
         print()
         print("| Night | Time | Grade | Secrets | Stuck glints | Recovered | Clipboard | Slowest task | How it ended |")
         print("|---|---|---|---|---|---|---|---|---|")

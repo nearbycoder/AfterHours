@@ -11,6 +11,16 @@ namespace AfterHours
         static Fx instance;
         readonly Dictionary<FxKind, ParticleSystem> systems = new();
 
+        /// <summary>
+        /// How many particles a burst emits against High (Graphics Fidelity: half on Low, half as
+        /// many again on Ultra). The leftover beacons are a hint, not decoration, so they don't change.
+        /// </summary>
+        public static float Density = 1f;
+
+        /// <summary>A burst's count at the current density, never below one.</summary>
+        public static int Scaled(int count, FxKind kind) =>
+            kind == FxKind.Beacon || count <= 0 ? count : Mathf.Max(1, Mathf.RoundToInt(count * Density));
+
         static Fx Instance
         {
             get
@@ -60,7 +70,7 @@ namespace AfterHours
             main.playOnAwake = false;
             main.loop = false;
             main.duration = 1f;
-            main.maxParticles = max;
+            main.maxParticles = Mathf.CeilToInt(max * 1.5f); // room for Ultra's denser bursts
             main.simulationSpace = ParticleSystemSimulationSpace.World;
             main.startLifetime = new ParticleSystem.MinMaxCurve(life.Item1, life.Item2);
             main.startSize = new ParticleSystem.MinMaxCurve(size.Item1, size.Item2);
@@ -106,6 +116,7 @@ namespace AfterHours
         /// <summary>Emit <paramref name="count"/> particles at <paramref name="pos"/>, flung along <paramref name="dir"/>.</summary>
         public static void Burst(FxKind kind, Vector3 pos, Vector3 dir, int count, Color color, float speed = 1f, float spread = 0.6f, float radius = 0f)
         {
+            count = Scaled(count, kind);
             if (count <= 0) return;
             var ps = Instance.systems[kind];
             var ep = new ParticleSystem.EmitParams();
@@ -127,6 +138,7 @@ namespace AfterHours
         {
             var ps = Instance.systems[FxKind.Sparkle];
             var ep = new ParticleSystem.EmitParams();
+            count = Scaled(count, FxKind.Sparkle);
             for (int i = 0; i < count; i++)
             {
                 var p = center + right * (Random.Range(-0.5f, 0.5f) * size.x) + forward * (Random.Range(-0.5f, 0.5f) * size.y) + normal * 0.02f;

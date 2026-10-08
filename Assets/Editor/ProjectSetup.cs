@@ -91,6 +91,8 @@ namespace AfterHours.EditorTools
             PlayerSettings.resizableWindow = true;
             PlayerSettings.colorSpace = ColorSpace.Linear;
             PlayerSettings.SplashScreen.show = false;
+            // GPU and CPU frame times for the fidelity capture (Graphics Fidelity's cost, apart from the machine's load).
+            PlayerSettings.enableFrameTimingStats = true;
             // Company and product names set the save folder, so they never change; the bundle id
             // names the macOS app.
             PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, BundleId);

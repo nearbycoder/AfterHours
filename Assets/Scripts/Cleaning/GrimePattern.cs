@@ -479,6 +479,7 @@ namespace AfterHours
         {
             var tex = Resources.Load<Texture2D>(s.Texture);
             if (tex == null) { Debug.LogWarning($"[Grime] missing image {s.Texture}"); return; }
+            if (Application.isPlaying) tex.ignoreMipmapLimit = true; // clue lettering stays sharp at Low fidelity
             for (int y = 0; y < d.Height; y++)
             for (int x = 0; x < d.Width; x++)
             {

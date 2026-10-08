@@ -45,6 +45,7 @@ namespace AfterHours
                 case "night1": yield return Night1(); break;
                 case "tour": yield return NightTour(); break;
                 case "perf": yield return PerfProbe(); break;
+                case "fidelity": yield return FidelityProbe(); break;
                 case "monitors": yield return Monitors(); break;
                 case "menus": yield return Menus(); break;
                 case "closetest": yield return CloseTest(); break;
@@ -340,6 +341,111 @@ namespace AfterHours
             yield return Measure("grime renderers off");
             QualitySettings.vSyncCount = vs;
             main.Dispose(); render.Dispose();
+        }
+
+        /// <summary>The machine's load average (1, 5 and 15 minutes), for the logs next to a timing.</summary>
+        protected static string LoadAverage()
+        {
+            string load, gpu = "";
+            try { load = "load " + string.Join(" ", File.ReadAllText("/proc/loadavg").Split(' ').Take(3)); }
+            catch { load = "load ?"; }
+            // The GPU is shared with whatever else the machine runs; how busy it is (this game included).
+            try { gpu = ", GPU busy " + File.ReadAllText("/sys/class/drm/card1/device/gpu_busy_percent").Trim() + "%"; }
+            catch { }
+            return load + gpu;
+        }
+
+        /// <summary>
+        /// Graphics Fidelity, step by step: at each of four views (rooms lit, HUD hidden, the world
+        /// frozen so every step sees the same frame), every step gets a screenshot and an uncapped
+        /// frame-time measurement (median and 95th percentile over 2.5 s, three rounds taking turns, the middle round's figures), with what the engine
+        /// reports for the step and the machine's load. Run with <c>-ahCapture dir fidelity -ahNight 2 -ahFresh</c>.
+        /// </summary>
+        IEnumerator FidelityProbe()
+        {
+            yield return WaitUnblocked(30f);
+            var s = Settings.Current;
+            int q0 = s.Quality;
+            QualitySettings.vSyncCount = 0;
+            Application.targetFrameRate = -1;
+            foreach (var r in root.Office.Rooms.Values) r.SetLights(true, true);
+            Hud.Instance?.SetVisible(false);
+            root.Rig.Hidden = true;
+            Log($"fidelity: {SystemInfo.graphicsDeviceType} {SystemInfo.graphicsDeviceName}, {Screen.width}x{Screen.height}, {LoadAverage()}");
+            var views = new (string name, Vector3 stand, Vector3 look)[]
+            {
+                ("bullpen", new Vector3(8.2f, 0f, 6.0f), new Vector3(13.5f, 0.9f, 12.5f)),
+                ("breakroom", new Vector3(6.3f, 0f, 3.7f), new Vector3(1.5f, 0.9f, 8.0f)),
+                ("reception", new Vector3(14.3f, 0f, 0.7f), new Vector3(9.5f, 0.6f, 3.6f)),
+                ("conference", new Vector3(6.3f, 0f, 15.3f), new Vector3(1.0f, 1.1f, 10.5f)),
+            };
+            var totals = new float[GraphicsQuality.Names.Length];
+            var gpuTotals = new float[GraphicsQuality.Names.Length];
+            const int Rounds = 3; // the steps take turns, so a change in the machine's load hits them all alike
+            foreach (var (name, stand, look) in views)
+            {
+                Time.timeScale = 1f;
+                root.Player.Teleport(stand, 0f, 0f);
+                yield return null;
+                LookAtNow(look);
+                yield return Wait(1f);
+                var medians = new System.Collections.Generic.List<float>[GraphicsQuality.Names.Length];
+                var p95s = new System.Collections.Generic.List<float>[GraphicsQuality.Names.Length];
+                var gpus = new System.Collections.Generic.List<float>[GraphicsQuality.Names.Length];
+                var cpus = new System.Collections.Generic.List<float>[GraphicsQuality.Names.Length];
+                var p10s = new System.Collections.Generic.List<float>[GraphicsQuality.Names.Length];
+                for (int q = 0; q < medians.Length; q++) { medians[q] = new(); p95s[q] = new(); p10s[q] = new(); gpus[q] = new(); cpus[q] = new(); }
+                for (int round = 0; round < Rounds; round++)
+                for (int q = 0; q < GraphicsQuality.Names.Length; q++)
+                {
+                    Time.timeScale = 1f;
+                    s.Quality = q;
+                    Settings.ApplyGraphics();
+                    float settle = 0f;
+                    for (; settle < 8f && !RoomProbes.Settled; settle += GameTime.UnscaledDelta) yield return null;
+                    if (q == 3 && round == 0) Log($"fidelity probes [{name}] {(RoomProbes.Settled ? "settled" : "NOT settled")} after {settle:F1} s, {RoomProbes.Renders} renders: {RoomProbes.Status()}");
+                    yield return Wait(1f);
+                    Time.timeScale = 0f; // the same frame for every step: nothing moves while it's measured and shot
+                    yield return Wait(0.4f);
+                    if (name == views[0].name && round == 0) Log($"fidelity step {GraphicsQuality.Describe()}");
+                    var ms = new System.Collections.Generic.List<float>();
+                    var gpu = new System.Collections.Generic.List<float>();
+                    var cpu = new System.Collections.Generic.List<float>();
+                    var timing = new FrameTiming[1];
+                    for (float t = 0; t < 2.5f; t += GameTime.UnscaledDelta)
+                    {
+                        yield return null;
+                        ms.Add(GameTime.UnscaledDelta * 1000f);
+                        FrameTimingManager.CaptureFrameTimings();
+                        if (FrameTimingManager.GetLatestTimings(1, timing) > 0)
+                        {
+                            if (timing[0].gpuFrameTime > 0) gpu.Add((float)timing[0].gpuFrameTime);
+                            if (timing[0].cpuMainThreadFrameTime > 0) cpu.Add((float)timing[0].cpuMainThreadFrameTime);
+                        }
+                    }
+                    ms.Sort(); gpu.Sort(); cpu.Sort();
+                    medians[q].Add(ms[ms.Count / 2]);
+                    p95s[q].Add(ms[(int)(ms.Count * 0.95f)]);
+                    p10s[q].Add(ms[(int)(ms.Count * 0.10f)]);
+                    float g = gpu.Count > 0 ? gpu[gpu.Count / 2] : 0f, c = cpu.Count > 0 ? cpu[cpu.Count / 2] : 0f;
+                    gpus[q].Add(g); cpus[q].Add(c);
+                    Log($"fidelity round {round + 1} [{name}] [{GraphicsQuality.Names[q]}] median {ms[ms.Count / 2]:F2} ms (GPU {g:F2} ms, main thread {c:F2} ms), {ms.Count} frames, {LoadAverage()}");
+                    if (round == 0) yield return Shot($"fidelity_{name}_{q}_{GraphicsQuality.Names[q].ToLowerInvariant()}");
+                }
+                for (int q = 0; q < medians.Length; q++)
+                {
+                    medians[q].Sort(); p95s[q].Sort(); p10s[q].Sort(); gpus[q].Sort(); cpus[q].Sort();
+                    float median = medians[q][Rounds / 2], p95 = p95s[q][Rounds / 2];
+                    totals[q] += median;
+                    gpuTotals[q] += gpus[q][Rounds / 2];
+                    Log($"fidelity [{name}] [{GraphicsQuality.Names[q]}] median {median:F2} ms ({1000f / median:F0} fps), p95 {p95:F2} ms, p10 {p10s[q][Rounds / 2]:F2} ms, GPU {gpus[q][Rounds / 2]:F2} ms, main thread {cpus[q][Rounds / 2]:F2} ms, middle of {Rounds} rounds, {LoadAverage()}");
+                }
+            }
+            for (int q = 0; q < totals.Length; q++)
+                Log($"fidelity mean of the views' medians [{GraphicsQuality.Names[q]}] {totals[q] / views.Length:F2} ms, GPU {gpuTotals[q] / views.Length:F2} ms");
+            Time.timeScale = 1f;
+            s.Quality = q0;
+            Settings.ApplyGraphics();
         }
 
         /// <summary>Every monitor photographed straight on, lit room, to check screen mapping.</summary>

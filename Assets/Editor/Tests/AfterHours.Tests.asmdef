@@ -3,6 +3,7 @@
     "rootNamespace": "AfterHours.Tests",
     "references": [
         "AfterHours",
+        "Unity.RenderPipelines.Universal.Runtime",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

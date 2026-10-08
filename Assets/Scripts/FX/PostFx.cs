@@ -118,16 +118,37 @@ namespace AfterHours
             cam.clearFlags = CameraClearFlags.SolidColor;
         }
 
-        /// <summary>Graphics preset (0 low … 2 high): bloom filtering and the camera's anti-aliasing.</summary>
-        public void SetQuality(int q)
+        /// <summary>
+        /// Graphics Fidelity: bloom's filtering and resolution, film grain, the inspect view's depth
+        /// of field and the cameras' anti-aliasing.
+        /// </summary>
+        public void SetQuality(FidelityStep st)
         {
-            bloom.highQualityFiltering.Override(q == 2);
+            bloom.highQualityFiltering.Override(st.BloomHighQuality);
+            bloom.downscale.Override(st.BloomQuarter ? BloomDownscaleMode.Quarter : BloomDownscaleMode.Half);
+            grain.active = st.FilmGrain;
+            // Bokeh is the costliest pass the inspect view adds; Low blurs with a Gaussian instead.
+            dof.mode.Override(st.BloomQuarter ? DepthOfFieldMode.Gaussian : DepthOfFieldMode.Bokeh);
+            dof.gaussianStart.Override(0.6f);
+            dof.gaussianEnd.Override(2.5f);
             cameras.RemoveAll(c => !c);
             foreach (var cam in cameras)
             {
                 var data = cam.GetUniversalAdditionalCameraData();
-                data.antialiasing = q == 0 ? AntialiasingMode.FastApproximateAntialiasing : AntialiasingMode.SubpixelMorphologicalAntiAliasing;
-                data.antialiasingQuality = q == 2 ? AntialiasingQuality.High : AntialiasingQuality.Medium;
+                data.antialiasing = st.PostAa;
+                data.antialiasingQuality = st.PostAaQuality;
+            }
+        }
+
+        /// <summary>The post-processing settings in use, for the logs and the AutoPilot.</summary>
+        public string QualityNow
+        {
+            get
+            {
+                var cam = cameras.Find(c => c);
+                var data = cam ? cam.GetUniversalAdditionalCameraData() : null;
+                return $"bloom {(bloom.highQualityFiltering.value ? "high quality" : "fast")} at {bloom.downscale.value}, grain {(grain.active ? "on" : "off")}, " +
+                       $"AA {(data != null ? data.antialiasing + " " + data.antialiasingQuality : "?")}, inspect blur {dof.mode.value}";
             }
         }
 
@@ -158,6 +179,7 @@ namespace AfterHours
             dofWeight = Mathf.MoveTowards(dofWeight, dofTarget, dt * 4f);
             dof.active = dofWeight > 0.01f;
             dof.aperture.Override(Mathf.Lerp(16f, 2.2f, dofWeight));
+            dof.gaussianMaxRadius.Override(Mathf.Lerp(0.3f, 1.4f, dofWeight));
             pulse = Mathf.MoveTowards(pulse, 0f, dt * 0.9f);
             flicker = Mathf.MoveTowards(flicker, 0f, dt * 2.5f);
             exposure = Mathf.Lerp(exposure, exposureTarget, 1f - Mathf.Exp(-dt * 3f));

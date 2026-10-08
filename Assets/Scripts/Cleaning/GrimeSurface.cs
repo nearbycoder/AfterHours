@@ -179,6 +179,7 @@ namespace AfterHours
             ghostTex = string.IsNullOrEmpty(Spec.GhostTexture) ? null : Resources.Load<Texture2D>(Spec.GhostTexture);
             if (ghostTex != null)
             {
+                if (Application.isPlaying) ghostTex.ignoreMipmapLimit = true; // clue lettering stays sharp at Low fidelity
                 ghostW = new float[n];
                 for (int y = 0; y < mh; y++)
                 for (int x = 0; x < mw; x++)

@@ -307,6 +307,7 @@ namespace AfterHours
                     yield return ReplayAskChecks();
                 }
                 if (n == 2) yield return AutoPauseChecks();
+                if (n == 2) yield return FidelityEngineChecks();
                 if (n == 2) yield return SlowFrameChecks();
             }
             float start = Time.realtimeSinceStartup;
@@ -643,16 +644,9 @@ namespace AfterHours
             yield return Shot("settings");
             MenuOverlapCheck("Settings", "Settings");
             // Down off the bottom of the left column carries on at the top of the right one.
-            for (int i = 0; i < 14 && Selected != "Choice_Graphics quality"; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.12f); }
-            Check(Selected == "Choice_Graphics quality", $"the d-pad walks from the left column of Settings into the right ({Selected})");
-            int quality = Settings.Current.Quality;
-            yield return Press(GamepadButton.DpadRight);
-            yield return Wait(0.3f);
-            Check(Settings.Current.Quality != quality, $"d-pad right steps the graphics preset ({GraphicsQuality.Names[quality]} → {GraphicsQuality.Names[GraphicsQuality.Level]})");
-            yield return Shot("settings_quality");
-            yield return Press(GamepadButton.DpadLeft);
-            yield return Wait(0.3f);
-            Check(Settings.Current.Quality == quality && Selected == "Choice_Graphics quality", "d-pad left steps it back without leaving the row");
+            for (int i = 0; i < 14 && Selected != "Steps_Graphics fidelity"; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.12f); }
+            Check(Selected == "Steps_Graphics fidelity", $"the d-pad walks from the left column of Settings into the right ({Selected})");
+            yield return FidelitySliderChecks();
             int sent = Rumble.Sent;
             Rumble.Pulse(0.2f, 0.3f, 0.1f);
             Check(Rumble.Sent == sent + 1, "a rumble pulse goes to the (virtual) pad while it's in use");
@@ -679,6 +673,124 @@ namespace AfterHours
                 yield return Wait(0.4f);
                 Check(!ChoiceMenu.IsOpen && TitleScreen.Instance != null, "pad B backs out of the New Game question");
             }
+        }
+
+        /// <summary>
+        /// Round 12: the Graphics Fidelity slider in Settings, with the pad (one notch a press,
+        /// stopping at the ends), and a virtual mouse clicking a notch. Its line says what the step does.
+        /// </summary>
+        IEnumerator FidelitySliderChecks()
+        {
+            var s = Settings.Current;
+            int q0 = s.Quality;
+            var row = GameObject.Find("Steps_Graphics fidelity")?.transform as RectTransform;
+            var blurb = row ? row.parent.Find("Blurb_Graphics fidelity")?.GetComponent<TMPro.TextMeshProUGUI>() : null;
+            var value = row ? row.GetComponentsInChildren<TMPro.TextMeshProUGUI>().LastOrDefault() : null;
+            Check(row != null && blurb != null && row.Find("Track")?.childCount == GraphicsQuality.Names.Length + 2,
+                $"Settings has a Graphics fidelity slider with {GraphicsQuality.Names.Length} notches and a line under it");
+            if (row == null) yield break;
+            string Shown() => $"{value?.text} / \"{blurb?.text}\"";
+            Check(s.Quality == GraphicsQuality.Default && value?.text == "High", $"it starts on High, the default ({Shown()})");
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.3f);
+            Check(s.Quality == 3 && value?.text == "Ultra" && blurb?.text == GraphicsQuality.Blurbs[3] && GraphicsQuality.Current.Reflections > 0,
+                $"d-pad right moves it to Ultra, and the line says what Ultra adds ({Shown()})");
+            yield return Shot("settings_fidelity_ultra");
+            yield return Press(GamepadButton.DpadRight);
+            yield return Wait(0.3f);
+            Check(s.Quality == 3 && Selected == "Steps_Graphics fidelity", "d-pad right again stays on Ultra (a slider stops at its end) and on the row");
+            for (int i = 0; i < 4; i++) { yield return Press(GamepadButton.DpadLeft); yield return Wait(0.2f); }
+            Check(s.Quality == 0 && value?.text == "Low" && blurb?.text == GraphicsQuality.Blurbs[0] && Selected == "Steps_Graphics fidelity",
+                $"d-pad left walks it down to Low and stops there ({Shown()})");
+            yield return Shot("settings_fidelity_low");
+            // A virtual mouse clicks the third notch (High).
+            var notch = row.Find("Track/Notch2") as RectTransform;
+            var mouse = InputSystem.AddDevice<Mouse>("AutoPilotFidelityMouse");
+            mouse.MakeCurrent();
+            Vector2 at = RectTransformUtility.WorldToScreenPoint(null, notch.position);
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = at });
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = at }.WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left));
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = at });
+            yield return Wait(0.4f);
+            Check(s.Quality == 2 && value?.text == "High", $"a mouse click on the third notch sets High ({Shown()}, clicked at {at.x:F0},{at.y:F0})");
+            // Drag from there to the right end: Ultra.
+            var track = (RectTransform)row.Find("Track");
+            var corners = new Vector3[4];
+            track.GetWorldCorners(corners);
+            Vector2 end = RectTransformUtility.WorldToScreenPoint(null, corners[2]) + new Vector2(20, -track.rect.height * 0.5f * track.lossyScale.y);
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = at }.WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left));
+            yield return null; yield return null;
+            for (int i = 1; i <= 6; i++)
+            {
+                InputSystem.QueueStateEvent(mouse, new MouseState { position = Vector2.Lerp(at, end, i / 6f) }.WithButton(UnityEngine.InputSystem.LowLevel.MouseButton.Left));
+                yield return null; yield return null;
+            }
+            InputSystem.QueueStateEvent(mouse, new MouseState { position = end });
+            yield return Wait(0.4f);
+            Check(s.Quality == 3, $"dragging the knob past the right end sets Ultra ({Shown()})");
+            InputSystem.RemoveDevice(mouse);
+            vpad.MakeCurrent();
+            GameInput.UsingPad = true;
+            EventSystem.current.SetSelectedGameObject(row.gameObject);
+            for (int i = 0; i < 3 && s.Quality != q0; i++) { yield return Press(s.Quality > q0 ? GamepadButton.DpadLeft : GamepadButton.DpadRight); yield return Wait(0.2f); }
+            Check(s.Quality == q0 && Selected == "Steps_Graphics fidelity", $"and the pad puts it back on {GraphicsQuality.Names[q0]}");
+        }
+
+        /// <summary>
+        /// Round 12, Night 2: every Graphics Fidelity step, read back from the engine (the URP
+        /// asset, SSAO, lights, cameras, texture filtering, probes, particles) against the table,
+        /// with a screenshot of each; on Ultra the room probes render and render again when a
+        /// room's lights change.
+        /// </summary>
+        IEnumerator FidelityEngineChecks()
+        {
+            var s = Settings.Current;
+            int q0 = s.Quality;
+            var urp = UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline as UnityEngine.Rendering.Universal.UniversalRenderPipelineAsset;
+            var cam = UnityEngine.Rendering.Universal.CameraExtensions.GetUniversalAdditionalCameraData(root.Player.Camera);
+            var lamp = FindObjectsByType<Light>(FindObjectsSortMode.None).FirstOrDefault(l => l.name.StartsWith("Light_lamp"));
+            var panel = root.Office.Rooms["bullpen"].Lights.FirstOrDefault();
+            root.Player.Teleport(new Vector3(8.2f, 0, 6.0f), 40f, 6f);
+            for (int q = 0; q < GraphicsQuality.Names.Length; q++)
+            {
+                s.Quality = q;
+                Settings.ApplyGraphics();
+                yield return Wait(0.6f);
+                var st = GraphicsQuality.StepFor(q);
+                string ssao = GraphicsQuality.SsaoNow();
+                bool asset = urp != null && urp.msaaSampleCount == st.Msaa && urp.mainLightShadowmapResolution == st.MainShadowRes
+                             && urp.additionalLightsShadowmapResolution == st.ShadowAtlas && urp.additionalLightsShadowResolutionTierHigh == st.LightShadowTile
+                             && urp.shadowCascadeCount == st.Cascades && Mathf.Approximately(urp.shadowDistance, st.ShadowDistance);
+                bool ao = st.Ssao == 0 ? ssao == "off" : st.Ssao == 1 ? ssao == "Medium" : ssao == "High";
+                bool lights = panel != null && panel.shadows == (st.RoomShadows == 0 ? LightShadows.None : st.RoomShadows == 1 ? LightShadows.Hard : LightShadows.Soft)
+                              && (lamp == null || lamp.shadows == (st.LampShadows ? LightShadows.Soft : LightShadows.None));
+                bool tex = QualitySettings.anisotropicFiltering == (st.Aniso == 0 ? AnisotropicFiltering.Disable : st.Aniso > 0 ? AnisotropicFiltering.ForceEnable : GraphicsQuality.AuthoredAniso)
+                           && QualitySettings.globalTextureMipmapLimit == st.TextureMipLimit;
+                bool post = cam.antialiasing == st.PostAa && cam.antialiasingQuality == st.PostAaQuality && Mathf.Approximately(Fx.Density, st.Particles);
+                bool probes = st.Reflections > 0 ? RoomProbes.Count == root.Office.Rooms.Count && RoomProbes.Resolution == st.Reflections : RoomProbes.Count == 0;
+                Check(asset && ao && lights && tex && post && probes,
+                    $"Graphics fidelity {GraphicsQuality.Names[q]} is what the engine renders: asset {asset}, SSAO {ssao} {ao}, lights {lights}, textures {tex}, AA and particles {post}, probes {probes} — {GraphicsQuality.Describe()}");
+                if (q == 3)
+                {
+                    for (float t = 0; t < 8f && !RoomProbes.Settled; t += GameTime.UnscaledDelta) yield return null;
+                    int renders = RoomProbes.Renders;
+                    Check(RoomProbes.Settled && renders >= root.Office.Rooms.Count, $"on Ultra every room's reflection probe has rendered ({renders} renders, {RoomProbes.Count} probes: {RoomProbes.Status()})");
+                    var bullpen = root.Office.Rooms["bullpen"];
+                    bool was = bullpen.LightsOn;
+                    bullpen.SetLights(!was, true);
+                    for (float t = 0; t < 4f && RoomProbes.Renders == renders; t += GameTime.UnscaledDelta) yield return null;
+                    Check(RoomProbes.Renders > renders, $"switching the bullpen's lights renders its probe again ({RoomProbes.Renders - renders} more)");
+                    bullpen.SetLights(was, true);
+                    for (float t = 0; t < 8f && !RoomProbes.Settled; t += GameTime.UnscaledDelta) yield return null;
+                }
+                yield return Shot($"n2_fidelity_{q}_{GraphicsQuality.Names[q].ToLowerInvariant()}");
+            }
+            s.Quality = q0;
+            Settings.ApplyGraphics();
+            yield return Wait(0.4f);
+            Check(RoomProbes.Count == 0 && GraphicsQuality.SsaoNow() == "Medium" && urp.msaaSampleCount == 4, $"back on {GraphicsQuality.Names[q0]}, the probes are off and the authored look is back");
         }
 
         Keyboard titleKb;
@@ -1056,7 +1168,8 @@ namespace AfterHours
             var fw = FrameWatch.Instance;
             Check(fw != null && !FrameWatch.Watching, "the frame watch is there, and off in automated runs");
             if (fw == null) yield break;
-            var (q0, scale0, vs0, fr0) = (s.Quality, s.RenderScale, QualitySettings.vSyncCount, Application.targetFrameRate);
+            var (qWas, scale0, vs0, fr0) = (s.Quality, s.RenderScale, QualitySettings.vSyncCount, Application.targetFrameRate);
+            int q0 = GraphicsQuality.Highest;
             var file = System.IO.Path.Combine(StoryState.Dir, "settings.json");
             int offers0 = fw.Offers;
             IEnumerator Play(float seconds, Func<bool> until = null)
@@ -1070,12 +1183,16 @@ namespace AfterHours
             Check(!ChoiceMenu.IsOpen && fw.Offers == offers0, $"at full speed nothing is offered ({1f / Mathf.Max(1e-4f, Time.smoothDeltaTime):F0} fps, median {fw.Frames.MedianMs:F1} ms, {Load()})");
             if (ChoiceMenu.IsOpen) { ChoiceMenu.AutoPick = 99; yield return Wait(0.4f); }
 
-            // 20 frames a second: the preset one step down.
+            // 20 frames a second, from the top of Graphics Fidelity: Ultra offers High, then Medium.
+            s.Quality = q0;
+            Settings.ApplyGraphics();
             Application.targetFrameRate = 20;
             float waited = 0f;
             yield return Play(SlowFrames.Warmup + SlowFrames.Window + 10f, () => { waited += GameTime.UnscaledDelta; return ChoiceMenu.IsOpen; });
+            string Offer() => string.Join(" | ", Ui.Canvas.transform.Find("Choice")?.GetComponentsInChildren<TMPro.TextMeshProUGUI>().Select(t => t.text) ?? new string[0]);
             Check(ChoiceMenu.IsOpen && fw.Offers == offers0 + 1 && fw.OfferedFps >= 15 && fw.OfferedFps <= 22,
                 $"at 20 fps the game offers a lower setting after {waited:F0} s, naming the rate on screen ({fw.OfferedFps} fps; median over the window {fw.Frames.MedianMs:F0} ms)");
+            Check(Offer().Contains($"Lower the graphics to {GraphicsQuality.Names[q0 - 1]}"), $"on {GraphicsQuality.Names[q0]} it offers {GraphicsQuality.Names[q0 - 1]} ({Offer()})");
             yield return Wait(0.5f);
             yield return Shot("n2_running_slowly");
             ChoiceMenu.AutoPick = 0;
@@ -1087,7 +1204,8 @@ namespace AfterHours
             // Still slow: the next step; Keep means never again.
             waited = 0f;
             yield return Play(SlowFrames.Warmup + SlowFrames.Window + 10f, () => { waited += GameTime.UnscaledDelta; return ChoiceMenu.IsOpen; });
-            Check(ChoiceMenu.IsOpen && fw.Offers == offers0 + 2, $"still slow, it offers the next step after {waited:F0} s");
+            Check(ChoiceMenu.IsOpen && fw.Offers == offers0 + 2 && Offer().Contains($"Lower the graphics to {GraphicsQuality.Names[q0 - 2]}"),
+                $"still slow, it offers the next step after {waited:F0} s ({Offer()})");
             ChoiceMenu.AutoPick = 1;
             yield return Wait(0.5f);
             Check(s.SlowFramesDeclined && s.Quality == q0 - 1 && System.IO.File.ReadAllText(file).Contains("\"SlowFramesDeclined\": true"),
@@ -1101,7 +1219,7 @@ namespace AfterHours
             FrameWatch.Watching = false;
             QualitySettings.vSyncCount = vs0;
             Application.targetFrameRate = fr0;
-            s.Quality = q0;
+            s.Quality = qWas;
             s.RenderScale = scale0;
             s.SlowFramesDeclined = false;
             Settings.ApplyGraphics();

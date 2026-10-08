@@ -149,6 +149,80 @@ namespace AfterHours
             return rt;
         }
 
+        /// <summary>
+        /// A slider with a notch for each of <paramref name="steps"/> (Graphics Fidelity): the step's
+        /// name on the right. Click or drag on the track for the nearest notch; the arrows, d-pad or
+        /// arrow keys move one notch (stopping at the ends); a click elsewhere on the row (or A) steps
+        /// up, wrapping round like a choice row.
+        /// </summary>
+        public static RectTransform Steps(Transform parent, string label, string[] steps, int index, Action<int> onChange, float width = 760, float labelWidth = 300)
+        {
+            var row = Ui.Panel(parent, "Steps_" + label, new Color(1, 1, 1, 0f), 10);
+            row.raycastTarget = true;
+            var rt = row.rectTransform;
+            rt.sizeDelta = new Vector2(width, 56);
+            var l = Ui.Label(rt, label, UiFont.Sans, 26, Ui.Text, TextAlignmentOptions.MidlineLeft);
+            Ui.Place(l.rectTransform, new Vector2(0, 0.5f), Vector2.zero, new Vector2(labelWidth, 50), new Vector2(0, 0.5f));
+            var track = Ui.Panel(rt, "Track", new Color(1, 1, 1, 0.12f), 6);
+            float trackW = width - labelWidth - 160;
+            Ui.Place(track.rectTransform, new Vector2(0, 0.5f), new Vector2(labelWidth + 20, 0), new Vector2(trackW, 12), new Vector2(0, 0.5f));
+            track.raycastTarget = true;
+            var fill = Ui.Panel(track.rectTransform, "Fill", Ui.Accent, 6);
+            fill.rectTransform.anchorMin = new Vector2(0, 0);
+            fill.rectTransform.offsetMin = fill.rectTransform.offsetMax = Vector2.zero;
+            int n = Mathf.Max(2, steps.Length);
+            var notches = new Image[n];
+            for (int i = 0; i < n; i++)
+            {
+                var dot = Ui.Image(track.rectTransform, "Notch" + i, Color.white, Ui.Circle(64));
+                dot.rectTransform.anchorMin = dot.rectTransform.anchorMax = new Vector2(i / (n - 1f), 0.5f);
+                dot.rectTransform.sizeDelta = new Vector2(12, 12);
+                dot.raycastTarget = false;
+                notches[i] = dot;
+            }
+            var knob = Ui.Image(track.rectTransform, "Knob", Color.white, Ui.Circle(64));
+            knob.rectTransform.sizeDelta = new Vector2(30, 30);
+            knob.raycastTarget = false;
+            var val = Ui.Label(rt, "", UiFont.SansMedium, 25, Ui.Accent, TextAlignmentOptions.MidlineRight);
+            Ui.Place(val.rectTransform, new Vector2(1, 0.5f), Vector2.zero, new Vector2(120, 50), new Vector2(1, 0.5f));
+            int current = Mathf.Clamp(index, 0, steps.Length - 1);
+            float shown = current / (n - 1f);
+            void Draw(float v)
+            {
+                shown = v;
+                fill.rectTransform.anchorMax = new Vector2(v, 1);
+                knob.rectTransform.anchorMin = knob.rectTransform.anchorMax = new Vector2(v, 0.5f);
+                for (int i = 0; i < n; i++)
+                    notches[i].color = i / (n - 1f) <= v + 1e-3f ? new Color(0.1f, 0.12f, 0.17f, 0.55f) : new Color(1, 1, 1, 0.35f);
+            }
+            Draw(shown);
+            val.text = steps[current];
+            void Set(int i)
+            {
+                i = Mathf.Clamp(i, 0, steps.Length - 1);
+                if (i == current) return;
+                int d = i - current;
+                current = i;
+                val.text = steps[current];
+                Sfx.Play("ui_click", null, 0.4f, 0.9f + 0.1f * current, 0f, AudioBus.Ui);
+                float from = shown, to = current / (n - 1f);
+                Tween.Run(0.16f, k => { if (knob) Draw(Mathf.Lerp(from, to, k)); }, Ease.OutCubic);
+                var nudge = d > 0 ? 14f : -14f;
+                Tween.Run(0.16f, k => { if (val) val.rectTransform.anchoredPosition = new Vector2(nudge * (1 - k), 0); }, Ease.OutCubic);
+                onChange(current);
+            }
+            var drag = track.gameObject.AddComponent<SliderDrag>();
+            drag.Init(track.rectTransform, v => Set(Mathf.RoundToInt(v * (n - 1))), shown);
+            drag.Quiet = true; // Set has its own click per notch
+            row.gameObject.AddComponent<SelectGlow>().Target = row;
+            var b = row.gameObject.AddComponent<UnityEngine.UI.Button>();
+            b.transition = Selectable.Transition.None;
+            b.onClick.AddListener(() => Set(current + 1 < steps.Length ? current + 1 : 0));
+            var nav = row.gameObject.AddComponent<ChoiceNav>();
+            nav.Step = d => Set(current + d);
+            return rt;
+        }
+
         /// <summary>A small caps heading above a group of rows.</summary>
         public static RectTransform Heading(Transform parent, string text, float width = 760)
         {
@@ -238,23 +312,27 @@ namespace AfterHours
         }
     }
 
-    public class SliderDrag : MonoBehaviour, IPointerDownHandler, IDragHandler
+    public class SliderDrag : MonoBehaviour, IPointerDownHandler, IDragHandler, IPointerClickHandler
     {
         RectTransform track;
         Action<float> set;
         float lastSound;
+        /// <summary>No drag sound (the row makes its own).</summary>
+        public bool Quiet;
 
         public void Init(RectTransform t, Action<float> s, float v) { track = t; set = s; }
 
         public void OnPointerDown(PointerEventData e) => Apply(e);
         public void OnDrag(PointerEventData e) => Apply(e);
+        // A click on the track is the press above, not a click on the row it sits in.
+        public void OnPointerClick(PointerEventData e) { }
 
         void Apply(PointerEventData e)
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(track, e.position, e.pressEventCamera, out var lp);
             float v = Mathf.Clamp01((lp.x - track.rect.xMin) / track.rect.width);
             set(v);
-            if (GameTime.Unscaled - lastSound > 0.06f)
+            if (!Quiet && GameTime.Unscaled - lastSound > 0.06f)
             {
                 lastSound = GameTime.Unscaled;
                 Sfx.Play("ui_hover", null, 0.18f, 0.8f + v * 0.6f, 0f, AudioBus.Ui);

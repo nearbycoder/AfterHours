@@ -418,7 +418,17 @@ namespace AfterHours
 
             Widgets.Heading(right, "Display", ColW);
             Widgets.Button(right, "Brightness  ›", () => BrightnessPanel.Show(), ColW, 56, 26);
-            Widgets.Choice(right, "Graphics quality", GraphicsQuality.Names, GraphicsQuality.Level, i => { s.Quality = i; Settings.ApplyGraphics(); }, ColW);
+            TextMeshProUGUI blurb = null;
+            Widgets.Steps(right, "Graphics fidelity", GraphicsQuality.Names, GraphicsQuality.Level, i =>
+            {
+                s.Quality = i;
+                Settings.ApplyGraphics();
+                if (blurb) blurb.text = GraphicsQuality.Blurbs[GraphicsQuality.Level];
+            }, ColW, 250);
+            // What the step does, under it (the slider's notches carry no words).
+            blurb = Ui.Label(right, GraphicsQuality.Blurbs[GraphicsQuality.Level], UiFont.Sans, 18, Ui.TextDim, TextAlignmentOptions.TopLeft, "Blurb_Graphics fidelity");
+            blurb.rectTransform.sizeDelta = new Vector2(ColW, 20);
+            blurb.margin = new Vector4(8, -8, 0, 0);
             Widgets.Slider(right, "Render scale", Mathf.InverseLerp(0.5f, 1f, s.RenderScale), v => { s.RenderScale = Mathf.Lerp(0.5f, 1f, v); Settings.ApplyGraphics(); }, v => Mathf.RoundToInt(Mathf.Lerp(50, 100, v)) + "%", ColW, 250);
             Widgets.Toggle(right, "Fullscreen", s.Fullscreen, v => { s.Fullscreen = v; Settings.ApplyGraphics(); }, ColW);
             Widgets.Toggle(right, "VSync", s.VSync, v => { s.VSync = v; Settings.ApplyGraphics(); }, ColW);
@@ -434,7 +444,8 @@ namespace AfterHours
             Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
 
             var done = Widgets.Button(panel, "Done", Close, 220, 60, 28, true);
-            Ui.Place(done, new Vector2(1, 0), new Vector2(-60, 40), new Vector2(220, 60), new Vector2(1, 0));
+            // Done sits low in the corner: the right column reaches further since Graphics fidelity has a line under it.
+            Ui.Place(done, new Vector2(1, 0), new Vector2(-60, large ? 40 : 26), new Vector2(220, 60), new Vector2(1, 0));
             done.localScale = Vector3.one * k;
             var focus = MenuFocus.AttachAll(panel.gameObject);
             if (list != null)
