@@ -411,6 +411,7 @@ namespace AfterHours
             Widgets.Slider(left, "Music", s.MusicVolume, v => s.MusicVolume = v, null, ColW, 250);
             Widgets.Slider(left, "Effects", s.SfxVolume, v => s.SfxVolume = v, null, ColW, 250);
             Widgets.Slider(left, "Ambience", s.AmbienceVolume, v => s.AmbienceVolume = v, null, ColW, 250);
+            Widgets.Toggle(left, "Mono audio", s.MonoAudio, v => s.MonoAudio = v, ColW);
             Widgets.Heading(left, "Feedback", ColW);
             Widgets.Toggle(left, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
 

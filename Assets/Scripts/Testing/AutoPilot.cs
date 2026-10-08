@@ -408,6 +408,7 @@ namespace AfterHours
                     if (PadChecks) yield return ShiftHelperChecks();
                     if (PadChecks) yield return HighlightChecks();
                     if (PadChecks) yield return CameraMotionChecks();
+                    if (PadChecks) yield return MonoChecks();
                     if (PadChecks) yield return RemapChecks();
                     if (PadChecks && vpad != null) yield return ToggleChecks();
                     if (PadChecks && vpad != null) yield return PadToolChecks();
@@ -2899,6 +2900,45 @@ namespace AfterHours
         /// Camera motion off in Settings (round 9) stops the camera kick a throw or a bump gives
         /// and the field-of-view punch of a reveal, as well as the head bob; on, both happen.
         /// </summary>
+        /// <summary>
+        /// Round 11: Mono audio. A loop placed to the player's right makes the mix lean right going
+        /// into the listener's filter; with Mono on, what comes out is the same on both sides, and
+        /// with it off, the difference passes through untouched. Measured on the audio thread.
+        /// </summary>
+        IEnumerator MonoChecks()
+        {
+            var cam = root.Player.Camera.transform;
+            bool monoWas = Settings.Current.MonoAudio;
+            var voice = Sfx.Loop("vacuum_loop", null, true, AudioBus.Sfx);
+            voice.transform.position = cam.position + cam.right * 2.5f;
+            voice.TargetVolume = 1f;
+            yield return Wait(0.6f);
+            foreach (bool mono in new[] { false, true })
+            {
+                Settings.Current.MonoAudio = mono;
+                yield return Wait(0.2f);
+                MonoMix.ResetMeter();
+                MonoMix.Metering = true;
+                yield return Wait(0.8f);
+                MonoMix.Metering = false;
+                var m = MonoMix.ReadMeter();
+                double inSide = m.InSide / Math.Max(m.InLeft + m.InRight, 1e-12), outSide = m.OutSide / Math.Max(m.OutLeft + m.OutRight, 1e-12);
+                double lean = m.InRight / Math.Max(m.InLeft, 1e-12);
+                string seen = $"{m.Frames} frames; going in, right {lean:F1}× the left's energy and side {inSide:F3} of the total; coming out, side {outSide:F6}, right/left {m.OutRight / Math.Max(m.OutLeft, 1e-12):F3}";
+                bool leans = m.Frames > 4000 && lean > 1.5 && inSide > 0.05;
+                if (mono)
+                    Check(MonoMix.Instance != null && leans && outSide < 1e-6 && Math.Abs(m.OutRight / Math.Max(m.OutLeft, 1e-12) - 1) < 1e-4,
+                        $"with Mono audio on, a sound to the right comes out the same on both sides ({seen})");
+                else
+                    Check(MonoMix.Instance != null && leans && Math.Abs(outSide - inSide) < 1e-6,
+                        $"with Mono audio off, a sound to the right stays on the right ({seen})");
+            }
+            Settings.Current.MonoAudio = monoWas;
+            voice.TargetVolume = 0f;
+            Destroy(voice.gameObject, 1f);
+            yield return Wait(0.3f);
+        }
+
         IEnumerator CameraMotionChecks()
         {
             var p = root.Player;

@@ -120,7 +120,7 @@ namespace AfterHours
                 ("version", Application.version), ("platform", Application.platform.ToString()), ("os", SystemInfo.operatingSystem),
                 ("gpu", SystemInfo.graphicsDeviceName), ("api", SystemInfo.graphicsDeviceType.ToString()),
                 ("screen", $"{Screen.width}x{Screen.height}"), ("quality", GraphicsQuality.Names[GraphicsQuality.Level]),
-                ("pad", UnityEngine.InputSystem.Gamepad.current?.displayName), ("captions", s.Captions), ("highlight", s.AimHighlight),
+                ("pad", UnityEngine.InputSystem.Gamepad.current?.displayName), ("captions", s.Captions), ("highlight", s.AimHighlight), ("mono", s.MonoAudio),
                 ("rebound", s.Bindings?.Count ?? 0)));
             Lines++;
             Debug.Log("[Playtest] logging to " + CurrentFile);

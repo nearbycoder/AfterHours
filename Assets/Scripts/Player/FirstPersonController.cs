@@ -68,6 +68,7 @@ namespace AfterHours
             cam.farClipPlane = 400f;
             cam.fieldOfView = Settings.Current.Fov;
             camGo.AddComponent<AudioListener>();
+            camGo.AddComponent<MonoMix>(); // Mono audio: filters the listener's whole mix
             fpc.Camera = cam;
 
             // Hand-held models render on an overlay camera after the world, with depth cleared,

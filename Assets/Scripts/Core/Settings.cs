@@ -20,6 +20,8 @@ namespace AfterHours
         public float MusicVolume = 0.7f;
         public float SfxVolume = 0.9f;
         public float AmbienceVolume = 0.8f;
+        /// <summary>Fold the game's sound to one channel on both sides (see <see cref="MonoMix"/>).</summary>
+        public bool MonoAudio;
         public bool Fullscreen = true;
         public int Quality = 2;            // 0 low, 1 medium, 2 high (GraphicsQuality)
         public float RenderScale = 1f;
