@@ -15,7 +15,7 @@ namespace AfterHours
 
         RectTransform root, reticleRoot, promptRoot, toastRoot;
         Image dot, ring, ringBack;
-        TextMeshProUGUI targetLabel, clock, clockSub;
+        TextMeshProUGUI targetLabel, clock, clockSub, roomLine;
         CanvasGroup group, promptGroup;
         readonly List<RectTransform> toasts = new();
         string promptKey;
@@ -74,6 +74,42 @@ namespace AfterHours
             clockSub = Ui.Label(watch.transform, "PM  MON", UiFont.SansMedium, 13, new Color(0.62f, 0.96f, 0.85f, 0.6f), TextAlignmentOptions.Right, "ClockSub");
             Ui.Place(clockSub.rectTransform, new Vector2(1, 0), new Vector2(-18, 6), new Vector2(150, 16), new Vector2(1, 0));
             clockSub.characterSpacing = 6f;
+
+            // Where you are, in the shift sheet's words, under the watch.
+            roomLine = Ui.Label(root, "", UiFont.SansMedium, 17, new Color(0.62f, 0.96f, 0.85f), TextAlignmentOptions.TopRight, "RoomLine");
+            Ui.Place(roomLine.rectTransform, new Vector2(1, 1), new Vector2(-52, -104), new Vector2(420, 24), new Vector2(1, 1));
+            roomLine.characterSpacing = 5f;
+            roomLine.textWrappingMode = TextWrappingModes.NoWrap;
+            roomLine.fontMaterial.EnableKeyword("UNDERLAY_ON");
+        }
+
+        string roomId;
+        float roomGlow;
+
+        /// <summary>The room the line under the watch names (its id), for checks.</summary>
+        public string RoomShown => roomId;
+        /// <summary>The line under the watch (for checks).</summary>
+        public TextMeshProUGUI RoomLine => roomLine;
+
+        /// <summary>
+        /// Name the room the player stands in. Between rooms (a doorway, the corridor) it keeps the
+        /// last one; walking into another brightens the line for a moment.
+        /// </summary>
+        void UpdateRoom(float dt)
+        {
+            var dir = NightDirector.Instance;
+            var player = GameRoot.Instance != null ? GameRoot.Instance.Player : null;
+            if (dir == null || !dir.Running || player == null) { roomId = null; roomLine.text = ""; return; }
+            var room = Room.At(player.transform.position + Vector3.up * 0.2f);
+            if (room != null && room.Id != roomId)
+            {
+                bool first = roomId == null;
+                roomId = room.Id;
+                roomLine.text = room.DisplayName.ToUpperInvariant();
+                roomGlow = first ? 0f : 1f;
+            }
+            roomGlow = Mathf.MoveTowards(roomGlow, 0f, dt / 2.5f);
+            roomLine.alpha = Mathf.Lerp(0.6f, 1f, roomGlow);
         }
 
         public void SetVisible(bool v) => Tween.Run(0.25f, t => group.alpha = v ? t : 1 - t, Ease.OutCubic, owner: group);
@@ -216,6 +252,7 @@ namespace AfterHours
             var scale = Vector3.one * k;
             toastRoot.localScale = scale;
             targetLabel.rectTransform.localScale = scale;
+            roomLine.rectTransform.localScale = scale;
             if (toolNote != null)
             {
                 toolNote.rectTransform.localScale = scale;
@@ -235,6 +272,7 @@ namespace AfterHours
             float dt = GameTime.UnscaledDelta;
             bool busy = GameRoot.Instance != null && GameRoot.Instance.Blocked;
             ApplyTextScale();
+            UpdateRoom(dt);
             // Scale rather than deactivate: TMP can't measure labels built while inactive.
             promptRoot.localScale = busy ? Vector3.zero : Vector3.one * Settings.TextScale;
             reticleRoot.gameObject.SetActive(!busy);

@@ -1303,7 +1303,7 @@ switch for the close question (the owner's calls), and everything left with the 
 ### R10-1. Where you are
 
 A small line under the wristwatch names the room you're in, using the shift sheet's names
-(Reception, Bullpen, Break room, Conference room, Marian's office, Cleaning closet). When you walk
+(Reception, Bullpen, Break Room, Conference Room, Marian's Office, Janitor's Closet). When you walk
 into another room the name brightens for a moment, then dims. It follows Text size and hides
 with the rest of the HUD.
 

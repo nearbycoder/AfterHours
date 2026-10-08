@@ -40,6 +40,34 @@ namespace AfterHours
             if (sampling && Time.captureFramerate == 0) frameTimes.Add(GameTime.UnscaledDelta * 1000f);
         }
 
+        // The line under the watch, sampled while a night's route is played: it must name the room
+        // the player has stood in for at least one sample (a teleport mid-frame isn't a mistake).
+        readonly System.Collections.Generic.HashSet<string> roomsNamed = new();
+        int roomSamples, roomWrong;
+        string roomPrev, roomWrongNote;
+        float roomSampleT;
+
+        void LateUpdate()
+        {
+            if (!sampling || Hud.Instance == null || root == null || root.Director == null || !root.Director.Running) return;
+            if ((roomSampleT -= GameTime.UnscaledDelta) > 0f) return;
+            roomSampleT = 0.25f;
+            var here = Room.At(root.Player.transform.position + Vector3.up * 0.2f);
+            string id = here != null ? here.Id : null;
+            if (id != null && id == roomPrev)
+            {
+                roomSamples++;
+                roomsNamed.Add(id);
+                string want = here.DisplayName.ToUpperInvariant();
+                if (Hud.Instance.RoomShown != id || Hud.Instance.RoomLine.text != want)
+                {
+                    roomWrong++;
+                    roomWrongNote ??= $"in {id} it read \"{Hud.Instance.RoomLine.text}\"";
+                }
+            }
+            roomPrev = id;
+        }
+
         void LogFrameStats(int n)
         {
             if (frameTimes.Count < 30) return;
@@ -268,6 +296,7 @@ namespace AfterHours
             }
             float start = Time.realtimeSinceStartup;
             frameTimes.Clear();
+            roomsNamed.Clear(); roomSamples = roomWrong = 0; roomPrev = roomWrongNote = null;
             sampling = true;
             foreach (var room in dir.Def.Rooms)
                 if (root.Office.Rooms.TryGetValue(room, out var r) && !r.LightsOn && root.Office.Switches.TryGetValue(room, out var sw)) sw.Toggle();
@@ -295,6 +324,8 @@ namespace AfterHours
 
             sampling = false;
             LogFrameStats(n);
+            Check(roomSamples > 20 && roomWrong == 0 && roomsNamed.Count >= dir.Def.Rooms.Length,
+                $"night {n}: the line under the watch names the room you're in ({roomSamples} samples in {roomsNamed.Count} rooms: {string.Join(", ", roomsNamed)}; {roomWrong} wrong{(roomWrongNote != null ? ", first " + roomWrongNote : "")})");
 
             // Nights 1 and 2 end at the largest text size: the report and the morning chat grow.
             bool large = PadChecks && n <= 2;
@@ -1444,6 +1475,12 @@ namespace AfterHours
                 bool ok = OnScreen(prompt) && OnScreen(caption) && toasts.Count > 0 && toasts.All(OnScreen)
                           && !toasts.Any(t => t.Overlaps(watch)) && !caption.Overlaps(prompt);
                 Check(ok, $"HUD text {Settings.TextSizes[size]} at {W}x{H}: the prompt ({prompt.width:F0}x{prompt.height:F0} px), a long caption ({caption.width:F0}x{caption.height:F0}) and {toasts.Count} toast(s) stay on screen, apart and clear of the watch");
+                // The room's name under the watch: on screen, below the watch, clear of the toasts, at the text size.
+                var roomLabel = Hud.Instance.RoomLine;
+                var roomRect = TextBounds(roomLabel);
+                bool roomOk = !string.IsNullOrEmpty(roomLabel.text) && OnScreen(roomRect) && roomRect.yMax <= watch.yMin + 1 && !toasts.Any(t => t.Overlaps(roomRect))
+                              && Mathf.Abs(roomLabel.rectTransform.lossyScale.y / Ui.Canvas.transform.lossyScale.y - Settings.TextScale) < 0.01f;
+                Check(roomOk, $"HUD text {Settings.TextSizes[size]} at {W}x{H}: the room line (\"{roomLabel.text}\", {roomRect.width:F0}x{roomRect.height:F0} px) is on screen under the watch and clear of the toasts");
                 if (size == 2) Check(Mathf.Abs(prompt.height / Mathf.Max(1f, promptH0) - 1.5f) < 0.05f, $"HUD text Largest is 1.5x Normal (prompt {promptH0:F0} → {prompt.height:F0} px)");
                 yield return Shot($"hud_text_{Settings.TextSizes[size].ToLowerInvariant()}");
                 yield return Wait(2.6f); // let the toasts go
