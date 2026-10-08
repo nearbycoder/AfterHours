@@ -14,6 +14,18 @@ namespace AfterHours.Tests
         static StoryState Fresh() => new StoryState();
 
         [Test]
+        public void GlintCaptionNamesTheRoomsOfTheChimes()
+        {
+            Assert.AreEqual("[A chime from the bullpen]", ShiftHelper.WhereCaption(1, new List<string> { "Bullpen" }));
+            Assert.AreEqual("[Chimes from the bullpen]", ShiftHelper.WhereCaption(3, new List<string> { "Bullpen", "Bullpen", "Bullpen" }));
+            Assert.AreEqual("[Chimes from reception and the break room]", ShiftHelper.WhereCaption(3, new List<string> { "Reception", "Break Room", "Reception" }));
+            Assert.AreEqual("[Chimes from Marian's office, the conference room and the janitor's closet]",
+                ShiftHelper.WhereCaption(3, new List<string> { "Marian's Office", "Conference Room", "Janitor's Closet" }));
+            Assert.AreEqual("[Chimes somewhere close]", ShiftHelper.WhereCaption(2, new List<string> { null, "" }), "outside every room");
+            Assert.AreEqual("[Chimes from the bullpen]", ShiftHelper.WhereCaption(2, new List<string> { null, "Bullpen" }));
+        }
+
+        [Test]
         public void SpotlessWhenNothingIsTouched()
         {
             var s = Fresh();

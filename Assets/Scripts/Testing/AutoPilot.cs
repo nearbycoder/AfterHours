@@ -2844,6 +2844,17 @@ namespace AfterHours
                          && helper.LastGlint.All(p => remaining.Any(r => (r - p).sqrMagnitude < 0.04f))
                          && !helper.LastGlint.Any(p => binned.Any(b => (b - p).sqrMagnitude < 0.01f));
             Check(exact, $"the glint marks exactly the unfinished things ({helper.LastGlint.Count} points, {remaining.Count} expected)");
+            // It says where the chimes come from (the nearest few, their rooms nearest first), once.
+            var me = root.Player.transform.position;
+            var chimed = helper.LastGlint.OrderBy(p => (p - me).sqrMagnitude).Take(ShiftHelper.Chimes).ToList();
+            string where = ShiftHelper.WhereCaption(chimed.Count, chimed.Select(p => Room.At(p + Vector3.up * 0.2f)?.DisplayName).ToList());
+            var captionText = Ui.Canvas.transform.Find("HUD/Caption")?.GetComponent<TMPro.TextMeshProUGUI>();
+            Check(helper.LastWhere == where && where.StartsWith("[") && Hud.Instance.CaptionShowing && captionText != null && captionText.text == where,
+                $"the glint's caption says where the chimes are: \"{captionText?.text}\" (expected \"{where}\" from {string.Join(", ", chimed.Select(p => Room.At(p + Vector3.up * 0.2f)?.Id ?? "?"))})");
+            yield return Shot("n1_glint_where");
+            int glints2 = helper.GlintCount;
+            for (float t2 = 0; helper.GlintCount == glints2 && t2 < helper.RepeatEvery + 5f; t2 += Time.deltaTime) yield return null;
+            Check(helper.GlintCount > glints2 && helper.LastWhere == null, $"the repeat glint {helper.RepeatEvery:F0}s later doesn't say it again (caption {(helper.LastWhere ?? "none")})");
             Clipboard.Instance.Show();
             yield return Wait(0.7f);
             var sheet = Clipboard.Instance.GetComponentsInChildren<TMPro.TextMeshProUGUI>().Select(t => t.text).FirstOrDefault(t => t.Contains("Bin every bit"));

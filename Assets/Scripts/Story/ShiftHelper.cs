@@ -25,6 +25,11 @@ namespace AfterHours
         public float Idle => idle;
         /// <summary><see cref="Idle"/> when the last glint fired.</summary>
         public float LastGlintIdle { get; private set; }
+        /// <summary>The caption the last glint showed ("[A chime from the bullpen]"), or null if it showed none.</summary>
+        public string LastWhere { get; private set; }
+
+        // Said where the chimes come from in this stretch without progress.
+        bool saidWhere;
 
         NightDirector dir;
         float idle, nextGlint, sampleT, lastScore = -1f;
@@ -45,7 +50,8 @@ namespace AfterHours
 
         void ResetNight()
         {
-            idle = 0; lastScore = -1f; nextGlint = 0;
+            idle = 0; lastScore = -1f; nextGlint = 0; saidWhere = false;
+            LastWhere = null;
             watched.Clear();
             LastGlint.Clear();
         }
@@ -71,7 +77,7 @@ namespace AfterHours
             {
                 sampleT = 0.5f;
                 float score = Score();
-                if (score > lastScore + 0.001f) { lastScore = score; idle = 0; nextGlint = 0; }
+                if (score > lastScore + 0.001f) { lastScore = score; idle = 0; nextGlint = 0; saidWhere = false; }
             }
             if (!blocked) idle += dt;
             if (!blocked && idle >= StuckAfter && idle >= nextGlint)
@@ -88,6 +94,34 @@ namespace AfterHours
                 if (left.Count > 0 && left.Count <= 4) Glint();
             }
             clipboardWasOpen = open;
+        }
+
+        /// <summary>How many of the nearest glints also chime.</summary>
+        public const int Chimes = 3;
+
+        /// <summary>
+        /// "[A chime from the bullpen]", "[Chimes from reception and the break room]": the rooms of
+        /// the chimes, nearest first, as the shift sheet names them.
+        /// </summary>
+        public static string WhereCaption(int chimes, IList<string> roomNames)
+        {
+            var rooms = roomNames.Select(n => string.IsNullOrEmpty(n) ? null : InRoom(n)).Where(n => n != null).Distinct().ToList();
+            string where = rooms.Count switch
+            {
+                0 => "somewhere close",
+                1 => "from " + rooms[0],
+                _ => "from " + string.Join(", ", rooms.Take(rooms.Count - 1)) + " and " + rooms[^1],
+            };
+            return chimes == 1 ? $"[A chime {where}]" : $"[Chimes {where}]";
+        }
+
+        /// <summary>"Bullpen" → "the bullpen"; names that read as places of their own (Reception, Marian's Office) keep no article.</summary>
+        static string InRoom(string displayName)
+        {
+            string n = displayName.ToLowerInvariant();
+            if (n == "reception") return n;
+            if (n.StartsWith("marian")) return "Marian's office";
+            return "the " + n;
         }
 
         float Score()
@@ -125,11 +159,22 @@ namespace AfterHours
             bool calm = Settings.Current.ReduceFlashing;
             var player = GameRoot.Instance.Player.transform.position;
             var warm = new Color(1f, 0.86f, 0.55f);
+            var order = pts.OrderBy(p => (p - player).sqrMagnitude).ToList();
+            // Where the chimes come from, once for each stretch without progress: the glints may all
+            // be in another room, and a player who can't hear the chime has nothing else to go on.
+            LastWhere = null;
+            if (!saidWhere)
+            {
+                saidWhere = true;
+                var chimes = order.Take(Chimes).ToList();
+                LastWhere = WhereCaption(chimes.Count, chimes.Select(p => Room.At(p + Vector3.up * 0.2f)?.DisplayName).ToList());
+                Hud.Instance?.Caption(LastWhere, 4f);
+            }
             int i = 0;
-            foreach (var p in pts.OrderBy(p => (p - player).sqrMagnitude))
+            foreach (var p in order)
             {
                 var at = p + Vector3.up * 0.08f;
-                bool ping = i < 3; // the nearest few also make a sound, so off-screen ones can be found by ear
+                bool ping = i < Chimes; // the nearest few also make a sound, so off-screen ones can be found by ear
                 float delay = Mathf.Min(i * 0.04f, 0.8f);
                 for (int pulse = 0; pulse < 3; pulse++)
                 {
