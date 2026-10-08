@@ -99,6 +99,7 @@ namespace AfterHours
             if (PadChecks) yield return PadTitle();
             bool padWas = GameInput.UsingPad; // the keyboard checks leave the keyboard as the last device touched
             if (PadChecks) yield return KeyboardTitleChecks();
+            if (PadChecks) yield return MenuFadeTitleChecks();
             StoryState.DeleteAll();
             Story.State = new StoryState();
             if (PadChecks) Check(PlaytestLog.CurrentFile == null, $"with the playtest log off nothing is written (it was {(logWasOn ? "on" : "off")} in this profile's settings)");
@@ -260,6 +261,8 @@ namespace AfterHours
                 Check(!Hud.Instance.CaptionShowing, "no caption shows behind the open clipboard");
                 Clipboard.Instance.Close();
                 yield return Wait(0.4f);
+                yield return MenuFadeChecks("The pause menu", "Pause", PauseMenu.Show, () => PauseMenu.IsOpen);
+                yield return WaitUnblocked(3f);
                 Hud.Instance.Caption("[A caption that's still up when the game is paused]", 4f);
                 yield return Wait(0.4f);
                 PauseMenu.Show();
@@ -791,6 +794,55 @@ namespace AfterHours
             Settings.ApplyGraphics();
             yield return Wait(0.4f);
             Check(RoomProbes.Count == 0 && GraphicsQuality.SsaoNow() == "Medium" && urp.msaaSampleCount == 4, $"back on {GraphicsQuality.Names[q0]}, the probes are off and the authored look is back");
+        }
+
+        /// <summary>
+        /// Round 12: menus fade in and out. Each one starts see-through and is fully shown within
+        /// 0.3 s; closed with a real Esc, it's out of input, navigation and lookups at once, its
+        /// picture still fading, and gone within 0.3 s.
+        /// </summary>
+        IEnumerator MenuFadeChecks(string what, string layer, System.Action open, System.Func<bool> isOpen)
+        {
+            bool padWas = GameInput.UsingPad;
+            open();
+            var rt = Ui.Canvas.transform.Find(layer) as RectTransform;
+            var g = rt ? rt.GetComponent<CanvasGroup>() : null;
+            float a0 = g ? g.alpha : -1f, s0 = rt ? rt.localScale.x : -1f;
+            yield return null;
+            float am = g ? g.alpha : -1f; // a frame in: how far depends on how long the frame took
+            yield return Wait(0.3f);
+            float a1 = g ? g.alpha : -1f, s1 = rt ? rt.localScale.x : -1f;
+            Check(isOpen() && a0 == 0f && Mathf.Approximately(s0, MenuFade.StartScale) && am < 0.6f && Mathf.Approximately(a1, 1f) && Mathf.Approximately(s1, 1f),
+                $"{what} fades in: alpha {a0:F2} and scale {s0:F3} as it opens ({am:F2} a frame later, {GameTime.UnscaledDelta * 1000f:F0} ms frames), {a1:F2} and {s1:F3} by 0.3 s");
+            titleKb ??= InputSystem.AddDevice<Keyboard>("AutoPilotKeyboardTitle");
+            titleKb.MakeCurrent();
+            InputSystem.QueueStateEvent(titleKb, new KeyboardState(UnityEngine.InputSystem.Key.Escape));
+            yield return null; yield return null;
+            var closing = Ui.Canvas.transform.Find(layer + MenuFade.Closing);
+            var cg = closing ? closing.GetComponent<CanvasGroup>() : null;
+            var sel = EventSystem.current.currentSelectedGameObject;
+            bool quiet = closing && cg && !cg.blocksRaycasts && !cg.interactable
+                         && closing.GetComponentsInChildren<UnityEngine.UI.Selectable>(true).All(x => !x.enabled)
+                         && (MenuFocus.Top == null || !MenuFocus.Top.transform.IsChildOf(closing))
+                         && (sel == null || !sel.transform.IsChildOf(closing));
+            Check(!isOpen() && Ui.Canvas.transform.Find(layer) == null && quiet && cg.alpha > 0.2f,
+                $"Esc closes {what.ToLowerInvariant()} at once (out of input, navigation and lookups) while its picture fades (alpha {(cg ? cg.alpha : -1f):F2})");
+            InputSystem.QueueStateEvent(titleKb, new KeyboardState());
+            yield return Wait(0.3f);
+            Check(Ui.Canvas.transform.Find(layer + MenuFade.Closing) == null, $"{what} is gone 0.3 s after closing");
+            if (padWas && vpad != null) vpad.MakeCurrent();
+            GameInput.UsingPad = padWas;
+        }
+
+        /// <summary>Round 12: the title's menus fade (Settings, Night Select, the brightness page, the controls page).</summary>
+        IEnumerator MenuFadeTitleChecks()
+        {
+            yield return MenuFadeChecks("Settings", "Settings", SettingsPanel.Show, () => SettingsPanel.IsOpen);
+            yield return MenuFadeChecks("Night Select", "NightSelect", NightSelect.Show, () => NightSelect.IsOpen);
+            yield return MenuFadeChecks("The brightness page", "Brightness", BrightnessPanel.Show, () => BrightnessPanel.IsOpen);
+            yield return MenuFadeChecks("The controls page", "Controls", () => ControlsPanel.Show(), () => ControlsPanel.IsOpen);
+            Check(TitleScreen.Instance != null && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen && !ControlsPanel.IsOpen,
+                "and the title is still up behind them, with all four closed");
         }
 
         Keyboard titleKb;

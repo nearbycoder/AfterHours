@@ -32,6 +32,7 @@ namespace AfterHours
             instance = rt.gameObject.AddComponent<BrightnessPanel>();
             instance.root = rt;
             instance.Build();
+            MenuFade.In(rt);
         }
 
         /// <summary>The value shown beside the slider: steps either side of the designed look.</summary>
@@ -101,7 +102,7 @@ namespace AfterHours
             GameRoot.Instance.SetBlocked("brightness", false);
             ClosedFrame = Time.frameCount;
             instance = null;
-            Destroy(root.gameObject);
+            MenuFade.Out(root);
         }
 
         void Hide()

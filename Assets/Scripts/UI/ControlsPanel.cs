@@ -35,7 +35,9 @@ namespace AfterHours
         public static ScrollFollow List => instance != null ? instance.list : null;
         ScrollFollow list;
 
-        public static void Show(int page = KeyboardPage)
+        public static void Show(int page = KeyboardPage) => Show(page, true);
+
+        static void Show(int page, bool fade)
         {
             if (instance) return;
             var rt = Ui.Layer("Controls", 59);
@@ -43,6 +45,7 @@ namespace AfterHours
             instance.root = rt;
             instance.page = page;
             instance.Build();
+            if (fade) MenuFade.In(rt); // a new tab swaps in place
         }
 
         /// <summary>Rebuild on the other page (the tabs).</summary>
@@ -54,7 +57,7 @@ namespace AfterHours
             listener = null;
             instance = null;
             Destroy(root.gameObject);
-            Show(to);
+            Show(to, false);
         }
 
         void Build()
@@ -271,7 +274,7 @@ namespace AfterHours
             Settings.Save();
             GameRoot.Instance.SetBlocked("controls", false);
             instance = null;
-            Destroy(root.gameObject);
+            MenuFade.Out(root);
         }
 
         void Update()

@@ -42,6 +42,7 @@ namespace AfterHours
             instance.root = rt;
             instance.state = s;
             instance.Build();
+            MenuFade.In(rt);
         }
 
         void Build()
@@ -142,7 +143,7 @@ namespace AfterHours
             if (Reading) return;
             GameRoot.Instance.SetBlocked("casefile", false);
             instance = null;
-            Destroy(root.gameObject);
+            MenuFade.Out(root);
         }
 
         void Update()

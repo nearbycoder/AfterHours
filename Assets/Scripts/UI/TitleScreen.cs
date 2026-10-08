@@ -181,6 +181,7 @@ namespace AfterHours
             Instance = rt.gameObject.AddComponent<PauseMenu>();
             Instance.root = rt;
             Instance.Build();
+            MenuFade.In(rt);
         }
 
         void Build()
@@ -324,7 +325,7 @@ namespace AfterHours
             PostFx.Instance?.SetInspect(false);
             GameRoot.Instance.SetBlocked("pause", false);
             Instance = null;
-            Destroy(root.gameObject);
+            MenuFade.Out(root);
         }
 
         void Update()
@@ -356,6 +357,7 @@ namespace AfterHours
             instance = rt.gameObject.AddComponent<SettingsPanel>();
             instance.root = rt;
             instance.Build();
+            MenuFade.In(rt);
         }
 
         void Build()
@@ -473,7 +475,7 @@ namespace AfterHours
             Settings.Save();
             GameRoot.Instance.SetBlocked("settings", false);
             instance = null;
-            Destroy(root.gameObject);
+            MenuFade.Out(root);
         }
 
         void Update()
@@ -499,6 +501,7 @@ namespace AfterHours
             instance = rt.gameObject.AddComponent<NightSelect>();
             instance.root = rt;
             instance.Build();
+            MenuFade.In(rt);
         }
 
         void Build()
@@ -617,7 +620,7 @@ namespace AfterHours
         {
             GameRoot.Instance.SetBlocked("nightselect", false);
             instance = null;
-            Destroy(root.gameObject);
+            MenuFade.Out(root);
         }
 
         void Update()
