@@ -1274,6 +1274,91 @@ so it means rewriting all seven nights' scripts), hints for missed secrets and a
 the close question (the owner's calls), a real-monitor sleep test, and still WebGL, Windows and
 the art.
 
+## Round 10 scope (7 October 2026)
+
+Round 9 is merged. The ranked list is still used up apart from what's blocked or the owner's
+call, so this round again reads the code and the screens as a first-time player would. Four
+things stand out, and a fifth needs checking:
+
+- The shift sheet says where work is left ("break room 4 · bullpen 1"), but nothing in the office
+  says which room is which. Only the lobby has a sign, so a new player has to guess which room is
+  the bullpen.
+- After a minute with no progress the leftovers glint, and the nearest three chime. If they're in
+  another room the player sees nothing, and a player who can't hear the chime gets no hint at all.
+- Everything you read is in handwriting: Caveat for notes, letters, sticky notes, the notepad, the
+  shift sheet, the case file and the report. Reading is how the mystery is told, and there's no
+  plainer option for players who find handwriting hard (dyslexia, low vision, reading English as
+  a second language).
+- The label under the reticle ("COFFEE CUP · BLACK BIN", "DESK 40%") is the only HUD text with no
+  shadow, so on a lit white wall it's light grey on light grey (round 9's switch screenshot).
+- On the title, Enter both presses the selected button and starts the night (Continue, or Night
+  1). Which one wins depends on script order, so a keyboard player who arrows down to Settings or
+  Night Select and presses Enter might start the night instead. The AutoPilot only drives the
+  title with the pad, so this has never been checked.
+
+Not chosen: saving mid-night (each night's scripted events keep their state in local variables;
+rewriting all seven nights' scripts is a round of its own), hints for missed secrets and an off
+switch for the close question (the owner's calls), and everything left with the owner.
+
+### R10-1. Where you are
+
+A small line under the wristwatch names the room you're in, using the shift sheet's names
+(Reception, Bullpen, Break room, Conference room, Marian's office, Cleaning closet). When you walk
+into another room the name brightens for a moment, then dims. It follows Text size and hides
+with the rest of the HUD.
+
+**Acceptance:** in every room on every night, the line shows that room's name as the shift sheet
+writes it; between rooms (corridor, doorway) it keeps the last room; it stays on screen at each
+text size and on the narrow and wide screens. **Verify:** AutoPilot, every night, every route
+(while the route walks the rooms, the line matches `Room.At` wherever the player stands);
+the HUD layout check at each text size; screenshots.
+
+### R10-2. The glint says where
+
+When the leftovers glint, a caption says where the nearest ones are: "[A chime from the bullpen]",
+or "[Chimes from the break room and reception]" when they're in more than one room. It shows once
+for each stretch with no progress, not on every repeat, and the Captions setting turns it off like
+the other bracketed captions.
+
+**Acceptance:** on Night 1's idle check, the glint's caption names exactly the rooms of the
+points that chimed; the repeat 10 s later doesn't show it again; with Captions off it doesn't
+show. **Verify:** AutoPilot on Night 1, every route; screenshot.
+
+### R10-3. Plain lettering
+
+Settings → Accessibility gets **Handwriting: As written / Plain**. Plain sets the handwritten
+text you read in Fira Sans, the game's UI font: documents in the handwritten styles (notes,
+letters, sticky notes, the notepad, cards), the shift sheet and case file on the clipboard, the
+report's task list and hint, and the labels in Night Select and the title's endings list. Sizes
+are matched so lines take about the same width. Typewritten, printed and screen documents keep
+their fonts. Settings files from before load with As written.
+
+**Acceptance:** with Plain, every document's body is in Fira Sans and still fits on the paper and
+the paper on screen at Normal and Largest; the clipboard, report and Night Select use it too;
+switching back restores Caveat. **Verify:** EditMode tests for the font mapping and loading an
+old settings file; AutoPilot (every document opened again with Plain at Normal and Largest, the
+clipboard's pages, the report, Night Select); screenshots.
+
+### R10-4. The label under the reticle reads on a bright wall
+
+The label under the reticle gets the soft shadow the prompts and captions already have, and a
+faint dark backing sized to the text, so it reads on a lit white wall.
+
+**Acceptance:** at the reception light switch (white wall, lights on), the contrast between the
+label's text and what's behind it is at least 4.5:1 (WCAG AA); before the change, measure and
+record it. **Verify:** AutoPilot on Night 1 measures it from a screen capture (text against the
+pixels between the letters); before and after screenshots.
+
+### R10-5. Enter on the title's buttons
+
+Check with a virtual keyboard: arrow down to Settings and press Enter, then to Night Select, then
+New Game (with a save on disk). Each must do what the button says and not start the night. Fix
+it if it doesn't.
+
+**Acceptance:** Enter on Settings opens Settings, on Night Select opens Night Select and on New
+Game asks first; no night starts; Enter with nothing selected still starts the night. **Verify:**
+AutoPilot at the title, every route.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
