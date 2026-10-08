@@ -25,7 +25,7 @@ namespace AfterHours
         public float Idle => idle;
         /// <summary><see cref="Idle"/> when the last glint fired.</summary>
         public float LastGlintIdle { get; private set; }
-        /// <summary>The caption the last glint showed ("[A chime from the bullpen]"), or null if it showed none.</summary>
+        /// <summary>The caption the last glint showed ("[A chime ahead in the bullpen]"), or null if it showed none.</summary>
         public string LastWhere { get; private set; }
 
         // Said where the chimes come from in this stretch without progress.
@@ -102,19 +102,45 @@ namespace AfterHours
         /// <summary>How many of the nearest glints also chime.</summary>
         public const int Chimes = 3;
 
+        /// <summary>Which way something is from where the player faces.</summary>
+        public enum Bearing { Ahead, Right, Behind, Left }
+
         /// <summary>
-        /// "[A chime from the bullpen]", "[Chimes from reception and the break room]": the rooms of
-        /// the chimes, nearest first, as the shift sheet names them.
+        /// The bearing of <paramref name="to"/> from <paramref name="from"/> for a player facing
+        /// <paramref name="yaw"/> degrees (0 along +z, clockwise from above), in quarters: within
+        /// 45° either side is ahead, beyond 135° behind.
         /// </summary>
-        public static string WhereCaption(int chimes, IList<string> roomNames)
+        public static Bearing BearingOf(Vector3 from, float yaw, Vector3 to)
         {
-            var rooms = roomNames.Select(n => string.IsNullOrEmpty(n) ? null : InRoom(n)).Where(n => n != null).Distinct().ToList();
-            string where = rooms.Count switch
+            var d = to - from;
+            d.y = 0f;
+            if (d.sqrMagnitude < 1e-4f) return Bearing.Ahead;
+            float a = Mathf.DeltaAngle(yaw, Mathf.Atan2(d.x, d.z) * Mathf.Rad2Deg);
+            float abs = Mathf.Abs(a);
+            return abs <= 45f ? Bearing.Ahead : abs >= 135f ? Bearing.Behind : a > 0f ? Bearing.Right : Bearing.Left;
+        }
+
+        static string Words(Bearing b) => b switch
+        {
+            Bearing.Ahead => "ahead", Bearing.Right => "to your right", Bearing.Behind => "behind you", _ => "to your left",
+        };
+
+        /// <summary>
+        /// "[A chime behind you in reception]", "[Chimes ahead in the bullpen and to your left in
+        /// reception]": for each room with a chime (nearest first, as the shift sheet names them),
+        /// which way its nearest chime is. Chimes outside every room only count when no room has one.
+        /// </summary>
+        public static string WhereCaption(int chimes, IList<(string room, Bearing way)> nearestFirst)
+        {
+            var named = nearestFirst.Where(c => !string.IsNullOrEmpty(c.room)).ToList();
+            string where;
+            if (named.Count == 0)
+                where = nearestFirst.Count > 0 ? Words(nearestFirst[0].way) : "somewhere close";
+            else
             {
-                0 => "somewhere close",
-                1 => "from " + rooms[0],
-                _ => "from " + string.Join(", ", rooms.Take(rooms.Count - 1)) + " and " + rooms[^1],
-            };
+                var parts = named.GroupBy(c => InRoom(c.room)).Select(g => $"{Words(g.First().way)} in {g.Key}").ToList();
+                where = parts.Count == 1 ? parts[0] : string.Join(", ", parts.Take(parts.Count - 1)) + " and " + parts[^1];
+            }
             return chimes == 1 ? $"[A chime {where}]" : $"[Chimes {where}]";
         }
 
@@ -170,7 +196,8 @@ namespace AfterHours
             {
                 saidWhere = true;
                 var chimes = order.Take(Chimes).ToList();
-                LastWhere = WhereCaption(chimes.Count, chimes.Select(p => Room.At(p + Vector3.up * 0.2f)?.DisplayName).ToList());
+                var me = GameRoot.Instance.Player;
+                LastWhere = WhereCaption(chimes.Count, chimes.Select(p => (Room.At(p + Vector3.up * 0.2f)?.DisplayName, BearingOf(me.transform.position, me.Yaw, p))).ToList());
                 Hud.Instance?.Caption(LastWhere, 4f);
             }
             int i = 0;

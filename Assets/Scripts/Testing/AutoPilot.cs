@@ -3150,14 +3150,45 @@ namespace AfterHours
                          && helper.LastGlint.All(p => remaining.Any(r => (r - p).sqrMagnitude < 0.04f))
                          && !helper.LastGlint.Any(p => binned.Any(b => (b - p).sqrMagnitude < 0.01f));
             Check(exact, $"the glint marks exactly the unfinished things ({helper.LastGlint.Count} points, {remaining.Count} expected)");
-            // It says where the chimes come from (the nearest few, their rooms nearest first), once.
+            // It says where the chimes come from (the nearest few, their rooms nearest first) and,
+            // since round 11, which way each room's nearest one is from where the player faces, once.
             var me = root.Player.transform.position;
             var chimed = helper.LastGlint.OrderBy(p => (p - me).sqrMagnitude).Take(ShiftHelper.Chimes).ToList();
-            string where = ShiftHelper.WhereCaption(chimed.Count, chimed.Select(p => Room.At(p + Vector3.up * 0.2f)?.DisplayName).ToList());
+            // The way, worked out here independently: the signed angle on the floor from the camera's facing.
+            ShiftHelper.Bearing Way(Vector3 p)
+            {
+                var f = root.Player.Camera.transform.forward; f.y = 0;
+                var d = p - root.Player.transform.position; d.y = 0;
+                float a = Vector3.SignedAngle(f, d, Vector3.up);
+                return Mathf.Abs(a) <= 45f ? ShiftHelper.Bearing.Ahead : Mathf.Abs(a) >= 135f ? ShiftHelper.Bearing.Behind : a > 0 ? ShiftHelper.Bearing.Right : ShiftHelper.Bearing.Left;
+            }
+            string where = ShiftHelper.WhereCaption(chimed.Count, chimed.Select(p => (Room.At(p + Vector3.up * 0.2f)?.DisplayName, Way(p))).ToList());
             var captionText = Ui.Canvas.transform.Find("HUD/Caption")?.GetComponent<TMPro.TextMeshProUGUI>();
             Check(helper.LastWhere == where && where.StartsWith("[") && Hud.Instance.CaptionShowing && captionText != null && captionText.text == where,
-                $"the glint's caption says where the chimes are: \"{captionText?.text}\" (expected \"{where}\" from {string.Join(", ", chimed.Select(p => Room.At(p + Vector3.up * 0.2f)?.Id ?? "?"))})");
+                $"the glint's caption says where the chimes are and which way: \"{captionText?.text}\" (expected \"{where}\" from {string.Join(", ", chimed.Select(p => $"{Room.At(p + Vector3.up * 0.2f)?.Id ?? "?"} {Way(p)}"))})");
             yield return Shot("n1_glint_where");
+            // Turned to face the nearest chime it says ahead; turned away, behind you.
+            {
+                var (yaw0, pitch0) = (root.Player.Yaw, root.Player.Pitch);
+                var nearest = chimed[0];
+                foreach (var (turn, want) in new[] { (0f, "ahead"), (180f, "behind you") })
+                {
+                    LookAtNow(nearest);
+                    root.Player.Yaw += turn;
+                    root.Player.Pitch = 0f;
+                    yield return Wait(0.3f);
+                    helper.SayWhereNext();
+                    helper.Glint();
+                    yield return Wait(0.2f);
+                    string said = helper.LastWhere ?? "";
+                    Check(said.StartsWith($"[A chime {want}") || said.StartsWith($"[Chimes {want}"),
+                        $"facing {(turn == 0f ? "the nearest chime" : "away from it")}, the caption starts with {want}: \"{said}\"");
+                    if (turn > 0f) yield return Shot("n1_glint_behind");
+                }
+                root.Player.Yaw = yaw0; root.Player.Pitch = pitch0;
+                Hud.Instance.ClearCaption();
+                yield return Wait(0.3f);
+            }
             int glints2 = helper.GlintCount;
             for (float t2 = 0; helper.GlintCount == glints2 && t2 < helper.RepeatEvery + 5f; t2 += Time.deltaTime) yield return null;
             Check(helper.GlintCount > glints2 && helper.LastWhere == null, $"the repeat glint {helper.RepeatEvery:F0}s later doesn't say it again (caption {(helper.LastWhere ?? "none")})");

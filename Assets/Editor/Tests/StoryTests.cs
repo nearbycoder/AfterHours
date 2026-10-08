@@ -13,16 +13,41 @@ namespace AfterHours.Tests
     {
         static StoryState Fresh() => new StoryState();
 
+        static (string, ShiftHelper.Bearing) C(string room, ShiftHelper.Bearing way) => (room, way);
+        const ShiftHelper.Bearing Ahead = ShiftHelper.Bearing.Ahead, Behind = ShiftHelper.Bearing.Behind,
+                                  Left = ShiftHelper.Bearing.Left, Right = ShiftHelper.Bearing.Right;
+
         [Test]
-        public void GlintCaptionNamesTheRoomsOfTheChimes()
+        public void GlintCaptionNamesTheRoomsOfTheChimesAndWhichWay()
         {
-            Assert.AreEqual("[A chime from the bullpen]", ShiftHelper.WhereCaption(1, new List<string> { "Bullpen" }));
-            Assert.AreEqual("[Chimes from the bullpen]", ShiftHelper.WhereCaption(3, new List<string> { "Bullpen", "Bullpen", "Bullpen" }));
-            Assert.AreEqual("[Chimes from reception and the break room]", ShiftHelper.WhereCaption(3, new List<string> { "Reception", "Break Room", "Reception" }));
-            Assert.AreEqual("[Chimes from Marian's office, the conference room and the janitor's closet]",
-                ShiftHelper.WhereCaption(3, new List<string> { "Marian's Office", "Conference Room", "Janitor's Closet" }));
-            Assert.AreEqual("[Chimes somewhere close]", ShiftHelper.WhereCaption(2, new List<string> { null, "" }), "outside every room");
-            Assert.AreEqual("[Chimes from the bullpen]", ShiftHelper.WhereCaption(2, new List<string> { null, "Bullpen" }));
+            Assert.AreEqual("[A chime behind you in the bullpen]", ShiftHelper.WhereCaption(1, new[] { C("Bullpen", Behind) }));
+            Assert.AreEqual("[Chimes ahead in the bullpen]", ShiftHelper.WhereCaption(3, new[] { C("Bullpen", Ahead), C("Bullpen", Left), C("Bullpen", Behind) }),
+                "one room: the way to its nearest chime");
+            Assert.AreEqual("[Chimes to your left in reception and to your right in the break room]",
+                ShiftHelper.WhereCaption(3, new[] { C("Reception", Left), C("Break Room", Right), C("Reception", Behind) }));
+            Assert.AreEqual("[Chimes ahead in Marian's office, behind you in the conference room and to your left in the janitor's closet]",
+                ShiftHelper.WhereCaption(3, new[] { C("Marian's Office", Ahead), C("Conference Room", Behind), C("Janitor's Closet", Left) }));
+            Assert.AreEqual("[Chimes behind you]", ShiftHelper.WhereCaption(2, new[] { C(null, Behind), C("", Ahead) }), "outside every room: the nearest's way");
+            Assert.AreEqual("[Chimes to your right in the bullpen]", ShiftHelper.WhereCaption(2, new[] { C(null, Ahead), C("Bullpen", Right) }));
+            Assert.AreEqual("[A chime somewhere close]", ShiftHelper.WhereCaption(1, new (string, ShiftHelper.Bearing)[0]));
+        }
+
+        [Test]
+        public void BearingsAreQuartersAroundWhereThePlayerFaces()
+        {
+            var o = Vector3.zero;
+            // Facing +z (yaw 0): +x is to the right.
+            Assert.AreEqual(Ahead, ShiftHelper.BearingOf(o, 0f, new Vector3(0, 0, 5)));
+            Assert.AreEqual(Right, ShiftHelper.BearingOf(o, 0f, new Vector3(5, 0, 0)));
+            Assert.AreEqual(Behind, ShiftHelper.BearingOf(o, 0f, new Vector3(0, 0, -5)));
+            Assert.AreEqual(Left, ShiftHelper.BearingOf(o, 0f, new Vector3(-5, 0, 0)));
+            Assert.AreEqual(Ahead, ShiftHelper.BearingOf(o, 0f, new Vector3(4, 3, 5)), "height doesn't count; 39° is still ahead");
+            Assert.AreEqual(Right, ShiftHelper.BearingOf(o, 0f, new Vector3(5, 0, 4)), "51° is to the right");
+            // Facing +x (yaw 90): +z is now to the left, and angles wrap.
+            Assert.AreEqual(Left, ShiftHelper.BearingOf(o, 90f, new Vector3(0, 0, 5)));
+            Assert.AreEqual(Ahead, ShiftHelper.BearingOf(o, 450f, new Vector3(5, 0, 0)));
+            Assert.AreEqual(Behind, ShiftHelper.BearingOf(o, -170f, new Vector3(0, 0, 5)));
+            Assert.AreEqual(Ahead, ShiftHelper.BearingOf(o, 30f, o), "on top of it");
         }
 
         [Test]
