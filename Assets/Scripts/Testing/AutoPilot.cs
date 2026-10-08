@@ -567,6 +567,7 @@ namespace AfterHours
                     }
                     break;
                 case 7:
+                    if (PadChecks) yield return StormChecks();
                     {
                         var shred = ctx.Furniture.Shredders["office"];
                         Check(shred.Jammed, "the office shredder is jammed on night 7");
@@ -2929,6 +2930,77 @@ namespace AfterHours
         }
 
         // ---- never stuck on the last item (night 1) ---------------------------------------------
+
+        /// <summary>Mean relative luminance of the frame (every 8th pixel), from a screen capture.</summary>
+        IEnumerator FrameLuminance(Action<float> got)
+        {
+            yield return new WaitForEndOfFrame();
+            var tex = ScreenCapture.CaptureScreenshotAsTexture();
+            double sum = 0; int count = 0;
+            for (int y = 4; y < tex.height; y += 8)
+                for (int x = 4; x < tex.width; x += 8)
+                {
+                    var c = tex.GetPixel(x, y);
+                    sum += 0.2126f * Mathf.GammaToLinearSpace(c.r) + 0.7152f * Mathf.GammaToLinearSpace(c.g) + 0.0722f * Mathf.GammaToLinearSpace(c.b);
+                    count++;
+                }
+            Destroy(tex);
+            got(count > 0 ? (float)(sum / count) : 0f);
+        }
+
+        /// <summary>
+        /// Round 11: Night 7's thunder stutters the lit rooms' lights. With Reduce flashing off they
+        /// drop out (as designed); on, they dim smoothly to about half and come back, never black.
+        /// Either way the room stays switched on. Measured per frame from the room's light output
+        /// and from screen captures of the whole frame.
+        /// </summary>
+        IEnumerator StormChecks()
+        {
+            var player = root.Player;
+            var room = root.Office.Rooms["bullpen"];
+            bool wasOn = room.LightsOn;
+            bool calmWas = Settings.Current.ReduceFlashing;
+            player.Teleport(new Vector3(room.Bounds.center.x, 0, room.Bounds.center.z), 0f, 8f);
+            room.SetLights(true, true);
+            yield return Wait(1.0f);
+            foreach (bool calm in new[] { false, true })
+            {
+                Settings.Current.ReduceFlashing = calm;
+                float before = 0f;
+                yield return FrameLuminance(v => before = v);
+                int strikes = Storm.Strikes;
+                Storm.Strike(root.Office, 0.2f);
+                float minOut = room.Output, maxRate = 0f, minLum = before, last = room.Output, lastT = Time.time;
+                bool stayedOn = true;
+                int frames = 0;
+                // The whole stutter and a little after; a capture every frame (it slows the frames, which only makes the rate check stricter per frame).
+                for (float t0 = Time.time; Time.time - t0 < Room.StutterLength(0.3f, calm) + 0.25f;)
+                {
+                    float lum = 0f;
+                    yield return FrameLuminance(v => lum = v);
+                    frames++;
+                    float o = room.Output, dt = Time.time - lastT;
+                    if (dt > 0.0001f) maxRate = Mathf.Max(maxRate, Mathf.Abs(o - last) / dt);
+                    last = o; lastT = Time.time;
+                    minOut = Mathf.Min(minOut, o);
+                    minLum = Mathf.Min(minLum, lum);
+                    stayedOn &= room.LightsOn;
+                    if (frames == 3) yield return Shot(calm ? "n7_storm_calm" : "n7_storm");
+                }
+                yield return Wait(0.3f);
+                bool back = !room.Stuttering && room.Output > 0.99f;
+                string seen = $"lights at {minOut:F2} of full at the lowest, fastest change {maxRate:F1}/s over {frames} frames; frame brightness {before:F4} → {minLum:F4} ({(before > 0 ? minLum / before * 100f : 0):F0}%)";
+                if (calm)
+                    Check(Storm.Strikes == strikes + 1 && minOut >= 0.45f && maxRate <= 2.5f && stayedOn && back,
+                        $"with Reduce flashing, the thunder dims the bullpen's lights smoothly and they stay switched on ({seen})");
+                else
+                    Check(Storm.Strikes == strikes + 1 && minOut <= 0.01f && stayedOn && back,
+                        $"without Reduce flashing, the thunder drops the bullpen's lights out and back, and they stay switched on ({seen})");
+            }
+            Settings.Current.ReduceFlashing = calmWas;
+            room.SetLights(wasOn, true);
+            yield return Wait(0.3f);
+        }
 
         IEnumerator ShiftHelperChecks()
         {

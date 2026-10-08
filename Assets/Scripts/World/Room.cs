@@ -25,6 +25,15 @@ namespace AfterHours
         Color panelGlow = new Color(0.95f, 0.97f, 1f) * 2.4f;
         float level, target;
         float flickerT = -1f;
+        float stutterT = -1f, stutterFor;
+
+        /// <summary>How far the stutter dims the lights with Reduce flashing on (a fraction of full).</summary>
+        public const float CalmDip = 0.5f;
+        const float CalmDown = 0.35f, CalmUp = 0.6f;
+
+        /// <summary>What the lights give out now, 0 to about 1: the switch's level times any stutter.</summary>
+        public float Output { get; private set; }
+        public bool Stuttering => stutterT >= 0f;
 
         public static readonly Dictionary<string, Room> All = new();
 
@@ -53,9 +62,43 @@ namespace AfterHours
             if (Hum) Hum.TargetVolume = on ? 0.18f : 0f;
         }
 
+        /// <summary>
+        /// A power stutter (Night 7's thunder): the lights drop out for <paramref name="seconds"/>, or
+        /// with Reduce flashing dim smoothly to about half and come back. The room stays switched on
+        /// (<see cref="LightsOn"/> doesn't change), so tasks and switches don't see it.
+        /// </summary>
+        public void Stutter(float seconds)
+        {
+            if (!LightsOn) return;
+            stutterT = 0f;
+            stutterFor = seconds;
+        }
+
+        /// <summary>The stutter's gain on the lights <paramref name="t"/> seconds in (1 is untouched).</summary>
+        public static float StutterGain(float t, float seconds, bool calm)
+        {
+            if (!calm) return t < seconds ? 0f : 1f;
+            float hold = Mathf.Max(seconds, CalmDown);
+            if (t < CalmDown) return Mathf.Lerp(1f, CalmDip, Mathf.SmoothStep(0f, 1f, t / CalmDown));
+            if (t < hold) return CalmDip;
+            return Mathf.Lerp(CalmDip, 1f, Mathf.SmoothStep(0f, 1f, (t - hold) / CalmUp));
+        }
+
+        /// <summary>How long a stutter of <paramref name="seconds"/> lasts in all.</summary>
+        public static float StutterLength(float seconds, bool calm) => calm ? Mathf.Max(seconds, CalmDown) + CalmUp : seconds;
+
         void Update()
         {
             float dt = Time.deltaTime;
+            float gain = 1f;
+            bool stutter = stutterT >= 0f;
+            if (stutter)
+            {
+                stutterT += dt;
+                bool calm = Settings.Current.ReduceFlashing;
+                if (stutterT >= StutterLength(stutterFor, calm)) stutterT = -1f;
+                else gain = StutterGain(stutterT, stutterFor, calm);
+            }
             if (flickerT >= 0f)
             {
                 // Classic tube start: two or three stutters, then settle with a slight overshoot.
@@ -66,18 +109,20 @@ namespace AfterHours
                 if (t > 0.9f) { flickerT = -1f; v = 1f; }
                 if (Settings.Current.ReduceFlashing) v = Mathf.Clamp01(t / 0.5f);
                 level = v;
-                Apply(level);
+                Apply(level * gain);
                 return;
             }
             if (!Mathf.Approximately(level, target))
             {
                 level = Mathf.MoveTowards(level, target, dt * 6f);
-                Apply(level);
+                Apply(level * gain);
             }
+            else if (stutter) Apply(level * gain); // the last stutter frame puts the lights back at full
         }
 
         void Apply(float v)
         {
+            Output = v;
             for (int i = 0; i < Lights.Count; i++)
             {
                 Lights[i].intensity = lightIntensity[i] * v;

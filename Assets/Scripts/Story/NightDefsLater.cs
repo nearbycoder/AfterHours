@@ -830,10 +830,7 @@ namespace AfterHours
                     next -= dt;
                     if (next > 0) return;
                     next = Random.Range(35f, 70f);
-                    Sfx.Play("thunder", null, 0.8f, Random.Range(0.85f, 1.1f), 0f, AudioBus.Ambience);
-                    PostFx.Instance?.Flicker(1f);
-                    foreach (var r in ctx.Office.Rooms.Values)
-                        if (r.LightsOn) { r.SetLights(false, true); var rr = r; ctx.Delay(Random.Range(0.08f, 0.3f), () => rr.SetLights(true, true)); }
+                    Storm.Strike(ctx.Office);
                 });
             };
             n.End = ctx => { };
