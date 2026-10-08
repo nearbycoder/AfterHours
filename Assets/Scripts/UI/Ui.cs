@@ -69,6 +69,18 @@ namespace AfterHours
             }
         }
 
+        /// <summary>
+        /// Handwriting set Plain (Settings → Accessibility): what's handwritten (Caveat) is set in
+        /// Fira Sans instead, at <see cref="PlainScale"/> of the size, where its lines take about
+        /// the same width. Typewritten, printed and screen text keep their fonts.
+        /// </summary>
+        public static UiFont Lettering(UiFont f, bool plain) => plain && f == UiFont.Hand ? UiFont.Sans : f;
+        public static float LetteringSize(UiFont f, float size, bool plain) => plain && f == UiFont.Hand ? size * PlainScale : size;
+        public static UiFont Lettering(UiFont f) => Lettering(f, Settings.Current.PlainHandwriting);
+        public static float LetteringSize(UiFont f, float size) => LetteringSize(f, size, Settings.Current.PlainHandwriting);
+        /// <summary>Fira Sans runs about 1.32 times as wide as Caveat at the same size.</summary>
+        public const float PlainScale = 0.76f;
+
         public static TMP_FontAsset Font(UiFont f)
         {
             if (fonts.TryGetValue(f, out var fa) && fa != null) return fa;
@@ -245,8 +257,8 @@ namespace AfterHours
         {
             var rt = Rect(parent, name);
             var t = rt.gameObject.AddComponent<TextMeshProUGUI>();
-            t.font = Font(font);
-            t.fontSize = size;
+            t.font = Font(Lettering(font));
+            t.fontSize = LetteringSize(font, size);
             t.color = color;
             t.alignment = align;
             t.text = text;

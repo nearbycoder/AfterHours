@@ -170,6 +170,9 @@ namespace AfterHours
             }
             card.sizeDelta = Grow(size, Settings.TextScale, screen);
             paper.color = paperCol;
+            // Handwriting set Plain: handwritten styles in the plain font, sized to take the same width.
+            fs = Ui.LetteringSize(f, fs);
+            f = Ui.Lettering(f);
             body.font = Ui.Font(f);
             body.fontSize = fs;
             // Larger text sizes: the paper grows (above) and the text grows with it, up to the

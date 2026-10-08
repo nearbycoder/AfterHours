@@ -330,6 +330,8 @@ namespace AfterHours
             // Nights 1 and 2 end at the largest text size: the report and the morning chat grow.
             bool large = PadChecks && n <= 2;
             if (large) Settings.Current.TextSize = 2;
+            // Night 2's report is also checked with Handwriting set Plain (its task list is handwritten).
+            if (large && n == 2) Settings.Current.PlainHandwriting = true;
             // Clock out at the punch clock.
             yield return Beat("clockout", n);
             root.Player.Teleport(new Vector3(16.0f, 0, 2.5f), -90f, 0);
@@ -345,6 +347,13 @@ namespace AfterHours
             yield return Shot($"n{n}_report");
             ReportChecks(n);
             if (large) ReportTextChecks(n);
+            if (large && n == 2)
+            {
+                var lines = Ui.Canvas.transform.Find("ShiftReport")?.GetComponentsInChildren<TMPro.TextMeshProUGUI>(true).Where(l => l.text.Contains("✔") || l.text.Contains("✗") || l.name == "GradeHint").ToList();
+                Check(lines != null && lines.Count >= dir.Def.Tasks.Count && lines.All(l => l.font.name.StartsWith("FiraSans-Regular")),
+                    $"night 2 with Handwriting Plain: the report's {lines?.Count} handwritten lines are in Fira Sans ({lines?.FirstOrDefault()?.font.name})");
+                yield return Shot("n2_report_plain");
+            }
             yield return Beat("report", n);
             // The ending is read at the largest text size (its epilogue grows). Night 7 has no
             // morning chat, so the ending is built as soon as the report goes.
@@ -363,6 +372,7 @@ namespace AfterHours
             }
             Interstitial.AutoAdvance = false;
             if (large) Settings.Current.TextSize = 0;
+            Settings.Current.PlainHandwriting = false;
             yield return Beat("end", n);
             yield return Wait(1.0f);
         }
@@ -1522,10 +1532,16 @@ namespace AfterHours
             var s = Settings.Current;
             var docs = Docs.All.Values.ToList();
             var normal = new System.Collections.Generic.Dictionary<string, (float font, Vector2 card)>();
+            var writtenFont = new System.Collections.Generic.Dictionary<string, string>();
             float W = Screen.width, H = Screen.height;
+            // As written, then with Handwriting set Plain (round 10): the same fit, in the plain font.
+            foreach (bool plain in new[] { false, true })
             foreach (int size in new[] { 0, 2 })
             {
                 s.TextSize = size;
+                s.PlainHandwriting = plain;
+                if (size == 0) normal.Clear();
+                int plainOk = 0, hand = 0;
                 int ok = 0, bigger = 0, full = 0;
                 var bad = new System.Collections.Generic.List<string>();
                 foreach (var d in docs)
@@ -1541,6 +1557,18 @@ namespace AfterHours
                     bool fits = Inside(paper, ScreenArea);
                     if (body.enabled) fits &= !body.isTextOverflowing && (string.IsNullOrWhiteSpace(body.text) || Inside(TextRect(body), paper));
                     if (size == 0) normal[d.Id] = (body.fontSize, card.sizeDelta);
+                    if (body.enabled)
+                    {
+                        string fontName = body.font != null ? body.font.name : "";
+                        if (!plain) writtenFont[d.Id] = fontName;
+                        else if (writtenFont.TryGetValue(d.Id, out var was))
+                        {
+                            bool handwritten = was.StartsWith("Caveat");
+                            if (handwritten) hand++;
+                            if (handwritten ? fontName.StartsWith("FiraSans-Regular") : fontName == was) plainOk++;
+                            else bad.Add($"{d.Id} (in {fontName}, as written {was})");
+                        }
+                    }
                     else if (normal.TryGetValue(d.Id, out var n0))
                     {
                         float ratio = body.enabled ? body.fontSize / n0.font : card.sizeDelta.x / n0.card.x;
@@ -1552,9 +1580,35 @@ namespace AfterHours
                     InspectView.AutoChoice = InspectChoice.Close;
                     yield return Wait(0.3f);
                 }
-                Check(ok == docs.Count, $"documents at {Settings.TextSizes[size]}, {W}x{H}: {ok}/{docs.Count} keep their text on the paper and the paper on screen{(size > 0 ? $", none smaller than Normal; {bigger} larger, {full} at 1.5x" : "")}{(bad.Count > 0 ? " — " + string.Join("; ", bad) : "")}");
-                if (size == 2) Check(full >= docs.Count / 2, $"at Largest most documents' text is 1.5x ({full}/{docs.Count})");
+                if (plain) Check(hand > 0 && plainOk == docs.Count(d => writtenFont.ContainsKey(d.Id)), $"Handwriting Plain at {Settings.TextSizes[size]}: the {hand} handwritten documents are in Fira Sans and the others keep their fonts ({plainOk} right)");
+                Check(ok == docs.Count, $"documents{(plain ? " with Handwriting Plain" : "")} at {Settings.TextSizes[size]}, {W}x{H}: {ok}/{docs.Count} keep their text on the paper and the paper on screen{(size > 0 ? $", none smaller than Normal; {bigger} larger, {full} at 1.5x" : "")}{(bad.Count > 0 ? " — " + string.Join("; ", bad) : "")}");
+                if (size == 2) Check(full >= docs.Count / 2, $"at Largest most documents' text is 1.5x ({full}/{docs.Count}){(plain ? " with Handwriting Plain" : "")}");
+                if (plain && size == 0)
+                {
+                    // Theo's note in the plain lettering, and the shift sheet with it.
+                    InspectView.Show(Docs.Get("theo_note") ?? docs[0], InspectMode.Read, null, reread: true);
+                    yield return Wait(0.6f);
+                    yield return Shot("plain_document");
+                    InspectView.AutoChoice = InspectChoice.Close;
+                    yield return Wait(0.4f);
+                    Clipboard.Instance.Show();
+                    yield return Wait(0.7f);
+                    var sheet = Clipboard.Instance.GetComponentsInChildren<TMPro.TextMeshProUGUI>().FirstOrDefault(t => t.name == "Sheet");
+                    Check(sheet != null && sheet.font.name.StartsWith("FiraSans-Regular") && !sheet.isTextOverflowing && Inside(TextRect(sheet), ScreenRect((RectTransform)sheet.transform.parent)),
+                        $"Handwriting Plain: the shift sheet is in Fira Sans ({sheet?.font.name}, {sheet?.fontSize:F0}) and stays on the paper");
+                    yield return Shot("plain_clipboard");
+                    Clipboard.Instance.Close();
+                    yield return Wait(0.4f);
+                    s.PlainHandwriting = false;
+                    Clipboard.Instance.Show();
+                    yield return Wait(0.7f);
+                    Check(sheet != null && sheet.font.name.StartsWith("Caveat"), $"switched back to As written, the shift sheet is in Caveat again ({sheet?.font.name})");
+                    Clipboard.Instance.Close();
+                    yield return Wait(0.4f);
+                    s.PlainHandwriting = true;
+                }
             }
+            s.PlainHandwriting = false;
             // One document at Largest for the screenshot: Theo's crumpled note.
             InspectView.Show(Docs.Get("theo_note") ?? docs[0], InspectMode.Read, null, reread: true);
             yield return Wait(0.6f);
@@ -2269,9 +2323,12 @@ namespace AfterHours
             FindAnyObjectByType<NightSelect>()?.SendMessage("Close");
             yield return Wait(0.3f);
             float stats0 = 0f;
-            for (int size = 0; size <= 2; size++)
+            for (int pass = 0; pass <= 3; pass++)
             {
+                int size = Mathf.Min(pass, 2);
+                bool plain = pass == 3; // Largest again with Handwriting set Plain
                 s.TextSize = size;
+                s.PlainHandwriting = plain;
                 NightSelect.Show();
                 yield return Wait(0.6f);
                 var ns = FindAnyObjectByType<NightSelect>().transform;
@@ -2287,13 +2344,16 @@ namespace AfterHours
                 float fs = stats ? stats.fontSize : 0f;
                 if (size == 0) stats0 = fs;
                 var sub = ns.Find("Subtitle").GetComponent<TMPro.TextMeshProUGUI>();
-                Check(off.Count == 0 && Inside(TextRect(sub), ScreenArea) && (size == 0 || fs > stats0 + 0.5f),
-                    $"Night Select at {Settings.TextSizes[size]}: every card's writing stays on its card{(off.Count > 0 ? " (off: " + string.Join(", ", off) + ")" : "")}, grade line {fs:F0} (Normal {stats0:F0})");
-                if (size == 2) yield return Shot("night_select_largest");
+                var hands = cards.SelectMany(c => c.GetComponentsInChildren<TMPro.TextMeshProUGUI>()).Where(t => t.name == "Label" || t.name == "List").ToList();
+                bool fonts = hands.Count > 0 && hands.All(t => t.font.name.StartsWith(plain ? "FiraSans-Regular" : "Caveat"));
+                Check(off.Count == 0 && fonts && Inside(TextRect(sub), ScreenArea) && (size == 0 || fs > stats0 + 0.5f),
+                    $"Night Select at {Settings.TextSizes[size]}{(plain ? " with Handwriting Plain" : "")} ({hands.Count} handwritten labels in {hands.FirstOrDefault()?.font.name}): every card's writing stays on its card{(off.Count > 0 ? " (off: " + string.Join(", ", off) + ")" : "")}, grade line {fs:F0} (Normal {stats0:F0})");
+                if (size == 2) yield return Shot(plain ? "night_select_largest_plain" : "night_select_largest");
                 ns.SendMessage("Close");
                 yield return Wait(0.3f);
             }
             s.TextSize = 0;
+            s.PlainHandwriting = false;
             NightSelect.Show();
             yield return Wait(0.6f);
         }

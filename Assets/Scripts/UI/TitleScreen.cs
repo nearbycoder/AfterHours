@@ -428,6 +428,7 @@ namespace AfterHours
             Widgets.Toggle(right, "Highlight what you're aiming at", s.AimHighlight, v => s.AimHighlight = v, ColW);
             // The page is laid out again at the new size straight away (next frame: this runs inside the row's own input event).
             Widgets.Choice(right, "Text size", Settings.TextSizes, Mathf.Clamp(s.TextSize, 0, 2), i => { s.TextSize = i; rebuild = true; }, ColW);
+            Widgets.Choice(right, "Handwriting", Settings.Handwriting, s.PlainHandwriting ? 1 : 0, i => s.PlainHandwriting = i == 1, ColW);
             Widgets.Button(right, "Keyboard, mouse and controller  ›", () => ControlsPanel.Show(), ColW, 56, 26);
 
             var done = Widgets.Button(panel, "Done", Close, 220, 60, 28, true);
@@ -524,7 +525,7 @@ namespace AfterHours
                 // Day and title sit between the photo and the stats line.
                 Ui.Place(label.rectTransform, new Vector2(0.5f, 0), new Vector2(0, labelY), new Vector2(260, labelH), new Vector2(0.5f, 0));
                 label.lineSpacing = -12;
-                FitWithin(label, 30f);
+                FitWithin(label, Ui.LetteringSize(UiFont.Hand, 30f));
                 if (res != null && unlocked)
                 {
                     var stats = Ui.Label(rt, $"<b>{res.Grade}</b>   secrets {res.Secrets}/{res.SecretsTotal}", UiFont.SansMedium, 19 * k, Palette.Hex("6A3FA0"), TextAlignmentOptions.Center, "Stats");
@@ -596,7 +597,7 @@ namespace AfterHours
             var list = Ui.Label(rt, sb.ToString(), UiFont.Hand, 30 * k, Ui.Text, TextAlignmentOptions.Top, "List");
             Ui.Place(list.rectTransform, new Vector2(0.5f, 1), new Vector2(0, -140), new Vector2(250, 180), new Vector2(0.5f, 1));
             list.lineSpacing = -6;
-            FitWithin(list, 30f);
+            FitWithin(list, Ui.LetteringSize(UiFont.Hand, 30f));
         }
 
         void Close()

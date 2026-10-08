@@ -81,9 +81,12 @@ namespace AfterHours
         /// wide sheet, the side note's contents moved onto it as a page, every text scaled, and
         /// long pages split into parts rather than shrunk.
         /// </summary>
+        bool laidPlain;
+
         void Layout(bool large)
         {
             Large = large;
+            laidPlain = Settings.Current.PlainHandwriting;
             float k = large ? Settings.TextScale : 1f;
             float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
             float boardW = large ? Mathf.Min(1180f, canvasW - 80f) : 760f, boardH = large ? 1000f : 920f;
@@ -98,13 +101,15 @@ namespace AfterHours
             Ui.Place(files.rectTransform, new Vector2(0, 1), new Vector2(40, -top), new Vector2(pw - 70f, large ? ph - top - bottom : 620f), new Vector2(0, 1));
             Ui.Place(footer.rectTransform, new Vector2(0, 0), new Vector2(40, 16), new Vector2(pw - 70f, foot), new Vector2(0, 0));
             footer.fontSize = 20f * k;
-            files.fontSize = 31f * k;
+            // Handwriting (Settings): the sheet and the case file follow it each time the clipboard opens.
+            files.font = tasks.font = Ui.Font(Ui.Lettering(UiFont.Hand));
+            files.fontSize = Ui.LetteringSize(UiFont.Hand, 31f * k);
             // Normal: long sheets (with where-is-it lines) shrink to fit the paper rather than run off
             // it. Larger sizes keep the size and turn the overflow into parts, as pages of a book.
             tasks.enableAutoSizing = !large;
-            tasks.fontSize = 33f * k;
-            tasks.fontSizeMin = 24;
-            tasks.fontSizeMax = 33;
+            tasks.fontSize = Ui.LetteringSize(UiFont.Hand, 33f * k);
+            tasks.fontSizeMin = Ui.LetteringSize(UiFont.Hand, 24);
+            tasks.fontSizeMax = Ui.LetteringSize(UiFont.Hand, 33);
             tasks.overflowMode = large ? TextOverflowModes.Page : TextOverflowModes.Overflow;
             // The case file shows a window of lines around the selection (14 at Normal).
             VisibleLines = large ? Mathf.Max(5, Mathf.FloorToInt(files.rectTransform.sizeDelta.y / (44f * k))) : 14;
@@ -137,7 +142,8 @@ namespace AfterHours
             if (NightDirector.Instance == null || NightDirector.Instance.Def == null) return;
             Open = true;
             bool large = Settings.TextScale > 1f;
-            if (large || large != Large) Layout(large); // larger sizes follow the window's width too
+            // Larger sizes follow the window's width too; a change of Handwriting lays it out again.
+            if (large || large != Large || Settings.Current.PlainHandwriting != laidPlain) Layout(large);
             Page = page;
             Part = 0;
             Hud.Instance?.ClearCaption(); // e.g. Night 1's "shift sheet is on the clipboard", which would show at the edges

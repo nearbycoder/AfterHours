@@ -105,8 +105,8 @@ namespace AfterHours
             var tag = Ui.Label(rt, def.Tagline, UiFont.Hand, 40, Palette.Hex("1E3A6E"), TextAlignmentOptions.Left);
             Ui.Place(tag.rectTransform, new Vector2(0, 0), new Vector2(60, 36), new Vector2(590, 60), new Vector2(0, 0));
             tag.enableAutoSizing = true;
-            tag.fontSizeMin = 28;
-            tag.fontSizeMax = 40;
+            tag.fontSizeMin = Ui.LetteringSize(UiFont.Hand, 28);
+            tag.fontSizeMax = Ui.LetteringSize(UiFont.Hand, 40);
             tag.alpha = 0;
             var stamp = Ui.Label(rt, "IN  10:02 PM", UiFont.Mono, 30, new Color(0.75f, 0.15f, 0.12f, 0.9f), TextAlignmentOptions.Center);
             Ui.Place(stamp.rectTransform, new Vector2(1, 0), new Vector2(-170, 96), new Vector2(260, 50), new Vector2(0.5f, 0.5f));
@@ -240,8 +240,8 @@ namespace AfterHours
                 var gradeHint = Ui.Label(p, hintText, UiFont.Hand, 30, new Color(0.62f, 0.14f, 0.12f), TextAlignmentOptions.TopLeft, "GradeHint");
                 Ui.Place(gradeHint.rectTransform, new Vector2(0, 1), new Vector2(60, y), new Vector2(680, 36), new Vector2(0, 1));
                 gradeHint.enableAutoSizing = true;
-                gradeHint.fontSizeMin = 22;
-                gradeHint.fontSizeMax = 30;
+                gradeHint.fontSizeMin = Ui.LetteringSize(UiFont.Hand, 22);
+                gradeHint.fontSizeMax = Ui.LetteringSize(UiFont.Hand, 30);
                 gradeHint.textWrappingMode = TextWrappingModes.NoWrap;
                 y -= 40;
             }

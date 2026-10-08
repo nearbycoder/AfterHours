@@ -27,6 +27,32 @@ namespace AfterHours.Tests
         }
 
         [Test]
+        public void PlainHandwritingSetsOnlyHandwritingInTheUiFont()
+        {
+            Assert.AreEqual(UiFont.Sans, Ui.Lettering(UiFont.Hand, true));
+            Assert.AreEqual(UiFont.Hand, Ui.Lettering(UiFont.Hand, false), "as written keeps the handwriting");
+            foreach (var kept in new[] { UiFont.Type, UiFont.Mono, UiFont.Sans, UiFont.SansMedium, UiFont.Marker })
+            {
+                Assert.AreEqual(kept, Ui.Lettering(kept, true), $"{kept} isn't handwriting you read");
+                Assert.AreEqual(28f, Ui.LetteringSize(kept, 28f, true));
+            }
+            Assert.AreEqual(40f, Ui.LetteringSize(UiFont.Hand, 40f, false));
+            Assert.AreEqual(40f * Ui.PlainScale, Ui.LetteringSize(UiFont.Hand, 40f, true), 1e-4f);
+            Assert.That(Ui.PlainScale, Is.InRange(0.7f, 0.85f), "Fira Sans at this size takes about Caveat's width");
+            Assert.AreEqual(new[] { "As written", "Plain" }, Settings.Handwriting);
+        }
+
+        [Test]
+        public void OldSettingsFilesKeepHandwriting()
+        {
+            var old = JsonUtility.FromJson<Settings>("{\"MouseSensitivity\":1.5,\"TextSize\":2,\"Bindings\":[]}");
+            Assert.IsFalse(old.PlainHandwriting);
+            Assert.AreEqual(2, old.TextSize);
+            var s = new Settings { PlainHandwriting = true };
+            Assert.IsTrue(JsonUtility.FromJson<Settings>(JsonUtility.ToJson(s)).PlainHandwriting);
+        }
+
+        [Test]
         public void DocumentsKeepTheirSizeAtNormal()
         {
             var letter = new Vector2(820, 900);

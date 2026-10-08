@@ -28,6 +28,8 @@ namespace AfterHours
         public bool Captions = true;
         public bool ReduceFlashing;
         public bool AimHighlight = true;
+        /// <summary>Handwriting (Accessibility): false as written, true sets handwritten text in the plain UI font (see <see cref="Ui.Lettering(UiFont, bool)"/>).</summary>
+        public bool PlainHandwriting;
         /// <summary>Text size (HUD, reading screens and menus): 0 normal, 1 large, 2 largest (see <see cref="TextScale"/>).</summary>
         public int TextSize;
         /// <summary>Image brightness, 0 to 1; 0.5 is the game as designed (see <see cref="PostFx.GammaFor"/>).</summary>
@@ -75,6 +77,8 @@ namespace AfterHours
         public static readonly int[] FrameCaps = { 0, 30, 60, 120, 144 };
 
         public static readonly string[] TextSizes = { "Normal", "Large", "Largest" };
+
+        public static readonly string[] Handwriting = { "As written", "Plain" };
 
         /// <summary>How much the HUD's prompts, captions, toasts and labels are scaled.</summary>
         public static float TextScaleOf(int size) => size switch { 1 => 1.25f, 2 => 1.5f, _ => 1f };
