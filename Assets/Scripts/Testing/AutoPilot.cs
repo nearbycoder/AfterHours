@@ -42,7 +42,7 @@ namespace AfterHours
 
         // The line under the watch, sampled while a night's route is played: it must name the room
         // the player has stood in for at least one sample (a teleport mid-frame isn't a mistake).
-        readonly System.Collections.Generic.HashSet<string> roomsNamed = new();
+        readonly System.Collections.Generic.HashSet<string> roomsNamed = new(), roomsAll = new();
         int roomSamples, roomWrong;
         string roomPrev, roomWrongNote;
         float roomSampleT;
@@ -120,6 +120,8 @@ namespace AfterHours
             {
                 yield return PlayNight(n);
             }
+            var unnamed = NightDirector.AllRooms.Where(r => !roomsAll.Contains(r)).ToList();
+            if (last == NightDefs.Count) Check(unnamed.Count == 0, $"over the week the line under the watch named every room ({string.Join(", ", roomsAll)}){(unnamed.Count > 0 ? "; never " + string.Join(", ", unnamed) : "")}");
             if (last < NightDefs.Count)
             {
                 Debug.Log($"[AutoPilot] done: {passes} passed, {fails} failed (stopped after night {last})");
@@ -337,7 +339,8 @@ namespace AfterHours
 
             sampling = false;
             LogFrameStats(n);
-            Check(roomSamples > 20 && roomWrong == 0 && roomsNamed.Count >= dir.Def.Rooms.Length,
+            roomsAll.UnionWith(roomsNamed);
+            Check(roomSamples > 20 && roomWrong == 0 && roomsNamed.Count > 0,
                 $"night {n}: the line under the watch names the room you're in ({roomSamples} samples in {roomsNamed.Count} rooms: {string.Join(", ", roomsNamed)}; {roomWrong} wrong{(roomWrongNote != null ? ", first " + roomWrongNote : "")})");
 
             // Nights 1 and 2 end at the largest text size: the report and the morning chat grow.
@@ -1655,6 +1658,13 @@ namespace AfterHours
                     bool fits = Inside(paper, ScreenArea);
                     if (body.enabled) fits &= !body.isTextOverflowing && (string.IsNullOrWhiteSpace(body.text) || Inside(TextRect(body), paper));
                     if (size == 0) normal[d.Id] = (body.fontSize, card.sizeDelta);
+                    else if (normal.TryGetValue(d.Id, out var n0))
+                    {
+                        float ratio = body.enabled ? body.fontSize / n0.font : card.sizeDelta.x / n0.card.x;
+                        fits &= ratio >= 0.999f;
+                        if (ratio > 1.01f) bigger++;
+                        if (ratio > 1.49f) full++;
+                    }
                     if (body.enabled)
                     {
                         string fontName = body.font != null ? body.font.name : "";
@@ -1666,13 +1676,6 @@ namespace AfterHours
                             if (handwritten ? fontName.StartsWith("FiraSans-Regular") : fontName == was) plainOk++;
                             else bad.Add($"{d.Id} (in {fontName}, as written {was})");
                         }
-                    }
-                    else if (normal.TryGetValue(d.Id, out var n0))
-                    {
-                        float ratio = body.enabled ? body.fontSize / n0.font : card.sizeDelta.x / n0.card.x;
-                        fits &= ratio >= 0.999f;
-                        if (ratio > 1.01f) bigger++;
-                        if (ratio > 1.49f) full++;
                     }
                     if (fits) ok++; else bad.Add($"{d.Id} ({(body.enabled ? (body.isTextOverflowing ? "overflows" : "off the paper") : "picture")}, paper {paper.width:F0}x{paper.height:F0})");
                     InspectView.AutoChoice = InspectChoice.Close;

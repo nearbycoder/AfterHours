@@ -26,8 +26,7 @@ namespace AfterHours
             p.label = label;
             p.image = plate;
             p.pad = pad;
-            p.alpha = plate.color.a;
-            plate.transform.SetSiblingIndex(label.transform.GetSiblingIndex()); // just behind the label
+            p.alpha = plate.color.a; // made just before the label, so it draws behind it
             p.LateUpdate();
             return p;
         }
@@ -39,7 +38,7 @@ namespace AfterHours
             var b = label.textBounds;
             bool show = !string.IsNullOrEmpty(label.text) && b.size.x > 0.5f && label.alpha > 0.01f && label.isActiveAndEnabled;
             var c = image.color;
-            c.a = show ? alpha * Mathf.Clamp01(label.alpha) : 0f;
+            c.a = show ? alpha * Mathf.Clamp01(label.alpha / 0.9f) : 0f; // the label rests at 0.9; the backing at its own alpha
             image.color = c;
             if (!show) return;
             rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
@@ -157,7 +156,7 @@ namespace AfterHours
         }
 
         /// <summary>The backing behind the label under the reticle and the captions.</summary>
-        public static readonly Color PlateColor = new(0.03f, 0.04f, 0.07f, 0.72f);
+        public static readonly Color PlateColor = new(0.03f, 0.04f, 0.07f, 0.85f);
 
         /// <summary>A soft dark edge around the letters (TMP's underlay, which is invisible at its defaults).</summary>
         public static void Shadow(TextMeshProUGUI t)
