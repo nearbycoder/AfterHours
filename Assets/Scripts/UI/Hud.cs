@@ -9,6 +9,46 @@ namespace AfterHours
     /// In-play HUD: reticle that becomes a progress ring over dirty surfaces, a context prompt with
     /// keycaps, toasts for completions, and the wristwatch clock.
     /// </summary>
+    /// <summary>
+    /// A backing image that follows a label's text: sized to the letters (plus a margin), as
+    /// opaque as the label, and gone while the label is empty.
+    /// </summary>
+    public class TextPlate : MonoBehaviour
+    {
+        TextMeshProUGUI label;
+        Image image;
+        Vector2 pad;
+        float alpha;
+
+        public static TextPlate Attach(Image plate, TextMeshProUGUI label, Vector2 pad)
+        {
+            var p = plate.gameObject.AddComponent<TextPlate>();
+            p.label = label;
+            p.image = plate;
+            p.pad = pad;
+            p.alpha = plate.color.a;
+            plate.transform.SetSiblingIndex(label.transform.GetSiblingIndex()); // just behind the label
+            p.LateUpdate();
+            return p;
+        }
+
+        void LateUpdate()
+        {
+            if (!label) { Destroy(gameObject); return; }
+            var rt = (RectTransform)transform;
+            var b = label.textBounds;
+            bool show = !string.IsNullOrEmpty(label.text) && b.size.x > 0.5f && label.alpha > 0.01f && label.isActiveAndEnabled;
+            var c = image.color;
+            c.a = show ? alpha * Mathf.Clamp01(label.alpha) : 0f;
+            image.color = c;
+            if (!show) return;
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.localScale = label.rectTransform.localScale;
+            rt.sizeDelta = (Vector2)b.size + pad * 2f;
+            rt.position = label.rectTransform.TransformPoint(b.center);
+        }
+    }
+
     public class Hud : MonoBehaviour
     {
         public static Hud Instance { get; private set; }
@@ -50,10 +90,14 @@ namespace AfterHours
             dot = Ui.Image(reticleRoot, "Dot", new Color(1, 1, 1, 0.85f), Ui.Circle(32));
             Ui.Place(dot.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(7, 7));
 
+            // A faint dark backing, so the label reads on a lit white wall as well as in the dark.
+            var labelPlate = Ui.Panel(root, "TargetLabelPlate", PlateColor, 12);
             targetLabel = Ui.Label(root, "", UiFont.SansMedium, 21, Ui.Text, TextAlignmentOptions.Center, "TargetLabel");
             Ui.Place(targetLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -62), new Vector2(900, 30));
             targetLabel.fontStyle = FontStyles.Normal;
             targetLabel.characterSpacing = 2f;
+            Shadow(targetLabel);
+            TextPlate.Attach(labelPlate, targetLabel, new Vector2(14, 6));
 
             promptRoot = Ui.Place(Ui.Rect(root, "Prompt"), new Vector2(0.5f, 0f), new Vector2(0, 70), new Vector2(900, 44), new Vector2(0.5f, 0.5f));
             promptGroup = promptRoot.gameObject.AddComponent<CanvasGroup>();
@@ -80,7 +124,7 @@ namespace AfterHours
             Ui.Place(roomLine.rectTransform, new Vector2(1, 1), new Vector2(-52, -104), new Vector2(420, 24), new Vector2(1, 1));
             roomLine.characterSpacing = 5f;
             roomLine.textWrappingMode = TextWrappingModes.NoWrap;
-            roomLine.fontMaterial.EnableKeyword("UNDERLAY_ON");
+            Shadow(roomLine);
         }
 
         string roomId;
@@ -112,6 +156,20 @@ namespace AfterHours
             roomLine.alpha = Mathf.Lerp(0.6f, 1f, roomGlow);
         }
 
+        /// <summary>The backing behind the label under the reticle and the captions.</summary>
+        public static readonly Color PlateColor = new(0.03f, 0.04f, 0.07f, 0.72f);
+
+        /// <summary>A soft dark edge around the letters (TMP's underlay, which is invisible at its defaults).</summary>
+        public static void Shadow(TextMeshProUGUI t)
+        {
+            var m = t.fontMaterial;
+            m.EnableKeyword("UNDERLAY_ON");
+            m.SetColor(ShaderUtilities.ID_UnderlayColor, new Color(0f, 0f, 0f, 0.8f));
+            m.SetFloat(ShaderUtilities.ID_UnderlayDilate, 0.3f);
+            m.SetFloat(ShaderUtilities.ID_UnderlaySoftness, 0.35f);
+            t.UpdateMeshPadding();
+        }
+
         public void SetVisible(bool v) => Tween.Run(0.25f, t => group.alpha = v ? t : 1 - t, Ease.OutCubic, owner: group);
 
         public void SetClock(string hhmm, string sub)
@@ -137,7 +195,7 @@ namespace AfterHours
                 Ui.KeyCap(promptRoot, GameInput.Glyph(key), 34);
                 var t = Ui.Label(promptRoot, label, UiFont.SansMedium, 22, Ui.Text, TextAlignmentOptions.Left);
                 t.rectTransform.sizeDelta = new Vector2(t.GetPreferredValues(label).x + 18, 34);
-                t.fontMaterial.EnableKeyword("UNDERLAY_ON");
+                Shadow(t);
             }
             promptGroup.alpha = 0f;
             Tween.Run(0.18f, a => promptGroup.alpha = a, Ease.OutCubic, owner: promptGroup);
@@ -202,7 +260,7 @@ namespace AfterHours
                 toolNote = Ui.Label(root, "", UiFont.SansMedium, 22, Ui.Accent, TextAlignmentOptions.Center, "ToolNote");
                 Ui.Place(toolNote.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0, -100), new Vector2(600, 30));
                 toolNote.characterSpacing = 2f;
-                toolNote.fontMaterial.EnableKeyword("UNDERLAY_ON");
+                Shadow(toolNote);
             }
             toolNote.text = text.ToUpperInvariant();
             toolNote.alpha = 0;
@@ -218,9 +276,11 @@ namespace AfterHours
             if (!Settings.Current.Captions && text.StartsWith("[")) return;
             if (caption == null)
             {
+                var plate = Ui.Panel(root, "CaptionPlate", PlateColor, 12);
                 caption = Ui.Label(root, "", UiFont.SansMedium, 26, Ui.Text, TextAlignmentOptions.Center, "Caption");
+                TextPlate.Attach(plate, caption, new Vector2(18, 8));
                 Ui.Place(caption.rectTransform, new Vector2(0.5f, 0f), new Vector2(0, 140), new Vector2(1400, 80), new Vector2(0.5f, 0f));
-                caption.fontMaterial.EnableKeyword("UNDERLAY_ON");
+                Shadow(caption);
             }
             caption.text = text;
             caption.alpha = 0;

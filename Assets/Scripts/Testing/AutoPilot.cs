@@ -832,6 +832,46 @@ namespace AfterHours
         /// held (round 9); E on the floor offers Place, and with nothing to stand it on the prompt
         /// offers only Q. Pressed on a virtual keyboard. Ends where it started, still holding it.
         /// </summary>
+        /// <summary>
+        /// Contrast of the label under the reticle against what's behind it, from a screen capture:
+        /// its brightest letters (98th percentile of relative luminance in the text's bounds)
+        /// against the middle of that area (mostly the gaps between letters). WCAG ratio.
+        /// </summary>
+        IEnumerator MeasureLabel(Action<float> got)
+        {
+            yield return new WaitForEndOfFrame();
+            var tex = ScreenCapture.CaptureScreenshotAsTexture();
+            var r = TextRect(Hud.Instance.TargetLabel);
+            var lum = new System.Collections.Generic.List<float>();
+            int x0 = Mathf.Clamp(Mathf.FloorToInt(r.xMin), 0, tex.width - 1), x1 = Mathf.Clamp(Mathf.CeilToInt(r.xMax), 0, tex.width - 1);
+            int y0 = Mathf.Clamp(Mathf.FloorToInt(r.yMin), 0, tex.height - 1), y1 = Mathf.Clamp(Mathf.CeilToInt(r.yMax), 0, tex.height - 1);
+            var px = tex.GetPixels(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+            foreach (var c in px)
+                lum.Add(0.2126f * Mathf.GammaToLinearSpace(c.r) + 0.7152f * Mathf.GammaToLinearSpace(c.g) + 0.0722f * Mathf.GammaToLinearSpace(c.b));
+            Destroy(tex);
+            lum.Sort();
+            float P(float q) => lum.Count == 0 ? 0f : lum[Mathf.Clamp(Mathf.RoundToInt(q * (lum.Count - 1)), 0, lum.Count - 1)];
+            got(lum.Count < 50 ? 0f : (P(0.98f) + 0.05f) / (P(0.5f) + 0.05f));
+        }
+
+        /// <summary>Round 10: the label reads at least 4.5:1 here; measured again without its backing and shadow (as before).</summary>
+        IEnumerator LabelContrastChecks(string where)
+        {
+            var label = Hud.Instance.TargetLabel;
+            var plate = Ui.Canvas.transform.Find("HUD/TargetLabelPlate")?.GetComponent<UnityEngine.UI.Image>();
+            float with = 0f, without = 0f;
+            yield return MeasureLabel(v => with = v);
+            if (plate) plate.enabled = false;
+            label.fontMaterial.DisableKeyword("UNDERLAY_ON");
+            yield return null; yield return null;
+            yield return MeasureLabel(v => without = v);
+            yield return Shot("n1_label_without_backing");
+            if (plate) plate.enabled = true;
+            label.fontMaterial.EnableKeyword("UNDERLAY_ON");
+            yield return null;
+            Check(plate != null && with >= 4.5f, $"the label under the reticle (\"{HudLabel()}\") reads at {with:F1}:1 against {where} (at least 4.5:1; {without:F1}:1 without its backing and shadow, as before round 10)");
+        }
+
         IEnumerator HandsFullChecks(Holdable item)
         {
             var player = root.Player;
@@ -864,6 +904,7 @@ namespace AfterHours
                 $"holding the {item.DisplayName.ToLowerInvariant()}, the switch under the reticle is found and highlighted (focus {(Interactor.Instance.Focus as Component)?.name ?? "none"})");
             Check(Prompt().Contains("|E" + want + "|"), $"the prompt offers E: {want} as well as the throw and Q (\"{Prompt()}\")");
             yield return Shot("n1_hands_full_switch");
+            yield return LabelContrastChecks("the reception light switch, lights " + (room.LightsOn ? "on" : "off"));
             yield return Key(UnityEngine.InputSystem.Key.E);
             Check(room.LightsOn != lit && root.Hands.Holding == item, $"E flips the switch with the cup in hand, and the cup stays held (lights {(room.LightsOn ? "on" : "off")}, holding {root.Hands.Holding?.name ?? "nothing"})");
             yield return Key(UnityEngine.InputSystem.Key.E);
