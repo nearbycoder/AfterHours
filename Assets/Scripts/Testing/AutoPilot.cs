@@ -97,11 +97,24 @@ namespace AfterHours
             Check(TitleScreen.Instance != null, "title screen shows on boot");
             yield return Shot("title");
             if (PadChecks) yield return PadTitle();
+            bool padWas = GameInput.UsingPad; // the keyboard checks leave the keyboard as the last device touched
+            if (PadChecks) yield return KeyboardTitleChecks();
             StoryState.DeleteAll();
             Story.State = new StoryState();
             if (PadChecks) Check(PlaytestLog.CurrentFile == null, $"with the playtest log off nothing is written (it was {(logWasOn ? "on" : "off")} in this profile's settings)");
             Settings.Current.PlaytestLog = true;
-            TitleScreen.Instance?.Begin(1);
+            if (PadChecks)
+            {
+                // Enter with nothing selected starts the night, as it always has.
+                EventSystem.current?.SetSelectedGameObject(null);
+                yield return TitleKey(UnityEngine.InputSystem.Key.Enter);
+                yield return Wait(1f);
+                Check(TitleScreen.Instance == null, "Enter on the title with nothing selected starts the night");
+                if (TitleScreen.Instance != null) TitleScreen.Instance.Begin(1);
+                if (titleKb != null) { InputSystem.RemoveDevice(titleKb); titleKb = null; }
+                GameInput.UsingPad = padWas; // later checks expect the pad they last touched
+            }
+            else TitleScreen.Instance?.Begin(1);
             int last = scenario.StartsWith("night") && int.TryParse(scenario.Substring(5), out var only) ? only : NightDefs.Count;
             for (int n = 1; n <= last; n++)
             {
@@ -659,6 +672,50 @@ namespace AfterHours
                 yield return Press(GamepadButton.East);
                 yield return Wait(0.4f);
                 Check(!ChoiceMenu.IsOpen && TitleScreen.Instance != null, "pad B backs out of the New Game question");
+            }
+        }
+
+        Keyboard titleKb;
+
+        IEnumerator TitleKey(UnityEngine.InputSystem.Key k)
+        {
+            titleKb ??= InputSystem.AddDevice<Keyboard>("AutoPilotKeyboardTitle");
+            titleKb.MakeCurrent();
+            InputSystem.QueueStateEvent(titleKb, new KeyboardState(k));
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(titleKb, new KeyboardState());
+            yield return Wait(0.3f);
+        }
+
+        /// <summary>
+        /// Round 10: on the title, the arrow keys walk the menu and Enter presses the button you're
+        /// on (Settings, Night Select, New Game with a save on disk) without also starting the night.
+        /// </summary>
+        IEnumerator KeyboardTitleChecks()
+        {
+            var title = TitleScreen.Instance;
+            if (title == null) { Check(false, "the title is up for the keyboard checks"); yield break; }
+            var es = EventSystem.current;
+            var first = title.transform.Find("Menu").GetComponentsInChildren<UnityEngine.UI.Selectable>().FirstOrDefault();
+            bool hadSave = StoryState.Load() != null;
+            foreach (var button in new[] { "Btn_Settings", "Btn_Night Select", "Btn_New Game" })
+            {
+                if (button == "Btn_New Game" && !hadSave) continue; // with no save it just starts Night 1
+                es.SetSelectedGameObject(first.gameObject);
+                yield return Wait(0.1f);
+                for (int i = 0; i < 8 && Selected != button; i++) yield return TitleKey(UnityEngine.InputSystem.Key.DownArrow);
+                bool walked = Selected == button;
+                yield return TitleKey(UnityEngine.InputSystem.Key.Enter);
+                yield return Wait(0.8f); // past the title's fade, if it had started the night
+                bool opened = button switch { "Btn_Settings" => SettingsPanel.IsOpen, "Btn_Night Select" => NightSelect.IsOpen, _ => ChoiceMenu.IsOpen };
+                bool stayed = TitleScreen.Instance == title && title.isActiveAndEnabled && root.Director.Paused;
+                Check(walked && opened && stayed, $"on the title, the arrow keys reach {button.Substring(4)} and Enter opens it without starting the night (selected {Selected}, opened {opened}, title still up {stayed})");
+                if (button == "Btn_Settings") yield return Shot("title_enter_settings");
+                // Esc backs out (Never mind, for New Game's question).
+                yield return TitleKey(UnityEngine.InputSystem.Key.Escape);
+                yield return Wait(0.4f);
+                Check(!SettingsPanel.IsOpen && !NightSelect.IsOpen && !ChoiceMenu.IsOpen && TitleScreen.Instance == title, $"Esc closes it again ({button.Substring(4)})");
+                if (TitleScreen.Instance != title) yield break;
             }
         }
 
