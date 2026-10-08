@@ -845,6 +845,19 @@ namespace AfterHours
             yield return MenuFadeChecks("The controls page", "Controls", () => ControlsPanel.Show(), () => ControlsPanel.IsOpen);
             Check(TitleScreen.Instance != null && !SettingsPanel.IsOpen && !NightSelect.IsOpen && !BrightnessPanel.IsOpen && !ControlsPanel.IsOpen,
                 "and the title is still up behind them, with all four closed");
+            // Frames of Settings fading in, for the README.
+            bool padWas = GameInput.UsingPad;
+            SettingsPanel.Show();
+            for (int i = 0; i < 6; i++)
+            {
+                ScreenCapture.CaptureScreenshot(System.IO.Path.Combine(dir, $"fade_settings_{i}.png"));
+                yield return null;
+            }
+            yield return Wait(0.4f);
+            yield return TitleKey(UnityEngine.InputSystem.Key.Escape);
+            Check(!SettingsPanel.IsOpen, "Settings closes again after its fade-in frames are saved");
+            if (padWas && vpad != null) vpad.MakeCurrent();
+            GameInput.UsingPad = padWas;
         }
 
         /// <summary>A virtual mouse moved to the middle of <paramref name="target"/> (or by a nudge), as the Input System sees a real one.</summary>
