@@ -1545,7 +1545,8 @@ focus. I read the code and last round's screenshots the way a player would meet 
 - **Graphics stop at today's look.** Settings has a Low / Medium / High preset (round 1), and
   High is the game as it was built, so nothing goes past it. A stronger GPU gets nothing more:
   the room lights' shadows stay at 1024 px tiles, desk lamps cast none, SSAO runs at its
-  medium sample count, and floors are filtered at the textures' own anisotropic level. Glass, the
+  medium sample count, and textures are filtered at the project's forced 9× anisotropic level
+  (corrected during the round: the scope first said "the textures' own level"). Glass, the
   break room's tile and the whiteboard can't reflect the room, because there are no reflection
   probes and no sky to reflect. Low still renders full-size textures, film grain and
   full-strength particles.
@@ -1640,6 +1641,95 @@ keys; the card fits at every text size and window size as before. **Verify:** Au
 route (the existing card checks read the caps), screenshots with keyboard, an Xbox-style pad and
 a DualShock 4.
 
+## Round 12 results (8 October 2026)
+
+Four items shipped on `improvements-12`, one commit each after the scope commit, plus a commit
+that saves frames of a menu fading in for this page, and this update. Commits: scope `21f0c33`,
+R12-1 `a1d04b9`, R12-2 `0c6ee7a`, R12-3 `f1868fe`, R12-4 `692ef66`, the fade frames `8533e35`.
+The baseline `audit` run on `main` (`a4ed317`) passed 562 checks with 0 failed, in the private
+KWin. Screenshots are in [`docs/media/improvements/round12/`](media/improvements/round12/).
+Final build (`8533e35`, built from the committed tree): **all five routes pass, 0 failed, no
+crashes** (audit 607 checks, loose 603, cleanbooks 603, spotless 578, marian 596; round 11 ended
+at 562, 558, 558, 533 and 551), every one in the private KWin. EditMode tests 93/93 (86 before),
+from the same tree. The `menus` layout capture on that build: 72 of 72 OK (six window sizes, three
+text sizes, Settings, both controls pages and the brightness page; no overlaps, nothing off
+screen). The real save and settings files under `~/.config/unity3d` were checksummed before and
+after: After Hours' `save.json`, `prefs` and night snapshots are unchanged; only `TestResults.xml`,
+which Unity's test runner writes there itself, changed. Every run's clean-up log shows its own
+leftover processes stopped (one each), and nothing of this session's was left running. Load
+average from other sessions was 9–20 at the start of each final route (the script waits for it
+to fall under 24) and up to 64 during the iteration runs.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R12-1 | Graphics Fidelity: Low, Medium, High, Ultra | Done | 7 EditMode tests (four steps, every step at least what the one below renders, High as authored, Low the lightest, old settings files keep their step, Ultra saved, slow frames step down from Ultra, particles and the beacons). AutoPilot, every route: the slider with the d-pad (stops at both ends), a virtual mouse clicking a notch and dragging past the end, and the arrow keys (R12-3); on Night 2 every step read back from the engine against the table (MSAA, shadow maps, cascades and distance, the room lights' shadow tiles, SSAO samples, lights' and lamps' shadows, anisotropic filtering, texture size, the cameras' anti-aliasing, particles, probes); on Ultra all seven room probes render and the bullpen's renders again when its lights switch; held at 20 fps on Ultra the game offers High, then Medium. The `fidelity` capture (below). The same four poses on the baseline build and at High on the tip differ by 0.5–0.7 of 255 on average (film grain), with the same mean brightness. Layout at six window sizes. |
+| R12-2 | Menus open and close smoothly | Done | AutoPilot, every route: Settings, Night Select, the brightness page and the controls page on the title, and the pause menu on Night 1, each open at alpha 0 and scale 0.97, are fully shown by 0.3 s, close at once on a real Esc (out of input, navigation and lookups, picture still fading) and are gone 0.3 s later. A step never covers more than 1/30 s: the first try's readings showed a long build frame skipping 80% of the fade. Six consecutive frames of Settings fading in (mean brightness 14.5, 23.7, 26.8, 28.0, 28.4, 28.8). **Not checked separately:** the title's case file (it fades the same way; its existing checks on Night 3 pass). |
+| R12-3 | Focus you can see with keys and mouse | Done | AutoPilot, every route, with a virtual keyboard and mouse: after the mouse moves nothing shows a keyboard selection; an arrow key with nothing selected selects the title's first button; on the title, in Settings and in the pause menu only the item the arrow keys are on is lit; moving the mouse hands the highlight to the button under the pointer; the pointer over a Settings row lights only that row (a slider row anywhere along it); Enter on a button dips it to 0.967 of its size and it recovers within 0.6 s. Screenshots. |
+| R12-4 | Keycaps on the controls card | Done | AutoPilot, every route: with the keyboard (14 caps), an Xbox-style pad and a DualShock 4 (11 each), the caps match the bound keys row by row, don't touch, run top to bottom, stay on the card and end before the row's words; the card's existing checks (size at every text size, rebinding Interact to F, the torch row from Night 3) pass. The first try's screenshot showed the Mouse cap over "Move and look"; a row too wide for its indent is now shrunk, and the check looks for it. Before and after screenshots. |
+
+<img src="media/improvements/round12/r12-1-fidelity-steps.jpg" width="100%" alt="Four views at Low, Medium, High and Ultra">
+
+**Graphics Fidelity, step by step.** Night 2, 1600×900, VSync off, every room lit, the world
+frozen so each step sees the same frame; three rounds in which the steps take turns, 2.5 s each,
+the middle round's median frame time; four views (bullpen, break room, reception, conference).
+Two captures on `8533e35`, at a load average of 8–9. Other sessions kept the shared GPU 96–99%
+busy before each run started, so these are this game's frames competing for a busy GPU, not its
+cost on an idle one. OpenGL gave no GPU timings (`FrameTimingManager` reports 0), so the main
+thread's time is given too; it hardly depends on the contention.
+
+| Step | What it changes (against High) | Frame time, mean of the four views' medians (run 1 / run 2) | Main thread |
+|---|---|---|---|
+| **Low** | No SSAO; shadows from the moon only (hard, 1024 px, one cascade to 18 m); no MSAA, FXAA instead of SMAA; no film grain; bloom at quarter resolution, fast filtering; half-size textures (not the clue lettering); half the particles; the inspect view's blur Gaussian | **4.0 / 4.6 ms** | 2.4 / 2.3 ms |
+| **Medium** | Hard shadows from every light; 2× MSAA, SMAA medium; fast bloom; three quarters of the particles | **6.2 / 7.9 ms** | 3.5 / 3.8 ms |
+| **High** (default) | As before this round: soft shadows, 1024 px tiles in a 4096 atlas, 2048 px moon in two cascades to 28 m, SSAO (8 samples), 4× MSAA with SMAA high, high-quality bloom | **8.1 / 9.7 ms** | 3.6 / 3.8 ms |
+| **Ultra** | A box-projected reflection probe in each of the seven rooms (256 px, rendered when its lights settle); soft shadows from the two desk lamps; 2048 px tiles in an 8192 atlas; a 4096 px moon in four cascades to 40 m; SSAO at 12 samples with high-quality normals; anisotropic filtering forced to 16×; 1.5× the particles | **9.6 / 10.3 ms** | 3.9 / 4.2 ms |
+
+Per view (run 1, medians, Low to Ultra): bullpen 3.2 / 6.0 / 7.0 / 9.0 ms, break room
+4.0 / 7.6 / 8.7 / 9.4, reception 5.8 / 5.1 / 9.6 / 11.9, conference 2.9 / 6.1 / 7.1 / 8.0; the
+full tables with percentiles are in `Recordings/r12/fidelity-final-{1,2}` via
+`Tools/fidelity_report.py`. Earlier captures in the round, at loads of 23–37, gave means of 13–29 ms
+in no stable order, which is why the capture interleaves the steps and logs the load and how busy the
+GPU is. High here (8–10 ms) is slower than round 9's 4.9 ms because every room is lit, not
+because High changed.
+
+<img src="media/improvements/round12/r12-1-high-vs-ultra.jpg" width="100%" alt="High and Ultra side by side: the break room and reception">
+
+Ultra against High: the chair and table legs pick up the lit room, the desk lamp casts a shadow across the reception floor, and shadow edges are finer. The
+difference is real but modest; the floors' own materials are not glossy enough to show strong
+reflections, and the art itself (models and textures) was left alone.
+
+<img src="media/improvements/round12/r12-1-settings-slider.jpg" width="60%" alt="The Graphics fidelity slider at Ultra and at Low, with the line saying what each step does">
+
+<img src="media/improvements/round12/r12-2-settings-fade-in.jpg" width="100%" alt="Six consecutive frames of Settings fading in over the title">
+
+<img src="media/improvements/round12/r12-3-keyboard-and-mouse-focus.jpg" width="100%" alt="The keyboard's selection lit on the title, in Settings and in the pause menu, and a Settings row lit under the mouse">
+
+<img src="media/improvements/round12/r12-4-controls-card-keycaps.jpg" width="100%" alt="The pause menu's controls card before (text highlights) and after (keycaps) with keyboard, pad and DualShock 4">
+
+Found and fixed during the round (all before the item commits): a reflection probe disabled
+while a time-sliced render was in flight never reported finishing, so it was never rendered again
+(probes now render all six faces in one frame, one room a frame, and forget a render in flight when
+switched off); a room whose light shimmered could keep re-rendering its probe (it now waits for
+a change of more than 0.3 and 0.4 s of stillness); the line under the slider put the Keyboard,
+mouse and controller button within a few pixels of Done (Done now sits 14 units lower at Normal).
+
+Known limits:
+
+- Ultra was only seen on this iGPU, at 1600×900. Nobody has tried it on a strong discrete GPU,
+  where it's meant to be used, or at 4K. Its probes render once per light change (seven rooms, one
+  a frame, each six faces at 256 px), a hitch the frame times above don't include.
+- Low was never run on weak hardware; it's fastest here (about half of High's frame time).
+- The slow-frames offer's steps (Ultra, High, Medium, Low, then render scale) were tested by
+  holding the frame rate to 20, as in round 9, not on slow hardware.
+- The fade, focus and press feedback were checked by measurement and screenshots; no person has
+  used them with a real pad, keyboard and mouse.
+- Mono audio, Reduce flashing, two- and three-room glint captions and saving mid-night are as
+  round 11 left them.
+
+Deferred: saving mid-night (a round of its own), hints for missed secrets and an off switch for
+the close question (the owner's calls), re-modelling or re-texturing the art (outside a
+polish round that keeps the style), and still WebGL, Windows and the trailer.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -1688,6 +1778,10 @@ published; no web build; licence, releases, tags and signing left to the owner. 
    0.85-opaque rounded backing, so they read on lit walls (5.9:1 where they were 1.4:1). It's
    a visible change to the HUD's look; a lighter backing would need the text itself darker or
    outlined to keep 4.5:1 there.
-14. **Reduce flashing and mono audio with real players** (new): the storm's softer stutter and
+14. **Reduce flashing and mono audio with real players**: the storm's softer stutter and
    the mono mix were checked by measurement only. Someone sensitive to flashing, and someone who
    plays with one ear or one earbud, would settle whether they're enough.
+15. **Graphics Fidelity on real hardware** (new): Ultra was measured only on the development
+   machine's integrated GPU, with other sessions keeping it busy. Ten minutes on a desktop with a
+   discrete GPU (and on a weak laptop for Low) would show whether Ultra is worth a strong GPU's
+   time, whether Low is smooth enough, and whether High should stay the default.

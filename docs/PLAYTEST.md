@@ -33,6 +33,8 @@ computer beyond that, and nothing is sent anywhere.
 - What did you decide to do with the first note you found, and why?
 - How long did a night feel? Did you want to play the next one?
 - Anything that looked broken, or any text you couldn't read?
+- Which Graphics fidelity step did you play on (Settings → Display), and did it run smoothly?
+  If you tried Ultra or Low, did it look or run differently enough to matter?
 
 ## Watching someone play
 

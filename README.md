@@ -213,15 +213,35 @@ Quit), pause (Resume, Shift sheet,
 Settings, Restart this night, Quit to title; both of the last two ask first, and so does closing
 the game in the middle of a night; and a card listing the controls as you have them bound) and settings in two
 columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, camera motion (head bob, and the kick of a throw or a reveal),
-four volume sliders, mono audio, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
+four volume sliders, mono audio, an opt-in playtest log, brightness, **Graphics fidelity** (below),
 render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing (which also
 softens Night 7's storm, whose lights otherwise drop out with each thunderclap), a highlight on
 whatever you're aiming at, text size (Normal, Large, Largest), handwriting (as written or plain), and pages for keyboard and
 mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
 spray. If a night runs slowly (under about 28 frames a second), the game offers the next lower
-graphics setting once; Keep means it won't ask again. Progress
+Graphics fidelity step once (Ultra, High, Medium, Low, then render scale); Keep means it won't ask again. Menus fade in
+and out, the selection is lit whether the pad, the arrow keys or the mouse is moving it, and buttons
+dip when pressed. Progress
 and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
 previous one as a backup, so a crash or power cut mid-save can't lose a game.
+
+### Graphics fidelity
+
+Settings → Display has a **Graphics fidelity** slider with four steps. High is the default and the
+game as it was built; Ultra goes past it. Mouse, arrow keys and d-pad all move it, and a line under
+it says what the step does.
+
+| Step | What it renders |
+|---|---|
+| **Low** | For weak GPUs: shadows from the moon only (hard, 1024 px), no ambient occlusion, FXAA instead of MSAA, no film grain, bloom at quarter resolution, half-size textures (the clue lettering stays full size), half the particles |
+| **Medium** | Hard shadows from every room light, ambient occlusion, 2× MSAA with SMAA, three quarters of the particles |
+| **High** (default) | Soft shadows, ambient occlusion, 4× MSAA with high-quality SMAA, full particles: unchanged from before round 12 |
+| **Ultra** | Everything on High, plus a reflection probe in every room (metal, glass and glossy surfaces reflect the lit room; rendered again when its lights change), soft shadows from the desk lamps, 2048 px room-light shadows in an 8192 atlas, a 4096 px moon shadow in four cascades to 40 m, ambient occlusion at its most samples, 16× anisotropic filtering, half as many particles again |
+
+<img src="docs/media/improvements/round12/r12-1-fidelity-steps.jpg" width="100%" alt="The same four views at Low, Medium, High and Ultra">
+
+How much each step costs was measured on the development machine; see
+[Round 12 results](docs/IMPROVEMENTS.md#round-12-results-8-october-2026).
 
 ## Screenshots
 
@@ -382,7 +402,15 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   (its epilogue must fit); the title's Case file must then start with the ending, which is read
   again (the same headline, epilogue and stats as it showed) and closed with the pad and Esc,
   followed by Night 7's documents; and
-  Night Select's cards are checked at each size. Automated runs
+  Night Select's cards are checked at each size. Round 12 added checks for Graphics fidelity
+  (the slider with the pad, a virtual mouse's click and drag and the arrow keys; on Night 2,
+  every step read back from the engine against the table, the rooms' reflection probes rendering
+  and rendering again when a room's lights change, and the slow-frames offer stepping down from
+  Ultra), for menus fading in and closing at once on a real Esc (the title's four and the pause
+  menu), for the keyboard's selection being lit on the title, in Settings and in the pause menu
+  (and handed to the mouse pointer when it moves; a row lit under the pointer; a button dipping
+  when pressed), and for the controls card's keycaps matching the bindings with the keyboard, a
+  pad and a DualShock 4. Automated runs
   keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
@@ -392,7 +420,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   come from the night snapshots) and the title's list for a saved or finished story (the ending
   first), the grading and its hints, the bin label for every kind of rubbish against both bins,
   the window opened on leaving fullscreen, when slow frames call for a lower setting and which,
-  the brightness curve, which fonts Plain handwriting changes and by how much, the glint's
+  the brightness curve, the Graphics fidelity table (every step at least what the one below
+  renders, High as authored, old settings files keep their step, slow frames step down from
+  Ultra, the particles), which fonts Plain handwriting changes and by how much, the glint's
   caption (and which way it says), the storm's stutter with and without Reduce flashing, the
   mono downmix, the HUD text sizes and how far
   documents grow, and that settings files from earlier versions load.
@@ -402,7 +432,10 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   bar's close button does (on the title it must exit; mid-night it must ask, Never mind must
   keep the night paused where it was, and Quit the game must end it); `window` switches
   Fullscreen off and on and has KWin report where the window is (it must fit on the screen);
-  `perf` runs the perf probe in a window the compositor is showing; `run` starts the player with
+  `perf` runs the perf probe in a window the compositor is showing (and `run ... -ahCapture <dir>
+  fidelity -ahNight 2 -ahFresh` the Graphics fidelity capture: four views, every step, same-frame
+  screenshots and interleaved frame times, which `Tools/fidelity_report.py` turns into a table
+  and a sheet); `run` starts the player with
   any arguments and waits for it to finish (the AutoPilot uses it). Each runs on native Wayland
   or, with `x11`, on the private KWin's Xwayland.
 - The AutoPilot keeps the playtest log off through the title (and checks nothing is written),
@@ -462,7 +495,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with 533–562 checks per route.
+  along five story routes, with 578–607 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -508,7 +541,9 @@ Camera motion off, and checks on Steam Deck and ultrawide screens; round 10: the
 under the watch, a caption saying where the leftovers chime, plain lettering for handwriting,
 and a backing for the label under the reticle; round 11: Reduce flashing for Night 7's storm, a
 caption for the thunder, mono audio, which way the glint's chimes are, and Settings fitting at
-Normal text size again) are listed in
+Normal text size again; round 12: Graphics fidelity with an Ultra step, menus that fade in and
+out, a visible keyboard selection, hover and press feedback, and keycaps on the pause menu's
+controls card) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -545,10 +580,13 @@ still rough or untested:
   half and back instead of going black; the frame keeps about 59% of its brightness rather than
   11–15%) was judged by those numbers, not by anyone sensitive to flashing.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
-  1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
-  and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,
-  uses smaller shadow maps and FXAA instead of MSAA; Medium keeps SSAO with hard shadows and 2x
-  MSAA. With VSync on, the perf probe measured 11 fps in a window that wasn't in front, which
+  1600x900, VSync off, on a busy shared machine). Round 9 measured about 4.9 ms a frame on High,
+  2.9 ms on Medium and 2.7 ms on Low. Round 12's Graphics fidelity steps were timed with every
+  room lit while other sessions kept the shared GPU about 99% busy, so those frame times are
+  mostly other people's work; the main thread's share, which the contention barely touches,
+  rises step by step from Low to Ultra. The table in
+  [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md#round-12-results-8-october-2026) gives both.
+  Lower-end hardware is untested, and so is Ultra on a strong discrete GPU, which is what it's for. With VSync on, the perf probe measured 11 fps in a window that wasn't in front, which
   looks like the Wayland compositor throttling hidden windows (the AutoPilot runs uncapped for
   that reason). In a window a compositor is actually showing (a private KWin on a virtual 60 Hz
   screen, `Tools/wmtest.sh perf`), VSync held 60 fps (16.8 ms median, against 5.3 ms uncapped)
@@ -569,7 +607,10 @@ still rough or untested:
   unplugged couldn't be tested there: its virtual screens ignore both.
 - **The art is stylised and procedural.** Every model is generated in Blender from code: chunky,
   bevelled and flat-shaded. It's consistent, but it isn't hand-modelled or textured to a
-  commercial standard.
+  commercial standard. Round 12 raised how it can be rendered without touching the models or
+  textures: at the default High the game looks as it did, and Ultra's difference (room
+  reflections, lamp shadows, finer shadows and ambient occlusion) is visible but modest, mostly
+  in glossy and metal surfaces and shadow edges.
 - **Linux first.** The macOS build is made and checked on Linux (universal binary, bundle id
   `com.nearbycoder.afterhours`, icon) but has never been launched on a Mac, and it's unsigned and
   unnotarised. No Windows build has been made; the build entry point is ready for when the
