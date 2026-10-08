@@ -1359,6 +1359,52 @@ it if it doesn't.
 Game asks first; no night starts; Enter with nothing selected still starts the night. **Verify:**
 AutoPilot at the title, every route.
 
+## Round 10 results (7 October 2026)
+
+Four items shipped on `improvements-10`, one commit each after the scope commit; R10-5 needed no
+game change (its check is its commit). A sixth commit fixes what the first AutoPilot run found,
+and this update is the last. The baseline `audit` run on `main` passed 520 checks with 0 failed,
+in the private KWin (load average 11 rising to 25 from other sessions). Screenshots are in
+[`docs/media/improvements/round10/`](media/improvements/round10/). Final build: **all five
+routes pass, 0 failed, no crashes** (audit 550 checks, loose 546, cleanbooks 546, spotless
+521, marian 539; round 9 ended at 520, 516, 516, 491 and 509), every one in the private KWin,
+plus Night 1 at 1280×800 (Steam Deck) and 3840×1080 (32:9): 213 and 213 checks, 0
+failed. EditMode tests 80/80 (77 before). The real save and settings files under `~/.config/unity3d` were checksummed before and after: After Hours' `save.json`, `prefs` and night snapshots are unchanged; only its `TestResults.xml`, which Unity's test runner writes there itself, changed (no AutoPilot run wrote there). Every run's clean-up log shows one process of its own stopped, and nothing of this session's was left running. Load average from other sessions was
+about 22–32 during the item runs and 15–26 at the start of each during the final runs.
+
+| # | Item | Status | How it was verified |
+|---|---|---|---|
+| R10-1 | Where you are | Done | AutoPilot, every route: while each night's route is played, the line under the watch is sampled four times a second wherever the player has stood for a quarter of a second, and must name that room as the shift sheet does. The final `audit` run: 581 samples on Night 1 (closet, reception, bullpen), 48–77 on each later night, 0 wrong, and over the week every room was named (closet, reception, bullpen, break room, conference room, Marian's office). At each text size it's on screen under the watch and clear of the toasts (1600×900, 1280×800 and 3840×1080). Screenshot. |
+| R10-2 | The glint says where | Done | AutoPilot on Night 1, every route: after a minute idle the glint's caption names the rooms of the three nearest points ("[Chimes from reception]", where the player stood just inside the bullpen with the nearest rubbish behind them in reception), and the repeat glint 10 s later shows no caption. An EditMode test for the wording (one room, several, the article, outside every room). **Not verified in a run:** the caption is hidden with Captions off; it's a bracketed caption, which the Captions setting has always hidden. Screenshot. |
+| R10-3 | Plain lettering | Done | EditMode tests: only Caveat changes (to Fira Sans at 0.76 of the size; typewritten, mono, marker and the UI fonts stay), and a settings file from before loads As written. AutoPilot, every route: all 38 documents opened again with Plain at Normal and at Largest: the 22 handwritten ones are in Fira Sans, the other 16 keep their fonts, all keep their text on the paper and the paper on screen, and 34 of 38 are at the full 1.5× at Largest (32 as written). The shift sheet is in Fira Sans and on the paper, and back in Caveat after switching back; Night 2's report at Largest has its 15 handwritten lines in Fira Sans and its text on the paper; Night Select at Largest with Plain keeps every card's writing on its card. Measured from the TTFs, Fira Sans runs 1.32 times Caveat's width at the same size, hence 0.76. Screenshots. |
+| R10-4 | The label under the reticle reads on a bright wall | Done | AutoPilot on Night 1, every route, from a screen capture at the reception light switch with the lights on (the white wall from round 9's screenshot): the label "COFFEE CUP · BLACK BIN" reads at 5.9:1 (brightest letters against the middle of the text's area); with its backing and shadow turned off for one frame, as before this round, 1.4:1. The same measure on the baseline run's screenshot gives 1.4:1. Before and after crops. |
+| R10-5 | Enter on the title's buttons | Checked; no change needed | AutoPilot at the title, every route, with a virtual keyboard: the arrow keys reach Settings, Night Select and New Game (a save from the profile is on disk, so it asks); Enter opens each with the title still up and no night started; Esc closes it; Enter with nothing selected starts Night 1, which is how every route now begins. The worry was script order between the EventSystem's submit and the title's own Enter; in practice the button wins on every route, so nothing was changed. |
+
+Found by the first runs: the label's backing was drawn over its text instead of behind it (a
+sibling-order slip), so the first run measured 1.4:1 with it on; 0.72 opacity would also have
+been too faint (about 3.3:1, estimated from the screenshot's pixels). It now sits behind the text
+at 0.85 (5.9:1). TMP's underlay, which the prompts, captions and tool note have had switched on
+since the start, was never given any settings, so it drew nothing; it's now a soft dark edge.
+Two of the AutoPilot's own new checks were wrong (the document size comparison had come apart from
+its branch, and a night's room check wanted every room on the sheet although the route stays in
+one on most nights); both were fixed before the final runs. Restoring the pad as the last device
+after the keyboard checks also needed care: the brightness page's pad focus check failed once.
+
+Known limits:
+
+- The room line uses the rooms' own volumes; in a doorway it keeps the room you came from.
+- The glint's caption names the rooms of the nearest three, which can be behind you (as in the
+  screenshot) while farther glints are in view; it's accurate, but says nothing about direction.
+- Plain lettering keeps typewritten and printed documents, the marker on the report's grade and
+  the whiteboard and window writing in the office itself (they're textures).
+- The backing makes the label a dark tag on bright walls; in the dark rooms it barely shows. How it
+  looks is a judgement for the owner (below).
+
+Deferred: saving mid-night (each night's scripted events keep their state in local variables,
+so it means rewriting all seven nights' scripts), hints for missed secrets and an off switch for
+the close question (the owner's calls), a real-monitor sleep test, and still WebGL, Windows and
+the art.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry
@@ -1396,10 +1442,14 @@ published; no web build; licence, releases, tags and signing left to the owner. 
 10. **A real monitor's frame rate with VSync on**: in a private compositor VSync held
    60 fps at low load; on the development desktop it was only ever measured in a hidden window.
    A minute with the game in front, VSync on, on a real monitor (or a 120/144 Hz one) settles it.
-11. **A Steam Deck** (new): the game is Linux-only and every layout check passes at 1280×800,
+11. **A Steam Deck**: the game is Linux-only and every layout check passes at 1280×800,
    but nobody has played it on a Deck: whether its GPU holds a steady frame rate on High (or the
    new offer of a lower setting kicks in), how Largest reads on its 7-inch screen, and whether
    Steam Input's pad behaves like the virtual one. Ten minutes on a Deck would settle it.
-12. **A monitor going to sleep** (new): the README records one crash inside Unity's Wayland code
+12. **A monitor going to sleep**: the README records one crash inside Unity's Wayland code
    when a monitor powered off under KDE. It can't be reproduced in a private KWin (its virtual
    screens ignore DPMS), so it needs someone to let the screen sleep with the game paused.
+13. **The label's backing** (new): the label under the reticle and the captions now sit on a dark,
+   0.85-opaque rounded backing, so they read on lit walls (5.9:1 where they were 1.4:1). It's
+   a visible change to the HUD's look; a lighter backing would need the text itself darker or
+   outlined to keep 4.5:1 there.

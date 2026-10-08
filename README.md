@@ -95,8 +95,10 @@ mid-night. The pause menu lists the controls with the keys or pad buttons you ha
 first time it starts, it offers a **brightness** page over the dark office (also in Settings →
 Display).
 
-**Text size** (Settings → Accessibility: Normal, Large or Largest) scales the HUD and everything
-you read: documents (the paper grows with the text), the clipboard, choices, the shift report and
+**Handwriting** (Settings → Accessibility: As written or Plain) sets the handwritten notes,
+letters, sticky notes, the shift sheet, the case file and the report's task list in the plain
+UI font instead, for anyone who finds handwriting hard to read. **Text size** (Normal, Large or
+Largest) scales the HUD and everything you read: documents (the paper grows with the text), the clipboard, choices, the shift report and
 the morning chat. At Large and Largest the clipboard becomes one wide sheet with three pages
 (shift sheet, notes, case file); <kbd>W</kbd>/<kbd>S</kbd> or the wheel show the rest of a long
 page. The morning chat scrolls back with <kbd>W</kbd>/<kbd>S</kbd>, the arrows, the wheel or the
@@ -135,9 +137,10 @@ and the next morning's chat.
   it snaps into place. Chairs tuck in, monitors switch off, lights go out when you leave. Doors,
   light switches and chairs work with your hands full, so a can doesn't have to be put down to
   reach a switch in the dark.
-- **Never stuck on the last can.** The shift sheet says which rooms still have work on each task.
-  After a minute with no progress, whatever's left glints and the nearest few chime, so you can
-  find them by ear. Anything thrown out of reach (on top of something tall, wedged out of sight or
+- **Never stuck on the last can.** The shift sheet says which rooms still have work on each task,
+  and a line under the wristwatch names the room you're in, in the same words. After a minute
+  with no progress, whatever's left glints and the nearest few chime, so you can find them by
+  ear, and a caption says which rooms the chimes come from. Anything thrown out of reach (on top of something tall, wedged out of sight or
   out of the building) turns up at your feet.
 
 <img src="docs/media/screenshots/04-throw.jpg" width="49%" alt="A charged throw into the reception bin: Nice shot!"> <img src="docs/media/screenshots/05-vacuum.jpg" width="49%" alt="Vacuum stripes in the bullpen carpet">
@@ -211,7 +214,7 @@ the game in the middle of a night; and a card listing the controls as you have t
 columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, camera motion (head bob, and the kick of a throw or a reveal),
 four volume sliders, an opt-in playtest log, brightness, a graphics preset (Low, Medium, High),
 render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing, a highlight on
-whatever you're aiming at, text size (Normal, Large, Largest), and pages for keyboard and
+whatever you're aiming at, text size (Normal, Large, Largest), handwriting (as written or plain), and pages for keyboard and
 mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
 spray. If a night runs slowly (under about 28 frames a second), the game offers the next lower
 graphics setting once; Keep means it won't ask again. Progress
@@ -324,7 +327,12 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   night for props overlapping, sunk into furniture or floating. On Night 1 it loses a can out of
   the world, on a high ledge and in a sealed crate (each must come back), leaves one on the open
   floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
-  the unfinished things glint. It also checks the aim highlight goes on and off with the reticle
+  the unfinished things glint and that a caption names the rooms of the ones that chime, once
+  (not on the repeat). On every night it checks the line under the watch names the room the
+  player is standing in, and on Night 1 it measures the label under the reticle against the
+  lit white wall by the reception switch from a screen capture (it must read at 4.5:1 or
+  better). At the title it walks the menu with the arrow keys of a virtual keyboard and checks
+  Enter on Settings, Night Select and New Game opens each without starting the night. It also checks the aim highlight goes on and off with the reticle
   and the setting, and rebinds Interact to F through the real controls page by pressing F on a
   virtual keyboard, then checks F uses a light switch and E no longer does, and does the same for
   the pad (Interact on X, then □ on a DualShock). It checks that with Camera motion off a throw's
@@ -339,7 +347,9 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   game to quit with the clipboard open (it must close, pause the night and ask; Esc keeps playing;
   on the title the request goes through), and
   checks the HUD at each text size stays on screen. It opens every document at Normal and Largest
-  and checks the text stays on the paper and the paper on screen, and checks choices at Largest.
+  and checks the text stays on the paper and the paper on screen, then again with Handwriting set
+  Plain (the handwritten ones must be in Fira Sans, the rest unchanged), and checks choices at
+  Largest. Night 2's report and Night Select are checked with Plain as well.
   The pause menu's controls card is checked against the bindings, after a rebind and with a
   virtual pad and DualShock 4. At each text size it measures the pause menu, its controls card
   and the title menu (on screen, apart, the size they should be) and the brightness page; at
@@ -373,7 +383,8 @@ Tools/.venv/bin/python Tools/audio/build_music.py
   come from the night snapshots) and the title's list for a saved or finished story (the ending
   first), the grading and its hints, the bin label for every kind of rubbish against both bins,
   the window opened on leaving fullscreen, when slow frames call for a lower setting and which,
-  the brightness curve, the HUD text sizes and how far
+  the brightness curve, which fonts Plain handwriting changes and by how much, the glint's
+  caption, the HUD text sizes and how far
   documents grow, and that settings files from earlier versions load.
 - `Tools/wmtest.sh` runs the built game against a real window manager without touching the
   desktop: a private KWin on a virtual screen, with its own D-Bus session and config folders
@@ -441,7 +452,7 @@ FBX and runs everything else.
   the story state, tasks, secrets, documents and the morning chat. The ending resolver is pure C#,
   and an EditMode test enumerates the choice space to prove every ending is reachable.
 - **A game that plays itself.** The AutoPilot drives the shipped build through all seven nights
-  along five story routes, with 491–520 checks per route.
+  along five story routes, with 521–550 checks per route.
 - **Procedural audio.** Every sound effect, ambience bed and music track is synthesised in NumPy:
   FM electric piano, brushed hats and vinyl crackle for the lo-fi night jazz, layered and enveloped
   noise for the cloth, squeegee, vacuum and shredder, all rendered as seamless loops. The three
@@ -483,7 +494,9 @@ question before the game closes in the middle of a night; round 8: closing the w
 against a real window manager, a windowed mode that fits on the screen, a label saying which
 bin rubbish goes in, and the ending in the title's case file; round 9: doors, switches and chairs
 with your hands full, an offer of lower graphics when a night runs slowly, a still camera with
-Camera motion off, and checks on Steam Deck and ultrawide screens) are listed in
+Camera motion off, and checks on Steam Deck and ultrawide screens; round 10: the room's name
+under the watch, a caption saying where the leftovers chime, plain lettering for handwriting,
+and a backing for the label under the reticle) are listed in
 [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
 still rough or untested:
 
@@ -511,7 +524,10 @@ still rough or untested:
   (on the paper, on screen, at 1.25× or 1.5×) at three window sizes (since round 9 also at the
   Steam Deck's 1280×800 and at 21:9 and 32:9, though not on a Deck), not by people reading it at a
   distance. Since round 6 the menus follow it too, checked the same way; nobody has used the
-  scrolling Settings list at Largest with a real pad or mouse.
+  scrolling Settings list at Largest with a real pad or mouse. Plain handwriting (round 10) was
+  sized by measuring the fonts and checked by where the text lands, and the backing under the
+  reticle's label by measuring contrast on one lit wall (5.9:1, from 1.4:1); nobody who finds
+  handwriting hard has tried it yet.
 - **Performance was measured on one machine** (AMD Strix Halo integrated GPU, Night 2 at
   1600x900, VSync off, on a busy shared machine: about 4.9 ms a frame on High, 2.9 ms on Medium
   and 2.7 ms on Low). Lower-end hardware is untested. Low turns off SSAO and room-light shadows,
