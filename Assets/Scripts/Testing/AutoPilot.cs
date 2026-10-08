@@ -2926,18 +2926,24 @@ namespace AfterHours
         /// and the field-of-view punch of a reveal, as well as the head bob; on, both happen.
         /// </summary>
         /// <summary>
-        /// Round 11: Mono audio. A loop placed to the player's right makes the mix lean right going
-        /// into the listener's filter; with Mono on, what comes out is the same on both sides, and
-        /// with it off, the difference passes through untouched. Measured on the audio thread.
+        /// Round 11: Mono audio. A loop placed to the player's right (music and ambience muted)
+        /// makes the mix lean right going into the listener's filter; with Mono on, what comes out
+        /// is the same on both sides, and with it off, the difference passes through untouched.
+        /// Measured on the audio thread.
         /// </summary>
         IEnumerator MonoChecks()
         {
             var cam = root.Player.Camera.transform;
-            bool monoWas = Settings.Current.MonoAudio;
+            var st = Settings.Current;
+            bool monoWas = st.MonoAudio;
+            // Music and ambience are muted while it measures: at full level they can outweigh the test sound
+            // (the first final run measured it only 1.1–1.3× louder on the right with them playing).
+            var (musicWas, ambienceWas) = (st.MusicVolume, st.AmbienceVolume);
+            st.MusicVolume = 0f; st.AmbienceVolume = 0f;
             var voice = Sfx.Loop("vacuum_loop", null, true, AudioBus.Sfx);
-            voice.transform.position = cam.position + cam.right * 2.5f;
+            voice.transform.position = cam.position + cam.right * 1.5f;
             voice.TargetVolume = 1f;
-            yield return Wait(0.6f);
+            yield return Wait(0.8f);
             foreach (bool mono in new[] { false, true })
             {
                 Settings.Current.MonoAudio = mono;
@@ -2949,7 +2955,7 @@ namespace AfterHours
                 var m = MonoMix.ReadMeter();
                 double inSide = m.InSide / Math.Max(m.InLeft + m.InRight, 1e-12), outSide = m.OutSide / Math.Max(m.OutLeft + m.OutRight, 1e-12);
                 double lean = m.InRight / Math.Max(m.InLeft, 1e-12);
-                string seen = $"{m.Frames} frames; going in, right {lean:F1}× the left's energy and side {inSide:F3} of the total; coming out, side {outSide:F6}, right/left {m.OutRight / Math.Max(m.OutLeft, 1e-12):F3}";
+                string seen = $"{m.Frames} frames; going in, the left at {m.InLeft / Math.Max(m.InRight, 1e-12) * 100:F1}% of the right's energy and side {inSide:F3} of the total; coming out, side {outSide:F6}, left at {m.OutLeft / Math.Max(m.OutRight, 1e-12) * 100:F1}% of the right";
                 bool leans = m.Frames > 4000 && lean > 1.5 && inSide > 0.05;
                 if (mono)
                     Check(MonoMix.Instance != null && leans && outSide < 1e-6 && Math.Abs(m.OutRight / Math.Max(m.OutLeft, 1e-12) - 1) < 1e-4,
@@ -2958,7 +2964,8 @@ namespace AfterHours
                     Check(MonoMix.Instance != null && leans && Math.Abs(outSide - inSide) < 1e-6,
                         $"with Mono audio off, a sound to the right stays on the right ({seen})");
             }
-            Settings.Current.MonoAudio = monoWas;
+            st.MonoAudio = monoWas;
+            st.MusicVolume = musicWas; st.AmbienceVolume = ambienceWas;
             voice.TargetVolume = 0f;
             Destroy(voice.gameObject, 1f);
             yield return Wait(0.3f);
