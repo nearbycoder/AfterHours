@@ -31,6 +31,9 @@ namespace AfterHours
         // Said where the chimes come from in this stretch without progress.
         bool saidWhere;
 
+        /// <summary>The next glint says where again, as at the start of a stretch without progress (automation uses it).</summary>
+        public void SayWhereNext() => saidWhere = false;
+
         NightDirector dir;
         float idle, nextGlint, sampleT, lastScore = -1f;
         bool clipboardWasOpen;

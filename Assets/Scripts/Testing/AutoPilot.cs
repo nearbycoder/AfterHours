@@ -2998,7 +2998,40 @@ namespace AfterHours
                         $"without Reduce flashing, the thunder drops the bullpen's lights out and back, and they stay switched on ({seen})");
             }
             Settings.Current.ReduceFlashing = calmWas;
+
+            // Round 11: the thunder has a caption, which Captions off hides like the others.
+            var captionText = Ui.Canvas.transform.Find("HUD/Caption")?.GetComponent<TMPro.TextMeshProUGUI>();
+            bool captionsWas = Settings.Current.Captions;
+            foreach (bool captions in new[] { true, false })
+            {
+                Settings.Current.Captions = captions;
+                Hud.Instance.ClearCaption();
+                yield return Wait(0.2f);
+                Storm.Strike(root.Office, 0.1f);
+                yield return Wait(0.4f);
+                if (captions)
+                {
+                    Check(Storm.LastCaption == Storm.CaptionLit && Hud.Instance.CaptionShowing && captionText != null && captionText.text == Storm.CaptionLit,
+                        $"the thunder has a caption with a room lit: \"{captionText?.text}\"");
+                    yield return Shot("n7_thunder_caption");
+                }
+                else
+                    Check(Storm.LastCaption == Storm.CaptionLit && !Hud.Instance.CaptionShowing,
+                        $"with Captions off the thunder shows no caption (showing: {Hud.Instance.CaptionShowing})");
+                yield return Wait(0.6f);
+            }
+            Settings.Current.Captions = captionsWas;
             room.SetLights(wasOn, true);
+            yield return Wait(0.3f);
+            // With every room dark there's nothing to stutter, and the caption doesn't say so.
+            var lit = root.Office.Rooms.Values.Where(r => r.LightsOn).ToList();
+            foreach (var r in lit) r.SetLights(false, true);
+            Hud.Instance.ClearCaption();
+            Storm.Strike(root.Office, 0.1f);
+            yield return Wait(0.3f);
+            Check(Storm.LastCaption == Storm.Caption && captionText != null && captionText.text == Storm.Caption,
+                $"with every room dark the thunder's caption is just \"{captionText?.text}\"");
+            foreach (var r in lit) r.SetLights(true, true);
             yield return Wait(0.3f);
         }
 
@@ -3088,6 +3121,21 @@ namespace AfterHours
             int glints2 = helper.GlintCount;
             for (float t2 = 0; helper.GlintCount == glints2 && t2 < helper.RepeatEvery + 5f; t2 += Time.deltaTime) yield return null;
             Check(helper.GlintCount > glints2 && helper.LastWhere == null, $"the repeat glint {helper.RepeatEvery:F0}s later doesn't say it again (caption {(helper.LastWhere ?? "none")})");
+            // Round 11: with Captions off the glint still fires and works out where, but shows no caption.
+            {
+                bool captionsWas = Settings.Current.Captions;
+                Settings.Current.Captions = false;
+                Hud.Instance.ClearCaption();
+                yield return Wait(0.2f);
+                int glints3 = helper.GlintCount;
+                helper.SayWhereNext();
+                helper.Glint();
+                yield return Wait(0.3f);
+                Check(helper.GlintCount > glints3 && helper.LastWhere != null && helper.LastWhere.StartsWith("[") && !Hud.Instance.CaptionShowing,
+                    $"with Captions off the glint fires and shows no caption (it would have said \"{helper.LastWhere}\")");
+                Settings.Current.Captions = captionsWas;
+                yield return Wait(0.3f);
+            }
             Clipboard.Instance.Show();
             yield return Wait(0.7f);
             var sheet = Clipboard.Instance.GetComponentsInChildren<TMPro.TextMeshProUGUI>().Select(t => t.text).FirstOrDefault(t => t.Contains("Bin every bit"));
