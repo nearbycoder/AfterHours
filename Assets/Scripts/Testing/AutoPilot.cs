@@ -641,6 +641,7 @@ namespace AfterHours
             yield return Press(GamepadButton.DpadLeft);
             yield return Wait(0.3f);
             yield return Shot("settings");
+            MenuOverlapCheck("Settings", "Settings");
             // Down off the bottom of the left column carries on at the top of the right one.
             for (int i = 0; i < 14 && Selected != "Choice_Graphics quality"; i++) { yield return Press(GamepadButton.DpadDown); yield return Wait(0.12f); }
             Check(Selected == "Choice_Graphics quality", $"the d-pad walks from the left column of Settings into the right ({Selected})");
@@ -1605,6 +1606,29 @@ namespace AfterHours
         }
 
         // ---- text size for what you read (round 5) ----------------------------------------------
+
+        /// <summary>
+        /// Round 11: every row and button of a menu at Normal is clear of the others and on its
+        /// panel, and the panel on screen (Done had covered the controls button since round 10).
+        /// </summary>
+        void MenuOverlapCheck(string what, string layer)
+        {
+            var root = Ui.Canvas.transform.Find(layer);
+            var panel = root ? root.Find("Panel") as RectTransform : null;
+            var rows = root ? root.GetComponentsInChildren<UnityEngine.UI.Selectable>().Select(x => (name: x.name, rect: ScreenRect((RectTransform)x.transform))).ToList() : new();
+            var screen = new Rect(0, 0, Screen.width, Screen.height);
+            var p = panel ? ScreenRect(panel) : Rect.zero;
+            bool Inside(Rect a, Rect b) => a.xMin >= b.xMin - 0.5f && a.yMin >= b.yMin - 0.5f && a.xMax <= b.xMax + 0.5f && a.yMax <= b.yMax + 0.5f;
+            var bad = new System.Collections.Generic.List<string>();
+            for (int i = 0; i < rows.Count; i++)
+            {
+                if (panel && !Inside(rows[i].rect, p)) bad.Add($"{rows[i].name} off the panel");
+                for (int j = i + 1; j < rows.Count; j++)
+                    if (rows[i].rect.Overlaps(rows[j].rect)) bad.Add($"{rows[i].name} over {rows[j].name}");
+            }
+            Check(panel && rows.Count > 5 && bad.Count == 0 && Inside(p, screen),
+                $"{what} at {Screen.width}x{Screen.height}: {rows.Count} rows and buttons, none over another, all on the panel and the panel on screen{(bad.Count > 0 ? " — " + string.Join("; ", bad.Take(4)) : "")}");
+        }
 
         static Rect ScreenRect(RectTransform rt)
         {
@@ -2801,6 +2825,7 @@ namespace AfterHours
             yield return Wait(0.5f);
             Check(ControlsPanel.IsOpen, "Settings opens the keyboard and mouse controls");
             yield return Shot("controls");
+            MenuOverlapCheck("the keyboard and mouse controls page", "Controls");
             GameObject.Find("Bind_Interact")?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
             yield return Wait(0.2f);
             Check(ControlsPanel.Listening == Act.Interact, "picking Interact waits for a key");

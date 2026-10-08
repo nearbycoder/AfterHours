@@ -1475,6 +1475,19 @@ nearest chime as the AutoPilot works it out from the player's facing; turned to 
 chime it says "ahead", turned away "behind you". **Verify:** EditMode tests for the wording and
 the four directions; AutoPilot on Night 1, every route; screenshot.
 
+### R11-5. Settings fits again (added during the round)
+
+Found in the first run's screenshots: at Normal text size the **Done** button covers the right
+half of the last row in Settings, **Keyboard, mouse and controller ›**. The baseline run on
+`main` shows the same, so it predates this round: round 10's Handwriting row pushed the right
+column 30 units into Done. The layout check that would have caught it only runs in the separate
+`menus` capture, which round 10 didn't run.
+
+**Acceptance:** no row or button in Settings or the controls pages overlaps another, at every
+text size and at 1280×720, 1600×900, 1920×1080, 1680×1050, 1440×1080 and 1280×800. **Verify:**
+the `menus` capture at those sizes; a new AutoPilot check on Settings and the keyboard and mouse
+page at Normal, every route; screenshots.
+
 ## Decisions needed from the owner
 
 Settled by the orchestrator for this round: Windows skipped (module not installed; build entry

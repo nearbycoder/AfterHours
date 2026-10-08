@@ -377,7 +377,8 @@ namespace AfterHours
             bool large = k > 1f;
             float canvasW = ((RectTransform)Ui.Canvas.transform).rect.width;
             const float ColW = 600;
-            float W = large ? Mathf.Min(canvasW - 80f, ColW * k + 160f) : 1360, H = 1000;
+            // Normal is 1040 tall (of the canvas's 1080): the right column ran under Done once it had a row for Handwriting.
+            float W = large ? Mathf.Min(canvasW - 80f, ColW * k + 160f) : 1360, H = large ? 1000 : 1040;
             var p = Ui.Panel(root, "Panel", new Color(0.07f, 0.09f, 0.13f, 1f), 22);
             panel = p.rectTransform;
             Ui.Place(panel, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(W, H));
@@ -391,9 +392,9 @@ namespace AfterHours
             }
             else
             {
-                left = Widgets.Column(panel, "Left", 6);
+                left = Widgets.Column(panel, "Left", 4);
                 Ui.Place(left, new Vector2(0, 1), new Vector2(60, -100), new Vector2(ColW, 680), new Vector2(0, 1));
-                right = Widgets.Column(panel, "Right", 6);
+                right = Widgets.Column(panel, "Right", 4);
                 Ui.Place(right, new Vector2(0, 1), new Vector2(60 + ColW + 80, -100), new Vector2(ColW, 680), new Vector2(0, 1));
             }
             var s = Settings.Current;
