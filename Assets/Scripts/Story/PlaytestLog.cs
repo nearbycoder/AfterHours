@@ -17,7 +17,7 @@ namespace AfterHours
     public class PlaytestLog : MonoBehaviour
     {
         public static PlaytestLog Instance { get; private set; }
-        public static bool Enabled => Settings.Current.PlaytestLog || GameRoot.HasArg("-playtest");
+        public static bool Enabled => (Settings.Current.PlaytestLog && !WebPlatform.IsWeb) || GameRoot.HasArg("-playtest");
         /// <summary>The file being written this session, or null if nothing has been logged.</summary>
         public static string CurrentFile { get; private set; }
         public static int Lines { get; private set; }

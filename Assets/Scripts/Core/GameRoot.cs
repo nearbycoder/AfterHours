@@ -296,6 +296,29 @@ namespace AfterHours
             Cursor.visible = !locked;
         }
 
+        bool webHadLock;
+
+        /// <summary>
+        /// The browser build: Esc releases the mouse without reaching the game, so losing the pointer
+        /// lock pauses the night; the page asks before closing while a night is being played (paused
+        /// too: the night isn't saved until it ends); and the page hears what's on screen. True when
+        /// the mouse still has to be captured (the prompt says to click).
+        /// </summary>
+        bool WebUpdate()
+        {
+            bool wantsLock = cursorBlockers.Count == 0 && !Automated && Proto == null;
+            bool locked = WebPlatform.PointerLocked;
+            if (webHadLock && !locked && wantsLock) AutoPauseNow("pointer");
+            webHadLock = locked;
+            bool onTitle = TitleScreen.Instance != null;
+            WebPlatform.SetLeaveWarning(QuitLosesNight(QuitAsks, false, InNight, false, onTitle));
+            string screen = onTitle ? "title" : PauseMenu.IsOpen ? "pause" : Clipboard.Instance && Clipboard.Instance.Open ? "clipboard"
+                : InNight && !Director.Paused ? "night" : "other";
+            var selected = UnityEngine.EventSystems.EventSystem.current != null ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
+            WebPlatform.Report(screen, Director != null && Director.Def != null ? Director.Def.Number : 0, GraphicsQuality.Level, selected != null ? selected.name : "", BlockerList);
+            return wantsLock && !locked && blockers.Count == 0 && InNight && !GameInput.UsingPad;
+        }
+
         // =========================================================================================
         // Per-frame: prompts and global keys
         // =========================================================================================
@@ -304,10 +327,12 @@ namespace AfterHours
         {
             var hud = Hud.Instance;
             if (hud == null) return;
+            bool needsClick = WebPlatform.IsWeb && WebUpdate();
             var f = GameInput.Frame;
             bool fresh = Time.frameCount != unblockedFrame;
             if (GameInput.Menu.Pause && blockers.Count == 0 && fresh && InNight && !PauseMenu.IsOpen) PauseMenu.Show();
             if (blockers.Count == 0 && fresh && f.Clipboard && Clipboard.Instance && !Clipboard.Instance.Open && Director != null) Clipboard.Instance.Show();
+            if (needsClick) { hud.Prompt(("LMB", "Click to look around")); return; }
 
             if (Hands != null && Hands.Holding != null)
             {

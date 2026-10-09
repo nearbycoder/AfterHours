@@ -28,6 +28,31 @@ namespace AfterHours.EditorTools
         public static void BuildWindows() =>
             Build(BuildTarget.StandaloneWindows64, "Builds/Windows/AfterHours.exe");
 
+        /// <summary>
+        /// The browser build for GitHub Pages (Tools/build-pages.sh): a static site in Builds/Pages,
+        /// served under /AfterHours/ without any server headers. Brotli with decompression fallback
+        /// (the loader unpacks the files itself), single-threaded (no SharedArrayBuffer), the
+        /// project's page template, and saves in IndexedDB.
+        /// </summary>
+        [MenuItem("After Hours/Build Web Player (GitHub Pages)")]
+        public static void BuildWebGL()
+        {
+            PlayerSettings.WebGL.template = "PROJECT:AfterHours";
+            PlayerSettings.WebGL.compressionFormat = WebGLCompressionFormat.Brotli;
+            PlayerSettings.WebGL.decompressionFallback = true;
+            PlayerSettings.WebGL.nameFilesAsHashes = false;
+            PlayerSettings.WebGL.dataCaching = true;
+            PlayerSettings.WebGL.threadsSupport = false;
+            PlayerSettings.WebGL.exceptionSupport = WebGLExceptionSupport.ExplicitlyThrownExceptionsOnly;
+            PlayerSettings.WebGL.showDiagnostics = false;
+            PlayerSettings.WebGL.powerPreference = WebGLPowerPreference.HighPerformance;
+            PlayerSettings.WebGL.initialMemorySize = 256;
+            PlayerSettings.WebGL.maximumMemorySize = 2048;
+            PlayerSettings.stripEngineCode = true;
+            SetWebCodeOptimization("DiskSize");
+            Build(BuildTarget.WebGL, "Builds/Pages");
+        }
+
         static void Build(BuildTarget target, string path)
         {
             var group = BuildPipeline.GetBuildTargetGroup(target);
@@ -50,6 +75,21 @@ namespace AfterHours.EditorTools
             Debug.Log($"[AfterHours] {target} build {summary.result}: {summary.totalSize / (1024 * 1024)} MB, {summary.totalErrors} errors -> {path}");
             if (Application.isBatchMode)
                 EditorApplication.Exit(summary.result == BuildResult.Succeeded ? 0 : 1);
+        }
+
+        /// <summary>
+        /// The web player's code optimization (smaller download over faster builds). It lives in the
+        /// WebGL module's editor assembly, so it is set by reflection like the Mac architecture.
+        /// </summary>
+        static void SetWebCodeOptimization(string mode)
+        {
+            var type = AppDomain.CurrentDomain.GetAssemblies()
+                .Select(a => a.GetType("UnityEditor.WebGL.UserBuildSettings", false))
+                .FirstOrDefault(t => t != null);
+            var prop = type?.GetProperty("codeOptimization");
+            if (prop == null) { Debug.LogWarning("[AfterHours] can't set the web code optimization"); return; }
+            prop.SetValue(null, Enum.Parse(prop.PropertyType, mode));
+            Debug.Log($"[AfterHours] web code optimization: {prop.GetValue(null)}");
         }
 
         /// <summary>

@@ -137,10 +137,17 @@ namespace AfterHours
 
         public void Show() => Show(SheetPage);
 
+        /// <summary>
+        /// The frame it opened on: the key that opened it (Tab) mustn't also close it when this
+        /// Update runs after GameRoot's in the same frame, as it does in the web player.
+        /// </summary>
+        int openedFrame = -1;
+
         public void Show(int page)
         {
             if (NightDirector.Instance == null || NightDirector.Instance.Def == null) return;
             Open = true;
+            openedFrame = Time.frameCount;
             bool large = Settings.TextScale > 1f;
             // Larger sizes follow the window's width too; a change of Handwriting lays it out again.
             if (large || large != Large || Settings.Current.PlainHandwriting != laidPlain) Layout(large);
@@ -376,6 +383,7 @@ namespace AfterHours
             group.alpha = Mathf.MoveTowards(group.alpha, InspectView.IsOpen || ChatInterlude.ReviewOpen ? 0.2f : 1f, GameTime.UnscaledDelta * 5f);
             if (InspectView.IsOpen || Time.frameCount == InspectView.ClosedFrame) return;
             if (ChatInterlude.ReviewOpen || Time.frameCount == ChatInterlude.ClosedFrame) return;
+            if (Time.frameCount == openedFrame) return;
             var m = GameInput.Menu;
             if (m.Clipboard || m.Back) { Close(); return; }
             if (m.Left) Turn(-1);

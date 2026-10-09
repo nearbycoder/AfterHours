@@ -1,0 +1,10 @@
+{
+  "name": "afterhours-web-tools",
+  "private": true,
+  "description": "Headless browser checks for the GitHub Pages build (Tools/check-pages.mjs, Tools/web/play-test.mjs). npm install --prefix Tools/web",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.63.0",
+    "puppeteer-core": "25.10.0"
+  }
+}

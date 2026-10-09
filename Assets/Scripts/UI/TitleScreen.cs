@@ -66,7 +66,7 @@ namespace AfterHours
             if (CaseFilePanel.HasEntries(StoryState.Load()))
                 Widgets.Button(menu, "Case file", () => CaseFilePanel.Show(StoryState.Load()), 460, 64);
             Widgets.Button(menu, "Settings", () => SettingsPanel.Show(), 460, 64);
-            Widgets.Button(menu, "Quit", Application.Quit, 460, 64);
+            if (!WebPlatform.IsWeb) Widgets.Button(menu, "Quit", Application.Quit, 460, 64); // a browser tab is closed, not quit
             MenuFocus.AttachAll(menu.gameObject);
 
             int endings = Records.Current.Endings.Count;
@@ -476,8 +476,11 @@ namespace AfterHours
             Widgets.Slider(left, "Effects", s.SfxVolume, v => s.SfxVolume = v, null, ColW, 250);
             Widgets.Slider(left, "Ambience", s.AmbienceVolume, v => s.AmbienceVolume = v, null, ColW, 250);
             Widgets.Toggle(left, "Mono audio", s.MonoAudio, v => s.MonoAudio = v, ColW);
-            Widgets.Heading(left, "Feedback", ColW);
-            Widgets.Toggle(left, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
+            if (!WebPlatform.IsWeb) // the browser's storage isn't a file the player can open
+            {
+                Widgets.Heading(left, "Feedback", ColW);
+                Widgets.Toggle(left, "Playtest log (local file)", s.PlaytestLog, v => s.PlaytestLog = v, ColW);
+            }
 
             Widgets.Heading(right, "Display", ColW);
             Widgets.Button(right, "Brightness  ›", () => BrightnessPanel.Show(), ColW, 56, 26);
@@ -493,8 +496,16 @@ namespace AfterHours
             blurb.rectTransform.sizeDelta = new Vector2(ColW, 20);
             blurb.margin = new Vector4(8, -8, 0, 0);
             Widgets.Slider(right, "Render scale", Mathf.InverseLerp(0.5f, 1f, s.RenderScale), v => { s.RenderScale = Mathf.Lerp(0.5f, 1f, v); Settings.ApplyGraphics(); }, v => Mathf.RoundToInt(Mathf.Lerp(50, 100, v)) + "%", ColW, 250);
-            Widgets.Toggle(right, "Fullscreen", s.Fullscreen, v => { s.Fullscreen = v; Settings.ApplyGraphics(); }, ColW);
-            Widgets.Toggle(right, "VSync", s.VSync, v => { s.VSync = v; Settings.ApplyGraphics(); }, ColW);
+            if (WebPlatform.IsWeb)
+            {
+                // The browser goes fullscreen on the click (and Esc leaves it), so the toggle shows the page as it is.
+                Widgets.Toggle(right, "Fullscreen", Screen.fullScreen, v => Screen.fullScreen = v, ColW);
+            }
+            else
+            {
+                Widgets.Toggle(right, "Fullscreen", s.Fullscreen, v => { s.Fullscreen = v; Settings.ApplyGraphics(); }, ColW);
+                Widgets.Toggle(right, "VSync", s.VSync, v => { s.VSync = v; Settings.ApplyGraphics(); }, ColW);
+            }
             var caps = Settings.FrameCaps.Select(c => c == 0 ? "No limit" : c + " fps").ToArray();
             Widgets.Choice(right, "Frame rate limit", caps, Mathf.Max(0, System.Array.IndexOf(Settings.FrameCaps, s.FrameCap)), i => { s.FrameCap = Settings.FrameCaps[i]; Settings.ApplyGraphics(); }, ColW);
             Widgets.Heading(right, "Accessibility", ColW);

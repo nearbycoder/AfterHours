@@ -9,6 +9,8 @@
 /UserSettings/
 /MemoryCaptures/
 /Recordings/
+# Burst's output for the web player, written to the project root by each WebGL build
+/Data/Plugins/lib_burst_generated*
 /Screenshots/
 *.csproj
 *.sln
@@ -30,6 +32,7 @@ crashlytics-build.properties
 .utmp/
 # Tools
 __pycache__/
+node_modules/
 /Tools/.venv/
 .venv/
 venv/

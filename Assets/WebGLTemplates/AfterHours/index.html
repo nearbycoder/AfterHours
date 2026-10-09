@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <title>{{{ PRODUCT_NAME }}}</title>
+    <meta name="description" content="Clean the office. Learn its secrets. Decide what survives. A first-person cleaning game with a mystery underneath, over seven nights in one office.">
+    <link rel="icon" type="image/png" href="TemplateData/favicon.png">
+    <style>
+      html, body { margin: 0; height: 100%; overflow: hidden; background: #030408; color: #F2EDDB;
+                   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+      #game { position: fixed; inset: 0; }
+      #unity-canvas { width: 100%; height: 100%; display: block; background: #030408; outline: none; }
+      .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                 gap: 18px; background: #030408; text-align: center; padding: 24px; box-sizing: border-box; }
+      .logo { font: 700 clamp(40px, 8vw, 96px)/1 "Courier Prime", "Courier New", Courier, monospace; letter-spacing: 0.08em; }
+      .tagline { color: #9ED9F2; font-size: clamp(15px, 2vw, 21px); }
+      #progress { width: min(420px, 70vw); height: 6px; border-radius: 3px; background: #141a26; overflow: hidden; }
+      #progress div { width: 0; height: 100%; background: #9ED9F2; transition: width 0.2s; }
+      #status { color: #6F7B90; font-size: 14px; min-height: 1.4em; max-width: 560px; }
+      #status.error { color: #FF7A6B; font-size: 16px; }
+      .hint { color: #6F7B90; font-size: 13px; max-width: 560px; }
+      #touch { display: none; z-index: 2; }
+      #touch p { max-width: 480px; color: #C9D3E3; margin: 0; }
+      button { font: inherit; font-weight: 700; color: #030408; background: #9ED9F2; border: 0; border-radius: 8px;
+               padding: 12px 22px; cursor: pointer; }
+      #fullscreen { position: fixed; right: 12px; bottom: 12px; padding: 7px 11px; font-size: 13px; font-weight: 600;
+                    color: #C9D3E3; background: rgba(20, 26, 38, 0.8); display: none; z-index: 1; opacity: 0.55; }
+      #fullscreen:hover { opacity: 1; background: #232c3d; }
+    </style>
+  </head>
+  <body>
+    <div id="game"><canvas id="unity-canvas" tabindex="-1"></canvas></div>
+    <div id="loading" class="overlay">
+      <div class="logo">AFTER HOURS</div>
+      <div class="tagline">Clean the office. Learn its secrets. Decide what survives.</div>
+      <div id="progress"><div></div></div>
+      <div id="status">Loading…</div>
+      <div class="hint">Mouse and keyboard, or a controller. Click the game to capture the mouse; Esc pauses and frees it.
+        Saves stay in this browser.</div>
+    </div>
+    <div id="touch" class="overlay">
+      <div class="logo">AFTER HOURS</div>
+      <p>After Hours is played with a mouse and keyboard or a controller. It has no touch controls, so on this device
+         you won't be able to play past the menus.</p>
+      <button id="touch-continue">Load it anyway</button>
+    </div>
+    <button id="fullscreen" title="Fullscreen (Esc leaves it)">⛶ Fullscreen</button>
+    <script>
+      var canvas = document.querySelector("#unity-canvas");
+      var statusEl = document.querySelector("#status");
+      var bar = document.querySelector("#progress div");
+      var started = false;
+
+      function fail(msg) {
+        document.querySelector("#loading").style.display = "flex";
+        document.querySelector("#progress").style.display = "none";
+        statusEl.textContent = msg;
+        statusEl.className = "error";
+        console.error("[AfterHours page] " + msg);
+      }
+
+      // Unity's warnings come here; errors replace the loading screen.
+      function showBanner(msg, type) {
+        if (type === "error") fail(msg);
+        else console.warn(msg);
+      }
+
+      // Render at the screen's pixel density, up to a 1440p budget (a 3D scene at 4K costs more than
+      // it shows); never below one pixel per CSS pixel. Render scale in Settings goes lower still.
+      var maxPixels = 2560 * 1440;
+      function pixelRatio() {
+        var dpr = window.devicePixelRatio || 1;
+        var css = Math.max(1, window.innerWidth * window.innerHeight);
+        return Math.max(1, Math.min(dpr, Math.sqrt(maxPixels / css)));
+      }
+
+      function hasWebGL2() {
+        try { return !!document.createElement("canvas").getContext("webgl2"); } catch (e) { return false; }
+      }
+
+      var buildUrl = "Build";
+      var config = {
+        // Test tools pass player arguments in the URL (?arg=-ahProfile&arg=test); players never need this.
+        arguments: new URLSearchParams(location.search).getAll("arg"),
+        dataUrl: buildUrl + "/{{{ DATA_FILENAME }}}",
+        frameworkUrl: buildUrl + "/{{{ FRAMEWORK_FILENAME }}}",
+        codeUrl: buildUrl + "/{{{ CODE_FILENAME }}}",
+        streamingAssetsUrl: "StreamingAssets",
+        companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+        productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+        productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
+        showBanner: showBanner,
+        // Saves and settings (persistentDataPath) live in IndexedDB; write each change through as it happens.
+        autoSyncPersistentDataPath: true,
+        devicePixelRatio: pixelRatio(),
+      };
+
+      // RMB sprays in the game: no browser menu over the canvas.
+      canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+      function start() {
+        if (started) return;
+        started = true;
+        if (!hasWebGL2()) {
+          fail("After Hours needs WebGL 2, which this browser has turned off or doesn't support. " +
+               "Try a current Chrome, Edge or Firefox with hardware acceleration on.");
+          return;
+        }
+        var script = document.createElement("script");
+        script.src = buildUrl + "/{{{ LOADER_FILENAME }}}";
+        script.onload = function () {
+          createUnityInstance(canvas, config, function (progress) {
+            bar.style.width = Math.round(100 * progress) + "%";
+            statusEl.textContent = progress < 0.9 ? "Loading… " + Math.round(100 * progress) + "%" : "Unlocking the office…";
+          }).then(function (unityInstance) {
+            window.unityInstance = unityInstance;
+            // The budget depends on the window's size: follow resizes.
+            window.addEventListener("resize", function () { unityInstance.Module.devicePixelRatio = pixelRatio(); });
+            document.querySelector("#loading").style.display = "none";
+            var fs = document.querySelector("#fullscreen");
+            fs.style.display = "block";
+            fs.onclick = function () { unityInstance.SetFullscreen(1); };
+            document.addEventListener("fullscreenchange", function () {
+              fs.style.display = document.fullscreenElement ? "none" : "block";
+            });
+            canvas.focus();
+          }).catch(function (message) {
+            fail("The game couldn't start: " + message);
+          });
+        };
+        script.onerror = function () { fail("The game's files couldn't be downloaded. Check the connection and reload the page."); };
+        document.body.appendChild(script);
+      }
+
+      // Touch-only devices: say so up front instead of letting the game look broken.
+      var touchOnly = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
+      if (touchOnly) {
+        document.querySelector("#touch").style.display = "flex";
+        document.querySelector("#touch-continue").onclick = function () {
+          document.querySelector("#touch").style.display = "none";
+          start();
+        };
+      } else start();
+    </script>
+  </body>
+</html>

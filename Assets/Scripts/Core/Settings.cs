@@ -23,7 +23,7 @@ namespace AfterHours
         /// <summary>Fold the game's sound to one channel on both sides (see <see cref="MonoMix"/>).</summary>
         public bool MonoAudio;
         public bool Fullscreen = true;
-        public int Quality = 2;            // 0 low, 1 medium, 2 high (GraphicsQuality)
+        public int Quality = WebPlatform.IsWeb ? WebPlatform.DefaultQuality : GraphicsQuality.Default; // 0 low, 1 medium, 2 high, 3 ultra (GraphicsQuality)
         public float RenderScale = 1f;
         public bool VSync = true;
         public int FrameCap;               // 0 = no cap, else frames per second
@@ -113,7 +113,13 @@ namespace AfterHours
             if (Application.isEditor) return;
             var args = Environment.GetCommandLineArgs();
             bool automated = Array.IndexOf(args, "-ahCapture") >= 0 || Array.IndexOf(args, "-ahAutopilot") >= 0 || Array.IndexOf(args, "-ahShowcase") >= 0 || Array.IndexOf(args, "-ahTrailer") >= 0;
-            if (!automated)
+            if (WebPlatform.IsWeb)
+            {
+                // The browser owns the window and the display's refresh: fullscreen is asked for from
+                // the Settings toggle or the page's button (it needs a click), and VSync doesn't apply.
+                if (!automated) Application.targetFrameRate = s.FrameCap > 0 ? s.FrameCap : -1;
+            }
+            else if (!automated)
             {
                 // Automation runs uncapped (or on a fixed clock) and keeps its own timing.
                 ApplyWindowMode(s.Fullscreen);

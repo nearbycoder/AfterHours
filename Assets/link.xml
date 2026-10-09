@@ -1,0 +1,14 @@
+<!--
+  Engine classes the web player's code stripping can't see: GameObject.CreatePrimitive adds its
+  collider inside the engine (Sphere, Capsule, Quad's MeshCollider), so nothing in the scripts
+  names them. Without this the web build logs "Can't add component because class 'SphereCollider'
+  doesn't exist!" (see Tools/build-pages.sh).
+-->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.BoxCollider" preserve="all"/>
+    <type fullname="UnityEngine.SphereCollider" preserve="all"/>
+    <type fullname="UnityEngine.CapsuleCollider" preserve="all"/>
+    <type fullname="UnityEngine.MeshCollider" preserve="all"/>
+  </assembly>
+</linker>

@@ -77,6 +77,16 @@ namespace AfterHours
                       $"median {P(0.5f):F1} ms, p95 {P(0.95f):F1} ms, p99 {P(0.99f):F1} ms, worst {sorted[^1]:F0} ms");
         }
 
+        /// <summary>A virtual DualShock 4. The HID pad layouts aren't in the web player, where the AutoPilot doesn't run.</summary>
+        static Gamepad AddDualShock4(string name)
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            throw new NotSupportedException("no DualShock HID layouts in the web player");
+#else
+            return InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>(name);
+#endif
+        }
+
         protected void Check(bool ok, string what)
         {
             if (ok) passes++; else fails++;
@@ -1448,7 +1458,7 @@ namespace AfterHours
             Check(GameInput.UsingPad && GameInput.Glyph("E") == "A", $"a generic pad shows Xbox letters (interact: {GameInput.Glyph("E")})");
 
             // A DualShock 4: PlayStation symbols.
-            var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotDS4");
+            var ds = AddDualShock4("AutoPilotDS4");
             ds.MakeCurrent();
             // UsingPad is already on from the generic pad; the glyphs follow whichever pad is current.
             yield return Wait(0.2f);
@@ -1656,7 +1666,7 @@ namespace AfterHours
             yield return Press(GamepadButton.West);
             yield return Wait(0.3f);
             Check(room.LightsOn != lit, "pad X uses the switch");
-            var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotDS4Remap");
+            var ds = AddDualShock4("AutoPilotDS4Remap");
             ds.MakeCurrent();
             yield return Wait(0.2f);
             Check(GameInput.Glyph("E") == "□", $"on a DualShock the rebound prompt shows □ ({GameInput.Glyph("E")})");
@@ -2885,7 +2895,7 @@ namespace AfterHours
             string padRow = Row("Use, pick up");
             CapsCheck("a pad");
             yield return Shot("pause_card_pad");
-            var ds = InputSystem.AddDevice<UnityEngine.InputSystem.DualShock.DualShock4GamepadHID>("AutoPilotCardDS4");
+            var ds = AddDualShock4("AutoPilotCardDS4");
             ds.MakeCurrent();
             GameInput.UsingPad = true;
             yield return Wait(0.4f);

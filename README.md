@@ -20,6 +20,7 @@
 </p>
 
 <p align="center">
+  <a href="https://nearbycoder.github.io/AfterHours/"><b>Play in your browser</b></a> ·
   <a href="https://github.com/nearbycoder/AfterHours/releases/latest"><b>Download for Linux</b></a> ·
   <a href="docs/media/AfterHours-trailer.mp4"><b>Watch the trailer</b></a> ·
   <a href="#screenshots"><b>Screenshots</b></a> ·
@@ -30,7 +31,8 @@
 > This README, the trailer and the screenshots show the game on `main`, which has twelve rounds of
 > changes since then (Graphics fidelity up to Ultra, the case file, key and button remapping, text
 > size, captions and more; see [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md)). None of them is in a
-> release yet: to play them, [build from source](#build-from-source).
+> release yet: to play them, [build from source](#build-from-source), or
+> [play in your browser](#play-in-your-browser) (a web build of `main`, about 44 MB to download).
 
 ## Trailer
 
@@ -325,6 +327,39 @@ universal app (Intel and Apple Silicon, macOS 12 or later), but that build is un
 Windows builds need Unity's Windows Build Support module, which isn't installed on the
 development machine, so none has been made.
 
+### Play in your browser
+
+**[nearbycoder.github.io/AfterHours](https://nearbycoder.github.io/AfterHours/)** runs the game
+from `main` in a desktop browser with WebGL 2: no install, and the same seven nights, endings,
+settings and saves. The first visit downloads about 44 MB (Brotli-compressed; the browser caches
+it for later visits).
+
+- **Tested** in headless Chromium 151 and Firefox 157 on Linux, served the way GitHub Pages serves
+  it (`node Tools/web/play-test.mjs`): the title loads in 4–7 s from a local server, with no
+  console errors. Audio waits for the first click or key, then plays. A Graphics fidelity change
+  survives a reload. Night 1 starts, the player walks, and Esc and Tab work. Safari, Edge, Windows,
+  macOS and a real mouse, monitor and gamepad haven't been tried; nor has a download over a real
+  connection.
+- **Click to capture the mouse.** Esc gives it back to the browser and pauses the night (the
+  browser keeps Esc for itself, so losing the mouse is what pauses). After Resume, click again to look around.
+- **Saves and settings stay in this browser** (IndexedDB), separate from the desktop game's. Clearing
+  the site's data deletes them. Closing or reloading the tab mid-night asks first, as Quit does on
+  desktop: a night is only saved when it ends.
+- **What's different:** no Quit button (close the tab); Fullscreen is the browser's (the Settings
+  toggle, the page's button or F11, which needs a click, and Esc leaves it). There's no VSync
+  setting (the browser matches the display), and no playtest log (it writes a local file).
+  Graphics fidelity starts on **Medium** rather than High, and every step from Low to Ultra is
+  there. The page renders at most 2560×1440 pixels; Render scale goes lower. Gamepads work as the
+  browser reports them, with Xbox-style button names (no PlayStation symbols), and rumble depends
+  on the browser. There are no touch controls: phones and tablets get a notice. Mouse
+  sensitivity may feel different from desktop: browsers scale mouse movement in their own way
+  (adjustable in Settings).
+
+To make the site yourself: `Tools/build-pages.sh` builds it into `Builds/Pages` (with `index.html`
+and `.nojekyll` at its root; every path is relative, so it works under `/AfterHours/`), and
+`node Tools/check-pages.mjs <url>` checks that a copy reaches the title (run
+`npm install --prefix Tools/web` once first).
+
 ## Build from source
 
 **Requirements:** Unity **6000.6.2f1** with Linux Build Support (and Mac or Windows Build Support
@@ -339,6 +374,8 @@ git clone https://github.com/nearbycoder/AfterHours.git && cd AfterHours
 Tools/unity.sh build-linux      # -> Builds/Linux/AfterHours.x86_64
 Tools/unity.sh build-mac        # -> Builds/macOS/After Hours.app (universal, unsigned)
 Tools/unity.sh build-windows    # -> Builds/Windows/AfterHours.exe (needs the Windows module)
+Tools/build-pages.sh            # browser build -> Builds/Pages (needs the WebGL module)
+node Tools/web/play-test.mjs    # play it in headless Chromium and Firefox under /AfterHours/
 python3 Tools/package.py        # release zips of whatever is built -> Builds/release/
 python3 Tools/playtest_report.py <logs>   # per-night tables from playtest logs (docs/PLAYTEST.md)
 Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml

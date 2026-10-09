@@ -281,7 +281,11 @@ namespace AfterHours
         public static string PadGlyph(string xbox)
         {
             if (Gamepad.current is not UnityEngine.InputSystem.DualShock.DualShockGamepad) return xbox;
+#if UNITY_WEBGL && !UNITY_EDITOR
+            bool dualSense = false; // browsers report pads by the standard mapping; the HID layouts aren't in the web player
+#else
             bool dualSense = Gamepad.current is UnityEngine.InputSystem.DualShock.DualSenseGamepadHID;
+#endif
             return xbox switch
             {
                 "A" => "✕", "B" => "○", "X" => "□", "Y" => "△",
