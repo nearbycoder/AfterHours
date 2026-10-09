@@ -131,6 +131,7 @@ namespace AfterHours
 
         void Update()
         {
+            TouchInput.Read();
             var f = ReadDevices();
             if (Override != null) f = Override.Read(f);
             f.UseDown = f.Use && !lastUse;
@@ -153,7 +154,8 @@ namespace AfterHours
             var kb = Keyboard.current;
             var mouse = Mouse.current;
             var pad = Gamepad.current;
-            bool wasPad = UsingPad;
+            bool wasPad = UsingPad, wasTouch = touchWas;
+            touchWas = TouchInput.Active;
             if (kb != null)
             {
                 // Menus follow the movement and interact bindings as well as the arrows and Enter.
@@ -201,9 +203,24 @@ namespace AfterHours
                                  || pad.leftStickButton.wasPressedThisFrame || pad.rightStickButton.wasPressedThisFrame;
                 if (padActive) { UsingPad = true; KeyNav = false; }
             }
-            if (UsingPad != wasPad) DeviceChanged?.Invoke();
+            if (TouchInput.Active)
+            {
+                // Soft keys on the touch screen (the clipboard, the reader), and its pause and clipboard buttons.
+                m.Up |= TouchInput.Pressed(TouchInput.Up); m.Down |= TouchInput.Pressed(TouchInput.Down);
+                m.Left |= TouchInput.Pressed(TouchInput.Left); m.Right |= TouchInput.Pressed(TouchInput.Right);
+                m.Confirm |= TouchInput.Pressed(TouchInput.Confirm);
+                m.Back |= TouchInput.Pressed(TouchInput.Back);
+                m.Keep |= TouchInput.Pressed(TouchInput.Keep);
+                m.Alt |= TouchInput.Pressed(TouchInput.Alt);
+                m.Pause |= TouchInput.Pressed(TouchInput.Pause);
+                m.Clipboard |= TouchInput.Pressed(TouchInput.Clipboard);
+                UsingPad = KeyNav = false;
+            }
+            if (UsingPad != wasPad || TouchInput.Active != wasTouch) DeviceChanged?.Invoke();
             return m;
         }
+
+        static bool touchWas;
 
         /// <summary>
         /// The button to show for a keyboard/mouse key name in prompts and hints: the key itself, or
@@ -211,6 +228,7 @@ namespace AfterHours
         /// </summary>
         public static string Glyph(string key)
         {
+            if (TouchInput.Active) return TouchInput.Glyph(key);
             if (!UsingPad)
             {
                 // Callers name the default key; show whatever it's bound to now.
@@ -232,6 +250,7 @@ namespace AfterHours
         /// </summary>
         public static string MenuGlyph(string key)
         {
+            if (TouchInput.Active) return TouchInput.Glyph(key);
             if (!UsingPad)
             {
                 var act = ActFor(key);
@@ -261,6 +280,7 @@ namespace AfterHours
         /// <summary>The key or pad button for an action, as prompts show it ("Tab", "View", "□").</summary>
         public static string ActGlyph(Act a)
         {
+            if (TouchInput.Active) return TouchInput.Glyph(a);
             if (!UsingPad) return Controls.Display(a);
             if (Controls.IsPadAct(a)) return PadGlyph(Controls.PadName(Controls.PadPathOf(Settings.Current, a)));
             return PadGlyph(a == Act.Discard ? "X" : "L-STICK");
@@ -309,6 +329,9 @@ namespace AfterHours
 
         /// <summary>A key cap inside running text ("Press [E] to…"), following bindings and the pad.</summary>
         public static string KeyTag(string key) => $"<mark=#FFFFFF33 padding=\"12,12,6,6\"><b>{Glyph(key)}</b></mark>";
+
+        /// <summary>Degrees the view turns per CSS pixel dragged on the touch screen, at Mouse sensitivity 1 (a thumb's width of drag, about 60 px, is 12°).</summary>
+        public const float TouchLookDegreesPerPixel = 0.2f;
 
         static InputFrame ReadDevices()
         {
@@ -366,10 +389,32 @@ namespace AfterHours
                 if (pad.dpad.left.wasPressedThisFrame) f.ToolCycle = -1;
                 f.Pause |= pad.startButton.wasPressedThisFrame;
             }
+            if (TouchInput.Active)
+            {
+                // The on-screen stick, a drag on the right of the screen to look, and the buttons.
+                // Use and spray are held like the mouse buttons (Toggle use in Settings still applies).
+                var tm = TouchInput.Move;
+                if (tm.sqrMagnitude > 0.0004f) f.Move = tm;
+                f.Look += TouchInput.LookPixels * (TouchLookDegreesPerPixel * sens);
+                f.Use |= TouchInput.Held(TouchInput.Use);
+                f.Spray |= TouchInput.Held(TouchInput.Spray);
+                f.Interact |= TouchInput.Pressed(TouchInput.Interact);
+                f.Drop |= TouchInput.Pressed(TouchInput.Drop);
+                f.Torch |= TouchInput.Pressed(TouchInput.Torch);
+                f.Clipboard |= TouchInput.Pressed(TouchInput.Clipboard);
+                f.Pause |= TouchInput.Pressed(TouchInput.Pause);
+                if (TouchInput.Pressed(TouchInput.Tool)) f.ToolCycle = 1;
+            }
             var st = Settings.Current;
             f.Crouch = crouchLatch.Step(f.Crouch, st.ToggleCrouch, GameplayEnabled);
             f.Sprint = sprintLatch.Step(f.Sprint, st.ToggleSprint, GameplayEnabled);
             if (st.ToggleSprint && GameplayEnabled) f.Sprint = sprintLatch.StopWhenIdle(f.Move.sqrMagnitude > 0.04f);
+            // Crouch and brisk walk are switches on the touch screen (a thumb can't hold one and steer).
+            if (TouchInput.Active && GameplayEnabled)
+            {
+                f.Crouch |= TouchInput.Held(TouchInput.Crouch);
+                f.Sprint |= TouchInput.Held(TouchInput.Sprint);
+            }
             (f.Use, f.Spray) = useLatches.Step(f.Use, f.Spray, st.ToggleUse, GameplayEnabled);
             if (st.InvertY) f.Look.y = -f.Look.y;
             return f;

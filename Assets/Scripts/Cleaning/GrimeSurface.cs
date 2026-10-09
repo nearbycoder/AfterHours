@@ -103,14 +103,28 @@ namespace AfterHours
             if (material) Destroy(material);
         }
 
+        /// <summary>
+        /// Tonight doesn't use this surface: let its textures and arrays go (a phone's tab has little
+        /// memory to keep every night's dirt in). Build makes them again.
+        /// </summary>
+        public void ReleaseTextures()
+        {
+            if (patternTex) DestroyImmediate(patternTex);
+            if (maskTex) DestroyImmediate(maskTex);
+            patternTex = maskTex = null;
+            remain = weight = tough = ghostW = null;
+            mask = null;
+        }
+
         /// <summary>Create mesh, collider, textures and the dirt pattern. Safe to call again to regenerate.</summary>
         public void Build()
         {
             gameObject.layer = Layers.Grime;
             mw = Mathf.Clamp(Mathf.RoundToInt(Size.x * MaskPpm), 16, 1024);
             mh = Mathf.Clamp(Mathf.RoundToInt(Size.y * MaskPpm), 16, 1024);
-            int pw = Mathf.Clamp(Mathf.RoundToInt(Size.x * PatternPpm), mw, 1600);
-            int ph = Mathf.Clamp(Mathf.RoundToInt(Size.y * PatternPpm), mh, 1600);
+            float ppm = PatternPpm * WebPlatform.PatternScale;
+            int pw = Mathf.Clamp(Mathf.RoundToInt(Size.x * ppm), mw, 1600);
+            int ph = Mathf.Clamp(Mathf.RoundToInt(Size.y * ppm), mh, 1600);
 
             if (!built)
             {
@@ -127,18 +141,19 @@ namespace AfterHours
                 built = true;
             }
 
-            var data = GrimePatternData.Generate(Spec, Size, pw, ph);
-            if (patternTex) Destroy(patternTex);
+            var data = GrimePatternData.Generate(Spec, Size, pw, ph, GrimePatternData.Shared);
+            if (patternTex) DestroyImmediate(patternTex); // not at the end of the frame: a night builds every surface in one
             patternTex = new Texture2D(pw, ph, TextureFormat.RGBA32, true, false)
             {
                 name = "Pattern_" + Id, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, anisoLevel = 8,
             };
-            patternTex.SetPixels32(data.Pixels);
-            patternTex.Apply(true, true);
+            data.WritePixels(patternTex.GetPixelData<Color32>(0));
+            patternTex.Apply(true, true); // mips, upload, and the CPU copy freed
 
             int n = mw * mh;
-            remain = new float[n]; weight = new float[n]; tough = new float[n];
-            mask = new byte[n * 4];
+            // The same surface is built again each night: keep its arrays when the size is the same
+            // (in the web player, garbage from one frame is only collected after it).
+            if (remain == null || remain.Length != n) { remain = new float[n]; weight = new float[n]; tough = new float[n]; mask = new byte[n * 4]; }
             totalWeight = 0;
             for (int y = 0; y < mh; y++)
             for (int x = 0; x < mw; x++)
@@ -164,8 +179,9 @@ namespace AfterHours
                 mask[i * 4 + 0] = 255; mask[i * 4 + 1] = 128; mask[i * 4 + 2] = 0; mask[i * 4 + 3] = 255;
             }
             remainingWeight = totalWeight;
+            GrimePatternData.Shared.Release(); // done with the pattern's arrays (kept while a night builds its surfaces)
 
-            if (maskTex) Destroy(maskTex);
+            if (maskTex) DestroyImmediate(maskTex);
             maskTex = new Texture2D(mw, mh, TextureFormat.RGBA32, false, true)
             {
                 name = "Mask_" + Id, wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear,

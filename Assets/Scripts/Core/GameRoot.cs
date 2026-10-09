@@ -292,11 +292,31 @@ namespace AfterHours
         static void LockCursor(bool locked)
         {
             if (Automated) return;
+            // The touch screen has no pointer to capture; the mouse is captured again once it's used.
+            // Phones that can't capture it at all (iPhones) aren't asked to.
+            if (TouchInput.Active || (WebPlatform.Mobile && !WebPlatform.CanLockPointer)) locked = false;
             Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
             Cursor.visible = !locked;
         }
 
-        bool webHadLock;
+        bool webHadLock, webTouch;
+        float nextUiReport;
+
+        /// <summary>Browser tests (?arg=-ahWebTest): the page also hears where the player is and what the input does.</summary>
+        static readonly bool WebTest = HasArg("-ahWebTest");
+
+        string TestState()
+        {
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            var p = Player != null ? Player.transform.position : Vector3.zero;
+            var f = GameInput.Frame;
+            string B(bool b) => b ? "true" : "false";
+            return "{" + $"\"x\":{p.x.ToString("0.###", ci)},\"z\":{p.z.ToString("0.###", ci)},\"yaw\":{(Player != null ? Player.Yaw : 0f).ToString("0.##", ci)}," +
+                   $"\"pitch\":{(Player != null ? Player.Pitch : 0f).ToString("0.##", ci)},\"crouch\":{B(f.Crouch)},\"brisk\":{B(f.Sprint)},\"use\":{B(f.Use)},\"spray\":{B(f.Spray)}," +
+                   $"\"pinned\":\"{(Cleaning != null ? Cleaning.Pinned.ToString() : "")}\",\"page\":{(Clipboard.Instance != null ? Clipboard.Instance.Page : -1)}," +
+                   $"\"monoHeap\":{UnityEngine.Profiling.Profiler.GetMonoHeapSizeLong()},\"monoUsed\":{UnityEngine.Profiling.Profiler.GetMonoUsedSizeLong()}," +
+                   $"\"native\":{UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong()},\"reserved\":{UnityEngine.Profiling.Profiler.GetTotalReservedMemoryLong()}" + "}";
+        }
 
         /// <summary>
         /// The browser build: Esc releases the mouse without reaching the game, so losing the pointer
@@ -307,6 +327,8 @@ namespace AfterHours
         bool WebUpdate()
         {
             bool wantsLock = cursorBlockers.Count == 0 && !Automated && Proto == null;
+            if (TouchInput.Active != webTouch) { webTouch = TouchInput.Active; LockCursor(wantsLock); }
+            wantsLock &= !webTouch;
             bool locked = WebPlatform.PointerLocked;
             if (webHadLock && !locked && wantsLock) AutoPauseNow("pointer");
             webHadLock = locked;
@@ -315,7 +337,12 @@ namespace AfterHours
             string screen = onTitle ? "title" : PauseMenu.IsOpen ? "pause" : Clipboard.Instance && Clipboard.Instance.Open ? "clipboard"
                 : InNight && !Director.Paused ? "night" : "other";
             var selected = UnityEngine.EventSystems.EventSystem.current != null ? UnityEngine.EventSystems.EventSystem.current.currentSelectedGameObject : null;
-            WebPlatform.Report(screen, Director != null && Director.Def != null ? Director.Def.Number : 0, GraphicsQuality.Level, selected != null ? selected.name : "", BlockerList);
+            // The on-screen controls: the stick and buttons while a night is played, soft keys where a screen needs them.
+            string touch = webTouch || WebPlatform.Mobile
+                ? TouchInput.Describe(screen == "night" && blockers.Count == 0, Hud.Instance != null ? Hud.Instance.PromptItems : null) : "";
+            WebPlatform.Report(screen, Director != null && Director.Def != null ? Director.Def.Number : 0, GraphicsQuality.Level, selected != null ? selected.name : "", BlockerList, touch,
+                WebTest ? TestState() : "");
+            if (WebTest && GameTime.Unscaled >= nextUiReport) { nextUiReport = GameTime.Unscaled + 0.25f; WebPlatform.ReportUi(); }
             return wantsLock && !locked && blockers.Count == 0 && InNight && !GameInput.UsingPad;
         }
 

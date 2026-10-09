@@ -25,6 +25,8 @@ namespace AfterHours
         public static bool IsOpen => instance != null && instance.open;
         /// <summary>The document on screen, if any (automation checks this).</summary>
         public static string CurrentDoc => IsOpen ? instance.doc : null;
+        /// <summary>How the open document is being read (the touch screen's soft keys follow it).</summary>
+        public static InspectMode Mode => IsOpen ? instance.mode : InspectMode.Read;
         /// <summary>Frame the reader closed on, so the same key doesn't also reach whatever is underneath.</summary>
         public static int ClosedFrame = -1;
         bool open;

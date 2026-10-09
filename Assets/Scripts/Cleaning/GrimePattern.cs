@@ -79,17 +79,61 @@ namespace AfterHours
     public class GrimePatternData
     {
         public int Width, Height;
-        public Color32[] Pixels;   // RGB colour, A coverage
+        public Color32[] Pixels;   // RGB colour, A coverage (null when generated into scratch: see WritePixels)
         public float[] Coverage;   // 0..1
         public float[] Toughness;  // >= 0.2
+        float[] r, g, b;
 
-        public static GrimePatternData Generate(GrimeSpec spec, Vector2 sizeM, int width, int height)
+        /// <summary>
+        /// Buffers reused from one pattern to the next. A night builds all its surfaces in one frame,
+        /// and the web player's garbage collector only runs between frames, so fresh arrays for each
+        /// surface would all stay allocated together (hundreds of MB of heap, which never shrinks).
+        /// Arrays may be longer than one pattern; only its first Width × Height entries count.
+        /// </summary>
+        public sealed class Scratch
+        {
+            internal float[] R, G, B, Coverage, Toughness;
+
+            internal void Ensure(int n)
+            {
+                if (R != null && R.Length >= n) return;
+                R = new float[n]; G = new float[n]; B = new float[n]; Coverage = new float[n]; Toughness = new float[n];
+            }
+
+            /// <summary>While above zero, the buffers are kept between patterns (a night building its surfaces).</summary>
+            public int Holds;
+
+            /// <summary>Let the buffers go (after the last pattern of a batch), unless a batch still holds them.</summary>
+            public void Release()
+            {
+                if (Holds <= 0) R = G = B = Coverage = Toughness = null;
+            }
+        }
+
+        public static readonly Scratch Shared = new();
+
+        /// <summary>
+        /// The pattern. With <paramref name="scratch"/> its arrays are borrowed (valid until the next
+        /// call) and <see cref="Pixels"/> stays null: <see cref="WritePixels"/> fills a texture instead.
+        /// </summary>
+        public static GrimePatternData Generate(GrimeSpec spec, Vector2 sizeM, int width, int height, Scratch scratch = null)
         {
             var d = new GrimePatternData { Width = width, Height = height };
             int n = width * height;
-            var r = new float[n]; var g = new float[n]; var b = new float[n];
-            d.Coverage = new float[n];
-            d.Toughness = new float[n];
+            float[] r, g, b;
+            if (scratch != null)
+            {
+                scratch.Ensure(n);
+                r = scratch.R; g = scratch.G; b = scratch.B; d.Coverage = scratch.Coverage; d.Toughness = scratch.Toughness;
+                System.Array.Clear(r, 0, n); System.Array.Clear(g, 0, n); System.Array.Clear(b, 0, n); System.Array.Clear(d.Coverage, 0, n);
+            }
+            else
+            {
+                r = new float[n]; g = new float[n]; b = new float[n];
+                d.Coverage = new float[n];
+                d.Toughness = new float[n];
+            }
+            d.r = r; d.g = g; d.b = b;
             for (int i = 0; i < n; i++) d.Toughness[i] = 1f;
             var rng = new Rng(spec.Seed);
             int stampIndex = 0;
@@ -115,13 +159,20 @@ namespace AfterHours
                     case StampKind.Confetti: ConfettiBits(d, r, g, b, s, sizeM, ref rng); break;
                 }
             }
+            if (scratch != null) return d;
             d.Pixels = new Color32[n];
-            for (int i = 0; i < n; i++)
-            {
-                float a = Mathf.Clamp01(d.Coverage[i]);
-                d.Pixels[i] = new Color32(ToByte(r[i]), ToByte(g[i]), ToByte(b[i]), ToByte(a));
-            }
+            for (int i = 0; i < n; i++) d.Pixels[i] = PixelAt(d, i);
             return d;
+        }
+
+        static Color32 PixelAt(GrimePatternData d, int i) =>
+            new(ToByte(d.r[i]), ToByte(d.g[i]), ToByte(d.b[i]), ToByte(Mathf.Clamp01(d.Coverage[i])));
+
+        /// <summary>The colours into a texture's top mip (Width × Height RGBA32), with no array in between.</summary>
+        public void WritePixels(Unity.Collections.NativeArray<Color32> into)
+        {
+            int n = Width * Height;
+            for (int i = 0; i < n; i++) into[i] = PixelAt(this, i);
         }
 
         /// <summary>GLSL-style smoothstep (Mathf.SmoothStep is an interpolator, not this).</summary>

@@ -2,13 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#030408">
     <title>{{{ PRODUCT_NAME }}}</title>
     <meta name="description" content="Clean the office. Learn its secrets. Decide what survives. A first-person cleaning game with a mystery underneath, over seven nights in one office.">
     <link rel="icon" type="image/png" href="TemplateData/favicon.png">
+    <link rel="stylesheet" href="TemplateData/touch.css">
     <style>
       html, body { margin: 0; height: 100%; overflow: hidden; background: #030408; color: #F2EDDB;
-                   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+                   font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+                   /* A game, not a page: no scrolling, zooming, selecting or long-press menus on touch screens. */
+                   touch-action: none; overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+                   -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
       #game { position: fixed; inset: 0; }
       #unity-canvas { width: 100%; height: 100%; display: block; background: #030408; outline: none; }
       .overlay { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -20,8 +27,9 @@
       #status { color: #6F7B90; font-size: 14px; min-height: 1.4em; max-width: 560px; }
       #status.error { color: #FF7A6B; font-size: 16px; }
       .hint { color: #6F7B90; font-size: 13px; max-width: 560px; }
-      #touch { display: none; z-index: 2; }
-      #touch p { max-width: 480px; color: #C9D3E3; margin: 0; }
+      #notice { color: #FFC857; font-size: 14px; max-width: 560px; display: none; }
+      #stopped { display: none; z-index: 6; }
+      #stopped p, #rotate p { max-width: 480px; color: #C9D3E3; margin: 0; }
       button { font: inherit; font-weight: 700; color: #030408; background: #9ED9F2; border: 0; border-radius: 8px;
                padding: 12px 22px; cursor: pointer; }
       #fullscreen { position: fixed; right: 12px; bottom: 12px; padding: 7px 11px; font-size: 13px; font-weight: 600;
@@ -36,23 +44,62 @@
       <div class="tagline">Clean the office. Learn its secrets. Decide what survives.</div>
       <div id="progress"><div></div></div>
       <div id="status">Loading…</div>
-      <div class="hint">Mouse and keyboard, or a controller. Click the game to capture the mouse; Esc pauses and frees it.
+      <div id="notice"></div>
+      <div class="hint" id="hint">Mouse and keyboard, or a controller. Click the game to capture the mouse; Esc pauses and frees it.
         Saves stay in this browser.</div>
     </div>
-    <div id="touch" class="overlay">
+    <div id="rotate" class="overlay">
+      <div class="phone"></div>
+      <p>Turn your device sideways to play. After Hours is laid out for a landscape screen.</p>
+    </div>
+    <div id="stopped" class="overlay">
       <div class="logo">AFTER HOURS</div>
-      <p>After Hours is played with a mouse and keyboard or a controller. It has no touch controls, so on this device
-         you won't be able to play past the menus.</p>
-      <button id="touch-continue">Load it anyway</button>
+      <p id="stopped-text"></p>
+      <button id="reload" onclick="location.reload()">Reload</button>
     </div>
     <button id="fullscreen" title="Fullscreen (Esc leaves it)">⛶ Fullscreen</button>
+    <script src="TemplateData/touch.js"></script>
     <script>
       var canvas = document.querySelector("#unity-canvas");
       var statusEl = document.querySelector("#status");
       var bar = document.querySelector("#progress div");
       var started = false;
 
+      // A phone or tablet: iOS, iPadOS (which says it's a Mac), Android, or a touch screen with no mouse.
+      // The game starts lighter there (Graphics fidelity Low, smaller grime textures; WebPlatform.Mobile).
+      var ua = navigator.userAgent;
+      var mobile = /iPhone|iPad|iPod|Android/i.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1) || afterHoursTouch.touchFirst;
+      window.afterHoursPage = { mobile: mobile };
+
+      // A tab the phone closed for memory doesn't get to say so. Note while the game is on screen;
+      // if the note is still there next time, it ended unexpectedly: say so, and draw fewer pixels.
+      var crashed = false;
+      try {
+        crashed = mobile && localStorage.getItem("ah-running") === "1";
+        localStorage.removeItem("ah-running");
+      } catch (e) { }
+      function markRunning(on) { try { if (on) localStorage.setItem("ah-running", "1"); else localStorage.removeItem("ah-running"); } catch (e) { } }
+      if (crashed) {
+        var n = document.querySelector("#notice");
+        n.textContent = "Last time the game stopped unexpectedly, probably because the device ran low on memory. " +
+                        "It draws a smaller picture this time. Closing other tabs helps too.";
+        n.style.display = "block";
+      }
+      if (mobile) document.querySelector("#hint").textContent = "On a touch screen: the left thumb walks, a drag on the right looks around, " +
+        "and the buttons clean, use and spray. A keyboard, mouse or controller works too. Saves stay in this browser.";
+
+      // The game ended in a way it can't carry on from (lost graphics, out of memory): say what happened.
+      function stopped(msg) {
+        markRunning(false);
+        document.querySelector("#stopped-text").textContent = msg;
+        document.querySelector("#stopped").style.display = "flex";
+        console.error("[AfterHours page] " + msg);
+      }
+      var MEMORY = "The game ran out of memory on this device and had to stop. Reload to carry on: nights you finished are saved. " +
+                   "Closing other tabs and apps helps.";
+
       function fail(msg) {
+        if (/memory|allocat|OOM/i.test(msg)) msg = MEMORY;
         document.querySelector("#loading").style.display = "flex";
         document.querySelector("#progress").style.display = "none";
         statusEl.textContent = msg;
@@ -68,12 +115,33 @@
 
       // Render at the screen's pixel density, up to a 1440p budget (a 3D scene at 4K costs more than
       // it shows); never below one pixel per CSS pixel. Render scale in Settings goes lower still.
-      var maxPixels = 2560 * 1440;
+      // Phones and tablets: about a million pixels (every render target scales with it, and the
+      // tab's memory is tight), or under two thirds of that after an unexpected stop.
+      var maxPixels = !mobile ? 2560 * 1440 : crashed ? 1024 * 640 : 1280 * 800;
       function pixelRatio() {
         var dpr = window.devicePixelRatio || 1;
         var css = Math.max(1, window.innerWidth * window.innerHeight);
-        return Math.max(1, Math.min(dpr, Math.sqrt(maxPixels / css)));
+        return Math.max(mobile ? 0.75 : 1, Math.min(dpr, Math.sqrt(maxPixels / css)));
       }
+
+      // Sound may only start after a tap or a key. Unity listens for touchstart, which iOS and
+      // Android don't count: resume the game's audio on the end of the first touch (or a click or key).
+      var audioContexts = [];
+      ["AudioContext", "webkitAudioContext"].forEach(function (n) {
+        var C = window[n];
+        if (!C) return;
+        window[n] = class extends C { constructor(o) { super(o); audioContexts.push(this); } };
+      });
+      function unlockAudio(e) {
+        if (!e.isTrusted) return;
+        audioContexts.forEach(function (c) { if (c.state === "suspended") c.resume().catch(function () { }); });
+      }
+      ["touchend", "pointerup", "mousedown", "keydown"].forEach(function (t) { window.addEventListener(t, unlockAudio, true); });
+
+      // Long presses and two-finger zooms on the page itself (iOS ignores user-scalable=no).
+      document.addEventListener("gesturestart", function (e) { e.preventDefault(); });
+      document.addEventListener("touchmove", function (e) { if (e.cancelable && (e.touches.length > 1 || e.target === canvas)) e.preventDefault(); }, { passive: false });
+      document.addEventListener("dblclick", function (e) { e.preventDefault(); });
 
       function hasWebGL2() {
         try { return !!document.createElement("canvas").getContext("webgl2"); } catch (e) { return false; }
@@ -94,7 +162,22 @@
         // Saves and settings (persistentDataPath) live in IndexedDB; write each change through as it happens.
         autoSyncPersistentDataPath: true,
         devicePixelRatio: pixelRatio(),
+        // Errors once the game runs: no alert() box; the ones it can't carry on from get a readable page.
+        errorHandler: function (message) {
+          var m = String(message || "");
+          if (/memory|allocat|OOM/i.test(m)) stopped(MEMORY);
+          else if (/RuntimeError|unreachable|abort/i.test(m)) stopped("The game hit an error it can't carry on from. Reload to continue: nights you finished are saved.");
+          else console.warn("[AfterHours page] " + m);
+          return true;
+        },
       };
+
+      // The browser can take the graphics away (low memory, the GPU reset): say so instead of freezing.
+      canvas.addEventListener("webglcontextlost", function (e) {
+        e.preventDefault();
+        stopped("The browser stopped the game's graphics, usually because the device ran low on memory. " +
+                "Reload to carry on: nights you finished are saved.");
+      });
 
       // RMB sprays in the game: no browser menu over the canvas.
       canvas.addEventListener("contextmenu", function (e) { e.preventDefault(); });
@@ -118,11 +201,16 @@
             // The budget depends on the window's size: follow resizes.
             window.addEventListener("resize", function () { unityInstance.Module.devicePixelRatio = pixelRatio(); });
             document.querySelector("#loading").style.display = "none";
+            afterHoursTouch.start();
+            markRunning(document.visibilityState === "visible");
+            document.addEventListener("visibilitychange", function () { markRunning(document.visibilityState === "visible"); });
+            window.addEventListener("pagehide", function () { markRunning(false); });
             var fs = document.querySelector("#fullscreen");
-            fs.style.display = "block";
+            // Touch screens have it among the on-screen controls (iPhones can't go fullscreen at all).
+            fs.style.display = mobile ? "none" : "block";
             fs.onclick = function () { unityInstance.SetFullscreen(1); };
             document.addEventListener("fullscreenchange", function () {
-              fs.style.display = document.fullscreenElement ? "none" : "block";
+              fs.style.display = document.fullscreenElement || mobile ? "none" : "block";
             });
             canvas.focus();
           }).catch(function (message) {
@@ -133,15 +221,7 @@
         document.body.appendChild(script);
       }
 
-      // Touch-only devices: say so up front instead of letting the game look broken.
-      var touchOnly = matchMedia("(pointer: coarse)").matches && !matchMedia("(any-pointer: fine)").matches;
-      if (touchOnly) {
-        document.querySelector("#touch").style.display = "flex";
-        document.querySelector("#touch-continue").onclick = function () {
-          document.querySelector("#touch").style.display = "none";
-          start();
-        };
-      } else start();
+      start();
     </script>
   </body>
 </html>

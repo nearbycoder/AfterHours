@@ -83,7 +83,13 @@ namespace AfterHours
             }
 
             // Dirt
-            foreach (var s in Office.Surfaces.Values) s.gameObject.SetActive(false);
+            var tonight = new HashSet<string>(Def.Dirt.Select(d => d.Item1));
+            foreach (var s in Office.Surfaces.Values)
+            {
+                s.gameObject.SetActive(false);
+                if (!tonight.Contains(s.Id)) s.ReleaseTextures();
+            }
+            GrimePatternData.Shared.Holds++;
             foreach (var (id, spec, req) in Def.Dirt)
             {
                 if (!Office.Surfaces.TryGetValue(id, out var g)) { Debug.LogWarning("[Night] no surface " + id); continue; }
@@ -93,6 +99,8 @@ namespace AfterHours
                 g.Build();
                 g.SetShimmer(night == 1 ? 0.6f : 0f);
             }
+            GrimePatternData.Shared.Holds--;
+            GrimePatternData.Shared.Release();
             GameRoot.Instance.Cleaning.HookAll();
 
             // Monitors and chairs

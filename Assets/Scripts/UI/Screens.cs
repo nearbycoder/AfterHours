@@ -39,7 +39,7 @@ namespace AfterHours
             var mouse = Mouse.current;
             if (AutoAdvance) { AutoAdvance = false; return true; }
             return GameInput.Menu.Confirm || GameInput.Menu.Start
-                   || (mouse != null && mouse.leftButton.wasPressedThisFrame);
+                   || (mouse != null && mouse.leftButton.wasPressedThisFrame) || TouchInput.Tapped;
         }
 
         /// <summary>Automation: advance the current interstitial once.</summary>
@@ -419,6 +419,10 @@ namespace AfterHours
         static ChatInterlude reviewing;
         /// <summary>A past morning is open from the case file (it has the keys until it closes).</summary>
         public static bool ReviewOpen => reviewing != null;
+        static int showing;
+        /// <summary>A morning chat is on screen, read for the first time or again.</summary>
+        public static bool Showing => showing > 0;
+        void Awake() => showing++;
         /// <summary>The frame a reread chat closed on, so the key that closed it goes no further.</summary>
         public static int ClosedFrame = -1;
 
@@ -501,6 +505,7 @@ namespace AfterHours
 
         protected override void OnDestroy()
         {
+            showing--;
             base.OnDestroy();
             EndReview();
         }

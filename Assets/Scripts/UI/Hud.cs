@@ -180,11 +180,15 @@ namespace AfterHours
         /// <summary>The prompt showing now, as key and label pairs joined by "|" (for checks).</summary>
         public string PromptSignature => promptKey;
 
+        /// <summary>The prompt's key and label pairs (the touch screen's buttons show them).</summary>
+        public (string key, string label)[] PromptItems { get; private set; } = System.Array.Empty<(string, string)>();
+
         /// <summary>Show a prompt like ("E", "Pick up · Crumpled note"). Empty key hides it.</summary>
         public void Prompt(params (string key, string label)[] items)
         {
             string signature = string.Join("|", System.Array.ConvertAll(items, i => i.key + i.label));
-            signature += GameInput.UsingPad ? "|pad" : "";
+            signature += GameInput.UsingPad ? "|pad" : TouchInput.Active ? "|touch" + TouchInput.Glyph("LMB") : "";
+            PromptItems = items;
             if (signature == promptKey) return;
             promptKey = signature;
             foreach (Transform c in promptRoot) Destroy(c.gameObject);
