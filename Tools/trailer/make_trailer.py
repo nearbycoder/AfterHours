@@ -33,11 +33,20 @@ AUDIO_DIR = os.path.join(ROOT, "Assets", "Resources", "Audio")
 BEATS = []  # filled in below
 
 def beat(clip, start, dur, cap=None, hand=None, speed=1.0, trans="fade", tdur=0.4, cap_at=0.3, gain=1.0, duck=None,
-         section=None, backdrop=None, look=None, blur=None):
+         section=None, backdrop=None, look=None, blur=None, split=None):
     """duck=(at, length, depth): dip the music under a highlight. section marks where a music cue starts.
-    look: extra ffmpeg filters for this shot (e.g. a gamma lift). blur: [(x, y, w, h)] boxes to blur (spoilers)."""
+    look: extra ffmpeg filters for this shot (e.g. a gamma lift). blur: [(x, y, w, h)] boxes to blur (spoilers).
+    split=(clip, left label, right label): this clip on the left and the other (filmed the same way) on the
+    right, the divider sliding left over the beat. cap number "#" is replaced by the next feature number."""
+    if cap and cap[0] == "#":
+        NUMBER[0] += 1
+        cap = (f"{NUMBER[0]:02d}",) + tuple(cap[1:])
     BEATS.append(dict(clip=clip, start=start, dur=dur, cap=cap, hand=hand, speed=speed, trans=trans, tdur=tdur,
-                      cap_at=cap_at, gain=gain, duck=duck, section=section, backdrop=backdrop, look=look, blur=blur))
+                      cap_at=cap_at, gain=gain, duck=duck, section=section, backdrop=backdrop, look=look, blur=blur,
+                      split=split))
+
+
+NUMBER = [0]
 
 
 def run(cmd, quiet=True):
@@ -314,11 +323,29 @@ def render_segment(clips, b, i, seg, capdir):
         vf += "," + b["look"]
     graph = vf + "[base]"
     last = "base"
+    k = 1
+    if b["split"]:
+        other, left, right = b["split"]
+        d2, total2 = clip_frames(clips, other)
+        if first + need > total2:
+            print(f"  ! beat {i} {other}: wants frames {first}-{first + need}, clip has {total2}; holding the last frame")
+        extra_inputs += ["-framerate", f"{FPS * b['speed']:.4f}", "-start_number", str(first), "-i", os.path.join(d2, "%06d.jpg")]
+        png = os.path.join(capdir, f"split{i:02d}.png")
+        cards.split_labels(left, right, png)
+        extra_inputs += ["-loop", "1", "-framerate", str(FPS), "-t", f"{dur:.3f}", "-i", png]
+        # The divider eases from 80% to 30% of the width; a thin bright line marks it.
+        edge = f"(W*(0.8-0.5*(clip(T/{dur:.3f},0,1)*clip(T/{dur:.3f},0,1)*(3-2*clip(T/{dur:.3f},0,1)))))"
+        pick = f"if(lt(X,{edge}),A,B)"
+        graph += (f";[{k}:v]fps={FPS},tpad=stop_mode=clone:stop_duration={dur:.3f},trim=duration={dur:.3f},setpts=PTS-STARTPTS,"
+                  f"format=yuv420p,scale=1920:1080:flags=lanczos" + ("," + b["look"] if b["look"] else "") + "[other];"
+                  f"[{last}][other]blend=c0_expr='if(lt(abs(X-{edge}),2),225,{pick})':c1_expr='{pick}':c2_expr='{pick}'[sp];"
+                  f"[{k + 1}:v]format=rgba,fade=t=in:st=0.15:d=0.4:alpha=1[lab];[sp][lab]overlay=format=auto[spl]")
+        last = "spl"
+        k += 2
     for j, (x, y, w, h) in enumerate(b["blur"] or []):
         graph += (f";[{last}]split[bl{j}a][bl{j}b];[bl{j}b]crop={w}:{h}:{x}:{y},boxblur=luma_radius=22:luma_power=3:chroma_radius=22:chroma_power=3[bl{j}c];"
                   f"[bl{j}a][bl{j}c]overlay={x}:{y}[bl{j}]")
         last = f"bl{j}"
-    k = 1
     if b["cap"] or b["hand"]:
         png = os.path.join(capdir, f"cap{i:02d}.png")
         if b["cap"]:
@@ -403,7 +430,7 @@ def main():
 
 
 def cut():
-    """The edit: cold open, title, one beat per feature, the late nights, endings, end card."""
+    """The edit: cold open, title, one beat per feature, settings and access, the late nights, endings, end card."""
     LIFT = "eq=gamma=1.28:brightness=0.025:saturation=1.05"
     NEWS = [(300, 40, 1320, 340), (260, 495, 1400, 560)]           # ending headline and epilogue text
 
@@ -415,48 +442,53 @@ def cut():
     beat("@title", 2.0, 6.2, backdrop="title_drift", trans="fadeblack", tdur=0.9, section="title")
 
     # The job.
-    beat("n1_card", 0.7, 3.8, cap=("", "THE NIGHT SHIFT", "You're the new night cleaner on the 14th floor."),
+    beat("n1_card", 0.7, 3.6, cap=("", "THE NIGHT SHIFT", "You're the new night cleaner on the 14th floor."),
          trans="fadeblack", tdur=0.6, cap_at=0.5)
     beat("n1_clipboard", 0.7, 2.8, cap=("", "CLOCK IN", "The shift sheet lists tonight's jobs, room by room."), tdur=0.35)
 
     # Cleaning.
-    beat("n1_wipe", 0.9, 4.6, speed=1.25, cap=("01", "WIPE IT DOWN", "Coffee rings lift under the cloth. A clean surface gleams and dings."), section="features")
-    beat("n1_vacuum", 0.5, 4.0, speed=1.2, cap=("02", "VACUUM", "Stripe the carpet. Confetti rattles up the nozzle."))
-    beat("n1_throw", 0.3, 4.3, cap=("03", "SORT AND THROW", "Charge a throw and sink it. The wrong bin bounces it back."))
-    beat("n2_foam", 0.4, 4.6, speed=1.15, cap=("04", "SPRAY AND SQUEEGEE", "Foam the glass first. Sometimes the foam shows a message."))
-    beat("n2_squeegee", 0.3, 3.2, speed=1.35, tdur=0.3)
-    beat("n2_mop", 0.6, 3.4, speed=1.4, cap=("05", "MOP", "Wet floors shine, then dry."))
-    beat("n1_putback", 0.4, 3.6, cap=("06", "PUT IT BACK", "A ghost shows where things belong. Tuck chairs, switch off screens."))
+    beat("n1_wipe", 0.9, 4.0, speed=1.25, cap=("#", "WIPE IT DOWN", "Coffee rings lift under the cloth. A clean surface gleams and dings."), section="features")
+    beat("n1_vacuum", 0.5, 3.4, speed=1.2, cap=("#", "VACUUM", "Stripe the carpet. Confetti rattles up the nozzle."))
+    beat("n1_throw", 0.3, 4.3, cap=("#", "SORT AND THROW", "The label says which bin. Charge a throw and sink it."))
+    beat("n2_foam", 0.4, 4.0, speed=1.15, cap=("#", "SPRAY AND SQUEEGEE", "Foam the glass first. Sometimes the foam shows a message."))
+    beat("n2_mop", 0.6, 3.0, speed=1.4, cap=("#", "MOP", "Wet floors shine, then dry."))
+    beat("n1_putback", 0.4, 3.6, cap=("#", "PUT IT BACK", "A ghost shows where things belong. Tuck chairs, switch off screens."))
+    beat("n2_glint", 0.4, 3.6, cap=("#", "NEVER STUCK", "Stuck for a minute? What's left glints, and a caption says where."))
 
     # Secrets.
-    beat("n1_key", 2.2, 4.4, cap=("07", "LOOK UNDER THINGS", "Crouch under the desks. The vacuum finds what someone dropped."))
-    beat("n1_note", 1.4, 3.8, cap=("08", "READ WHAT THEY LEFT", "Keep it, put it back, or throw it away. The office remembers."))
-    beat("n1_tray", 0.6, 3.6, cap=("09", "DECIDE WHERE IT GOES", "Deliver it to someone's tray, shred it, or leave an anonymous note."))
-    beat("n2_uv", 0.9, 4.4, look=LIFT, cap=("10", "UV TORCH", "Invisible ink from the last cleaner, and every speck you missed."))
-    beat("n4_rubbing", 0.6, 3.0, speed=1.3, cap=("11", "PENCIL RUBBING", "The last page of a notepad remembers what was written on it."))
-    beat("n4_rubbing", 6.6, 2.3, tdur=0.3)
-    beat("n4_office", 0.2, 2.2, cap=("12", "THE CORNER OFFICE", "She notices anything you move. Some offers are hard to refuse."), cap_at=0.25)
-    beat("n4_envelope", 2.6, 3.2, tdur=0.3)
-    beat("n5_puzzle", 1.6, 4.4, speed=1.35, cap=("13", "TAPE IT BACK TOGETHER", "Rebuild a shredded page, strip by strip."))
-    beat("n1_remote", 0.8, 5.0, speed=1.25, cap=("14", "LIGHTS OUT", "Switch off the last light. Something else switches on."), duck=(1.4, 3.0, 0.6))
+    beat("n1_key", 2.2, 3.6, cap=("#", "LOOK UNDER THINGS", "Crouch under the desks. The vacuum finds what someone dropped."))
+    beat("n1_note", 1.4, 3.8, cap=("#", "READ WHAT THEY LEFT", "Keep it, put it back, or throw it away. The office remembers."))
+    beat("n1_tray", 0.6, 3.6, cap=("#", "DECIDE WHERE IT GOES", "Deliver it to someone's tray, shred it, or leave an anonymous note."))
+    beat("n2_uv", 0.9, 4.2, look=LIFT, cap=("#", "UV TORCH", "Invisible ink from the last cleaner, and every speck you missed."))
+    beat("n4_rubbing", 0.6, 2.8, speed=1.3, cap=("#", "PENCIL RUBBING", "The last page of a notepad remembers what was written on it."))
+    beat("n4_office", 0.2, 2.6, cap=("#", "THE CORNER OFFICE", "She notices anything you move. Some offers are hard to refuse."), cap_at=0.25)
+    beat("n5_puzzle", 1.6, 4.2, speed=1.35, cap=("#", "TAPE IT BACK TOGETHER", "Rebuild a shredded page, strip by strip."))
+    beat("n2_casefile", 1.2, 4.6, cap=("#", "THE CASE FILE", "Everything you've read, night by night, to read again before you decide."))
+    beat("n1_remote", 0.8, 4.2, speed=1.25, cap=("#", "LIGHTS OUT", "Switch off the last light. Something else switches on."), duck=(1.4, 3.0, 0.6))
 
     # End of shift.
-    beat("n1_report", 1.6, 4.2, cap=("15", "CLOCK OUT", "A grade from S to C, and before-and-after polaroids of every room."))
-    beat("n1_report", 12.8, 3.3, cap=("16", "THE MORNING AFTER", "The office chat reacts to what you left, and what went missing."), tdur=0.35, cap_at=0.2)
+    beat("n1_report", 1.6, 3.8, cap=("#", "CLOCK OUT", "A grade from S to C, and before-and-after polaroids of every room."))
+    beat("n1_report", 12.8, 3.2, cap=("#", "THE MORNING AFTER", "The office chat reacts to what you left, and what went missing."), tdur=0.35, cap_at=0.2)
 
     # Seven nights.
     for i, n in enumerate(range(2, 8)):
-        beat(f"n{n}_card", 2.05, 1.15, trans="fade" if i else "fadeblack", tdur=0.25 if i else 0.5,
+        beat(f"n{n}_card", 2.05, 0.95, trans="fade" if i else "fadeblack", tdur=0.25 if i else 0.5,
              cap=("", "SEVEN NIGHTS", "Every night the office has changed, and so has the mess.") if i == 0 else None, cap_at=0.15,
              section="late" if i == 0 else None)
-    beat("title_nightselect", 0.5, 2.4, cap=("", "REPLAY ANY NIGHT", "Night Select, full settings, keyboard and mouse or gamepad."), tdur=0.4)
-    beat("title_settings", 0.7, 1.6, tdur=0.3)
+
+    # Your way.
+    beat("n2_fid_low", 1.0, 4.4, split=("n2_fid_ultra", "LOW", "ULTRA"), trans="fadeblack", tdur=0.4,
+         cap=("", "GRAPHICS FIDELITY", "Low to Ultra. Ultra adds room reflections, lamp shadows and finer shadows."), cap_at=0.5)
+    beat("title_settings", 1.0, 4.4, tdur=0.35, gain=0.0)  # its game audio has the title music in it
+    beat("n1_pause", 0.6, 2.9, cap=("", "YOUR CONTROLS", "Keyboard and mouse or gamepad. Rebind any key or button."), tdur=0.35, cap_at=0.3)
+    beat("n2_largest", 1.0, 3.0, cap=("", "READ IT YOUR WAY", "Larger text, plain lettering, captions, gentler flashes, mono audio."), tdur=0.35, cap_at=0.3)
+    beat("title_nightselect", 0.5, 2.4, cap=("", "REPLAY ANY NIGHT", "Night Select starts any night you've reached, as you left it."), tdur=0.35)
 
     # Escalation.
     beat("n5_party", 0.5, 1.8, trans="fadeblack", tdur=0.4)
     beat("n6_archive", 0.4, 1.4, trans="fade", tdur=0.2)
     beat("n6_voicemail", 1.2, 1.9, tdur=0.2)
-    beat("n7_storm", 0.9, 2.8, tdur=0.2, look="eq=gamma=1.1")
+    beat("n7_storm", 1.0, 3.0, tdur=0.2, look="eq=gamma=1.1")
     beat("n7_jam", 0.2, 2.4, tdur=0.2, look=LIFT)
     beat("n7_folder_tray", 0.7, 2.7, tdur=0.25, hand="Decide what survives.", cap_at=0.4)
 

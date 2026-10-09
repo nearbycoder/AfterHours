@@ -7,6 +7,7 @@ Screenshots are full 1920x1080 frames from the running game (the trailer recorde
 saved as high-quality JPEG. The teaser is a short looping animated WebP.
 """
 import argparse
+import json
 import os
 import subprocess
 import sys
@@ -30,6 +31,8 @@ SHOTS = [
     ("08-evidence", "n1_note", 3.0),
     ("09-report", "n1_report", 5.6),
     ("10-corner-office", "n4_office", 2.0),
+    ("11-settings", "title_settings", 3.0),
+    ("12-pause-controls", "n1_pause", 2.4),
 ]
 
 # Teaser: (clip, start, seconds, extra filter) pieces, joined with short crossfades and looped.
@@ -41,8 +44,9 @@ TEASER = [
     ("n1_throw", 1.6, 1.9, None),
 ]
 
-# The trailer frame used for the README poster (seconds into the trailer): the title card.
-POSTER_AT = 10.8
+# The README poster is the title card, this long after it starts (logo lit, tagline in).
+POSTER_AFTER_TITLE = 4.0
+WORK = os.path.join(ROOT, "Tools", "trailer", "work")
 
 
 def frame_path(clips, clip, t):
@@ -65,9 +69,11 @@ def screenshots(clips):
 
 
 def poster(trailer):
-    tmp = os.path.join(ROOT, "Tools", "trailer", "work", "poster_src.png")
+    tmp = os.path.join(WORK, "poster_src.png")
     os.makedirs(os.path.dirname(tmp), exist_ok=True)
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{POSTER_AT:.2f}", "-i", trailer, "-frames:v", "1", tmp], check=True)
+    timeline = json.load(open(os.path.join(WORK, "timeline.json")))
+    at = next(b["t0"] for b in timeline if b["clip"] == "@title") + POSTER_AFTER_TITLE
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", f"{at:.2f}", "-i", trailer, "-frames:v", "1", tmp], check=True)
     dst = os.path.join(MEDIA, "trailer-poster.jpg")
     secs = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", trailer],
                                 stdout=subprocess.PIPE, text=True, check=True).stdout)
@@ -77,8 +83,7 @@ def poster(trailer):
 
 def teaser(clips, width=960, fps=15, q=72):
     """Pieces cross-faded into each other; the last fades back into the first so it loops."""
-    work = os.path.join(ROOT, "Tools", "trailer", "work")
-    os.makedirs(work, exist_ok=True)
+    os.makedirs(WORK, exist_ok=True)
     xf = 0.35
     inputs, chain = [], []
     for i, (clip, start, dur, look) in enumerate(TEASER):
@@ -107,11 +112,14 @@ def teaser(clips, width=960, fps=15, q=72):
 
 
 def main():
+    global WORK
     ap = argparse.ArgumentParser()
     ap.add_argument("--clips", default=os.path.join(ROOT, "Recordings", "trailer"))
     ap.add_argument("--trailer", default=os.path.join(MEDIA, "AfterHours-trailer.mp4"))
+    ap.add_argument("--work", default=WORK, help="make_trailer.py's work folder (its timeline places the poster)")
     ap.add_argument("--only", choices=["shots", "poster", "teaser"])
     a = ap.parse_args()
+    WORK = os.path.abspath(a.work)
     clips = os.path.abspath(a.clips)
     if a.only in (None, "shots"):
         screenshots(clips)

@@ -11,6 +11,8 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 FONTS = os.path.join(ROOT, "ArtSource", "fonts")
 W, H = 1920, 1080
+# The game's own captions sit at about y 875-925 (centred), so the trailer's captions stay above them.
+LIFT = 160
 
 PAPER = (244, 239, 227)
 INK = (27, 34, 48)
@@ -80,7 +82,7 @@ def caption(num, title, sub, path):
     # Soft dark band behind the text so it reads over bright footage.
     band = Image.new("L", (W, H), 0)
     bd = ImageDraw.Draw(band)
-    bd.rectangle((0, 760, 1300, H), fill=150)
+    bd.rectangle((0, 760 - LIFT, 1300, H - LIFT + 60), fill=150)
     band = band.filter(ImageFilter.GaussianBlur(90))
     dark = Image.new("RGBA", (W, H), (6, 8, 14, 0))
     dark.putalpha(band)
@@ -110,7 +112,7 @@ def caption(num, title, sub, path):
     tag.putalpha(mask)
     tag = tag.rotate(1.1, resample=Image.BICUBIC, expand=True)
     layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
-    tx, ty = 110, 786
+    tx, ty = 110, 786 - LIFT
     layer.alpha_composite(tag, (tx, ty))
     img.alpha_composite(shadow(layer, 10, 0.55, (0, 6)))
     img.alpha_composite(layer)
@@ -142,7 +144,7 @@ def wrap(text, f, width):
     return lines
 
 
-def handwritten(text, path, y=930, size=76, color=CYAN):
+def handwritten(text, path, y=845, size=76, color=CYAN):
     """A handwritten line centred low in frame (cold open, montage)."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     band = Image.new("L", (W, H), 0)
@@ -197,6 +199,25 @@ def end_card(path_logo, path_info):
     out.alpha_composite(shadow(info, 5, 0.85, (0, 3)))
     out.alpha_composite(info)
     out.save(path_info)
+
+
+def split_labels(left, right, path):
+    """Corner tags for a side-by-side shot: one step's name top left, the other's top right."""
+    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    for text, right_side in ((left, False), (right, True)):
+        f = TYPE(40)
+        tw, _ = text_size(text, f, 4)
+        tag_w, tag_h = tw + 56, 66
+        tag = paper_texture(tag_w, tag_h, seed=5 if right_side else 4)
+        draw_text(tag, (28, 47), text, f, INK + (255,), 4)
+        mask = Image.new("L", tag.size, 0)
+        ImageDraw.Draw(mask).rounded_rectangle((0, 0, tag_w - 1, tag_h - 1), 6, fill=255)
+        tag.putalpha(mask)
+        layer = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        layer.alpha_composite(tag, (W - 70 - tag_w if right_side else 70, 60))
+        img.alpha_composite(shadow(layer, 10, 0.55, (0, 6)))
+        img.alpha_composite(layer)
+    img.save(path)
 
 
 def play_overlay(src, dst, label="Watch the trailer", cy_frac=0.5, size=0.11, veil_alpha=70):

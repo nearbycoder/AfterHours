@@ -5,6 +5,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using Unity.Collections;
 using UnityEngine;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 namespace AfterHours
 {
@@ -14,6 +17,8 @@ namespace AfterHours
     /// <c>-ahProfile</c> first) and films short scripted clips. Every clip is written to
     /// <c>dir/&lt;clip&gt;/NNNNNN.jpg</c> at a fixed 30 fps game clock, with the game's own audio (music
     /// muted, it's laid in by <c>Tools/trailer/make_trailer.py</c>) in <c>dir/&lt;clip&gt;/audio.wav</c>.
+    /// Graphics fidelity comes from the settings (or <c>-ahQuality 3</c> for Ultra; the fixed clock
+    /// means any step holds 30 fps on film). Menus are driven with a virtual keyboard, as a player would.
     /// </summary>
     public class Trailer : AutoPilot
     {
@@ -42,6 +47,8 @@ namespace AfterHours
             // The trailer gets its music bed in the edit, so the game's own music stays out of the clips.
             Settings.Current.MusicVolume = 0f;
             Settings.Current.HeadBob = false;
+            // The AutoPilot that made the saves turned the playtest log on; the title would say so.
+            Settings.Current.PlaytestLog = false;
             Settings.NotifyChanged();
             StartCoroutine(Recorder());
             Debug.Log($"[Trailer] reel {scenario}, {Screen.width}x{Screen.height}, audio {(audioOk ? "on" : "unavailable")} {AudioSettings.outputSampleRate} Hz x{channels}");
@@ -259,8 +266,13 @@ namespace AfterHours
             yield return Film("title_nightselect", NightSelectClip());
             yield return Film("title_settings", SettingsClip());
 
-            // The four endings, from the audit route's final state and three variations of it.
-            var final = Story.State.Clone();
+            // The four endings, from the audit route's last night (the red folder in the auditor's tray,
+            // as the Night 7 reel films it) and three variations of it. The save itself may be a later
+            // replay of an earlier night, so it isn't used.
+            var saved = Story.State;
+            var final = (StoryState.LoadSnapshot(NightDefs.Count) ?? saved).Clone();
+            final.SetFate("red_folder", Fate.Delivered, "auditor");
+            final.Night = NightDefs.Count + 1;
             var variants = new (string id, StoryState s)[]
             {
                 ("audit", final.Clone()),
@@ -275,8 +287,7 @@ namespace AfterHours
                 Story.State = s;
                 yield return Film("ending_" + id, EndingClip(e, id == "audit" ? 12f : 5.5f));
             }
-            Story.State = final;
-            Story.State.Save();
+            Story.State = saved;
         }
 
         static StoryState Variant(StoryState s, System.Action<StoryState> change)
@@ -307,18 +318,54 @@ namespace AfterHours
             yield return Wait(0.6f);
         }
 
+        /// <summary>Settings fades in; the arrow keys walk Graphics fidelity from Ultra down to Low and back, the line under it saying what each step does.</summary>
         IEnumerator SettingsClip()
         {
+            var s = Settings.Current;
+            int q0 = s.Quality;
+            // On camera the page shows the player's defaults, not the recorder's (music muted, a still
+            // camera). The music this lets in stays out of the edit: that beat's game audio is muted.
+            var defaults = new Settings();
+            s.MusicVolume = defaults.MusicVolume;
+            s.HeadBob = defaults.HeadBob;
             SettingsPanel.Show();
-            yield return Wait(3.5f);
-            Settings.Current.MusicVolume = 0f;
-            Click("Btn_Done");
-            Settings.Current.MusicVolume = 0f;
+            yield return Wait(1.3f);
+            var bright = GameObject.Find("Btn_Brightness  ›");
+            if (bright != null) EventSystem.current?.SetSelectedGameObject(bright);
+            yield return Tap(Key.DownArrow, 0.8f);
+            Check(EventSystem.current?.currentSelectedGameObject?.name == "Steps_Graphics fidelity", "trailer: the arrow keys reach Graphics fidelity");
+            for (int i = 0; i < 3; i++) yield return Tap(Key.LeftArrow, 0.85f);
+            yield return Wait(0.3f);
+            for (int i = 0; i < 3; i++) yield return Tap(Key.RightArrow, 0.5f);
+            Check(Settings.Current.Quality == q0, $"trailer: Graphics fidelity is back on {GraphicsQuality.Names[q0]}");
+            yield return Wait(0.9f);
+            yield return Tap(Key.Escape, 0.1f);
+            if (SettingsPanel.IsOpen) Click("Btn_Done");
+            s.MusicVolume = 0f;
+            s.HeadBob = false;
             Settings.NotifyChanged();
             yield return Wait(0.6f);
         }
 
         static void Click(string name) => GameObject.Find(name)?.GetComponent<UnityEngine.UI.Button>()?.onClick.Invoke();
+
+        Keyboard kb;
+
+        /// <summary>Tap a key on a virtual keyboard (menus read the current keyboard), then wait.</summary>
+        IEnumerator Tap(Key k, float after = 0.3f)
+        {
+            kb ??= InputSystem.AddDevice<Keyboard>("TrailerKeyboard");
+            kb.MakeCurrent();
+            InputSystem.QueueStateEvent(kb, new KeyboardState(k));
+            yield return null; yield return null;
+            InputSystem.QueueStateEvent(kb, new KeyboardState());
+            yield return Wait(after);
+        }
+
+        void OnDestroy()
+        {
+            if (kb != null) InputSystem.RemoveDevice(kb);
+        }
 
         IEnumerator EndingClip(EndingDef e, float seconds)
         {
@@ -393,6 +440,7 @@ namespace AfterHours
             yield return Film("n1_key", KeyClip());
             yield return Film("n1_note", NoteClip());
             yield return Film("n1_putback", PutBackClip());
+            yield return Film("n1_pause", PauseClip());
             yield return Film("n1_tray", TrayClip("theo_note", "priya", new Vector3(9.0f, 0, 13.4f)));
 
             // Everything else, quickly and off camera.
@@ -541,6 +589,21 @@ namespace AfterHours
             }
         }
 
+        /// <summary>The pause menu fades in with its controls card (keycaps for the keys as bound); Esc closes it.</summary>
+        IEnumerator PauseClip()
+        {
+            // Over the lit reception desk rather than wherever the last clip left the camera.
+            Cam(new Vector3(14.3f, 0f, 0.7f), 0f, 0f);
+            yield return null;
+            LookAtNow(new Vector3(9.5f, 0.6f, 3.6f));
+            yield return Wait(0.5f);
+            PauseMenu.Show();
+            yield return Wait(3.6f);
+            yield return Tap(Key.Escape, 0.1f);
+            if (PauseMenu.IsOpen) PauseMenu.Instance.Close();
+            yield return Wait(0.7f);
+        }
+
         IEnumerator TrayClip(string doc, string person, Vector3 from)
         {
             var tray = root.Director.Furniture.Trays[person];
@@ -619,6 +682,26 @@ namespace AfterHours
             yield return Wait(0.3f);
             yield return Film("n2_mugs", MugClip());
 
+            // What's left glints (the helper fires after a minute without progress; the trailer doesn't wait).
+            Cam(BreakStand, 0f, 0f);
+            yield return null;
+            LookAtNow(BreakLook);
+            yield return Wait(0.5f);
+            yield return Film("n2_glint", GlintClip());
+            yield return Wait(3f);
+
+            // The same glide through the break room at Low, then at the recording's own step.
+            int q = Settings.Current.Quality;
+            yield return FidelityPrep(0);
+            yield return Film("n2_fid_low", FidelityClip());
+            yield return FidelityPrep(q);
+            yield return Film("n2_fid_ultra", FidelityClip());
+            Hud.Instance?.SetVisible(true);
+            root.Rig.Hidden = false;
+
+            yield return Film("n2_casefile", CaseFileClip());
+            yield return Film("n2_largest", LargestClip());
+
             // Walt's locker hands over the torch later in the night; the trailer skips ahead.
             Story.State.Set("has_uv_torch");
             Lights(false);
@@ -626,6 +709,93 @@ namespace AfterHours
             Cam(new Vector3(9.4f, 0, 8.5f), -95f, 2f);
             yield return Wait(0.4f);
             yield return Film("n2_uv", UvClip());
+        }
+
+        static readonly Vector3 BreakStand = new(6.3f, 0f, 3.7f), BreakLook = new(1.5f, 0.9f, 8.0f);
+
+        IEnumerator GlintClip()
+        {
+            yield return Wait(0.6f);
+            ShiftHelper.Instance.SayWhereNext();
+            ShiftHelper.Instance.Glint();
+            Check(ShiftHelper.Instance.LastGlint.Count > 0 && ShiftHelper.Instance.LastWhere != null, $"trailer: the leftovers glint ({ShiftHelper.Instance.LastWhere})");
+            yield return Wait(3.4f);
+        }
+
+        /// <summary>Off camera: a Graphics fidelity step, its reflection probes rendered, the HUD hidden, at the glide's start.</summary>
+        IEnumerator FidelityPrep(int q)
+        {
+            Hud.Instance?.SetVisible(false);
+            root.Rig.Hidden = true;
+            Settings.Current.Quality = q;
+            Settings.ApplyGraphics();
+            var (yaw, pitch) = LookFrom(BreakStand, BreakLook);
+            Cam(BreakStand, yaw, pitch);
+            for (float t = 0; t < 8f && !RoomProbes.Settled; t += GameTime.UnscaledDelta) yield return null;
+            yield return Wait(0.5f);
+            Log($"fidelity clip at {GraphicsQuality.Describe()}, probes {(RoomProbes.Settled ? "settled" : "NOT settled")}");
+        }
+
+        /// <summary>A glide through the lit break room (the edit puts two steps side by side).</summary>
+        IEnumerator FidelityClip()
+        {
+            var (yaw0, pitch0) = LookFrom(BreakStand, BreakLook);
+            var end = new Vector3(5.2f, 0f, 4.6f);
+            var (yaw1, pitch1) = LookFrom(end, BreakLook);
+            yield return Wait(1f);
+            yield return Dolly(BreakStand, yaw0, pitch0, end, yaw1, pitch1, 4.5f);
+            yield return Wait(0.3f);
+        }
+
+        /// <summary>The clipboard turns to the case file, and Theo's note from Night 1 is read again.</summary>
+        IEnumerator CaseFileClip()
+        {
+            Clipboard.Instance.Show();
+            yield return Wait(1.0f);
+            yield return Tap(Key.D, 1.2f);
+            Check(Clipboard.Instance.Page == Clipboard.CasePage, "trailer: D turns the clipboard to the case file");
+            yield return DownTo("theo_note");
+            yield return Wait(0.6f);
+            yield return Tap(Key.Enter, 0.2f);
+            yield return UntilInspect();
+            yield return Wait(2.2f);
+            yield return Tap(Key.Escape, 0.6f);
+            yield return Tap(Key.Escape, 0.7f);
+            if (Clipboard.Instance.Open) Clipboard.Instance.Close();
+        }
+
+        /// <summary>Down the case file's list until document <paramref name="id"/> is selected (at most eight presses).</summary>
+        IEnumerator DownTo(string id, float each = 0.35f)
+        {
+            var c = Clipboard.Instance;
+            bool On() => c.Selected < c.CaseEntries.Count && c.CaseEntries[c.Selected] == id;
+            for (int i = 0; i < 8 && !On(); i++) yield return Tap(Key.DownArrow, each);
+            Check(On(), $"trailer: the case file's selection is on {id}");
+        }
+
+        /// <summary>The same document at Largest text with plain lettering.</summary>
+        IEnumerator LargestClip()
+        {
+            var s = Settings.Current;
+            int size = s.TextSize;
+            bool plain = s.PlainHandwriting;
+            s.TextSize = 2;
+            s.PlainHandwriting = true;
+            Settings.NotifyChanged();
+            yield return Wait(0.3f);
+            Clipboard.Instance.Show(Clipboard.CasePage);
+            yield return Wait(0.4f);
+            yield return DownTo("theo_note", 0.1f);
+            yield return Tap(Key.Enter, 0.2f);
+            yield return UntilInspect();
+            Check(InspectView.IsOpen, "trailer: a document opens at Largest");
+            yield return Wait(3.0f);
+            yield return Tap(Key.Escape, 0.4f);
+            yield return Tap(Key.Escape, 0.5f);
+            if (Clipboard.Instance.Open) Clipboard.Instance.Close();
+            s.TextSize = size;
+            s.PlainHandwriting = plain;
+            Settings.NotifyChanged();
         }
 
         IEnumerator FinishOnCamera(GrimeSurface s)
@@ -856,19 +1026,13 @@ namespace AfterHours
             yield return Film("n7_end", EndOfGameClip());
         }
 
-        /// <summary>Thunder: the power stutters twice, the picture flickers.</summary>
+        /// <summary>Thunder: the power stutters, the picture flickers, a caption says so.</summary>
         IEnumerator StormClip()
         {
             yield return Wait(1.4f);
-            Sfx.Play("thunder", null, 0.95f, 0.92f, 0f, AudioBus.Ambience);
-            PostFx.Instance?.Flicker(1f);
-            var lit = root.Office.Rooms.Values.Where(r => r.LightsOn).ToList();
-            foreach (var (on, hold) in new[] { (false, 0.12f), (true, 0.2f), (false, 0.45f), (true, 0f) })
-            {
-                foreach (var r in lit) r.SetLights(on, true);
-                yield return Wait(hold);
-            }
-            yield return Wait(2.6f);
+            // The night's own thunderclap (sound, flicker, the lit rooms' stutter and its caption), as Reduce flashing has it set.
+            Storm.Strike(root.Office, 0.3f);
+            yield return Wait(3.4f);
         }
 
         IEnumerator EndOfGameClip()

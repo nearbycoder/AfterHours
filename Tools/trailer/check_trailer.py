@@ -26,10 +26,12 @@ def frame(trailer, t):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--trailer", default=os.path.join(ROOT, "docs", "media", "AfterHours-trailer.mp4"))
+    ap.add_argument("--work", default=WORK, help="make_trailer.py's work folder (its timeline.json; the sheet goes in check/)")
     a = ap.parse_args()
-    out = os.path.join(WORK, "check")
+    work = os.path.abspath(a.work)
+    out = os.path.join(work, "check")
     os.makedirs(out, exist_ok=True)
-    beats = json.load(open(os.path.join(WORK, "timeline.json")))
+    beats = json.load(open(os.path.join(work, "timeline.json")))
 
     probe = json.loads(subprocess.run(["ffprobe", "-v", "error", "-show_entries",
                                        "format=duration,size,bit_rate:stream=codec_name,width,height,r_frame_rate,sample_rate,channels",
