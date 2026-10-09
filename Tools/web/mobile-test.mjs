@@ -77,7 +77,9 @@ for (const name of profiles) {
     return p;
   });
   const tapUi = async (t, n, what) => {
-    const p = await uiAt(n);
+    // Menus fade in: wait for the button to be reported (the game sends the list four times a second).
+    let p = null;
+    for (let end = Date.now() + 5000 * slow; !p && Date.now() < end; await sleep(250)) p = await uiAt(n);
     if (!p) { check(false, `${what}: no ${n} on screen`); return false; }
     await t.tap(p[0], p[1], holdMs);
     await sleep(prof.engine === "webkit" ? 1500 : 800);
@@ -149,7 +151,8 @@ for (const name of profiles) {
     // Settings by tap: Graphics fidelity steps up from Low, and three more taps go round to Low again.
     if (await tapUi(t, "Btn_Settings", "Settings")) {
       await shot("3-settings");
-      const p = await uiAt("Steps_Graphics fidelity");
+      // On its label (the left of the row): a tap on the row's track picks the step under the finger instead.
+      const p = await page.evaluate(() => { const r = window.afterHoursUi && window.afterHoursUi["Steps_Graphics fidelity"]; return r ? [r[0] + r[2] * 0.12 - 80, r[1] + r[3] / 2] : null; });
       if (p) {
         // One tap, then wait for the game to take it (headless WebKit can draw under a frame a second).
         const step = async (from) => { await t.tap(p[0] + 80, p[1], holdMs); return (await until((s) => s.quality !== from, 30000, `fidelity to change from ${from}`))?.quality ?? from; };
@@ -216,17 +219,20 @@ for (const name of profiles) {
     await sleep(600 * slow);
     c = await test();
     check(a && c && dist(a, c) > 0.4, `the left stick walks (moved ${a && c ? dist(a, c).toFixed(2) : "?"} m)`);
-    // Both at once: walk and turn with two fingers.
-    await settle(t);
-    a = await test();
-    await t.down(3, 150, H - 130); await t.move(3, 190, H - 170);
-    await t.down(4, W * 0.6, H * 0.4);
-    for (let i = 1; i <= 12; i++) { await t.move(4, W * 0.6 + i * 12, H * 0.4); await sleep(100 * slow); }
-    await sleep(600 * slow);
-    await t.up(4); await t.up(3);
-    await sleep(600 * slow);
-    c = await test();
-    log("two fingers: before " + JSON.stringify(a) + " after " + JSON.stringify(c) + " screen " + (await state())?.screen);
+    // Both at once: walk and turn with two fingers (again if the game's slow-frames question interrupted it).
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await settle(t);
+      a = await test();
+      await t.down(3, 150, H - 130); await t.move(3, 190, H - 170);
+      await t.down(4, W * 0.6, H * 0.4);
+      for (let i = 1; i <= 12; i++) { await t.move(4, W * 0.6 + i * 12, H * 0.4); await sleep(100 * slow); }
+      await sleep(600 * slow);
+      await t.up(4); await t.up(3);
+      await sleep(600 * slow);
+      c = await test();
+      log("two fingers: before " + JSON.stringify(a) + " after " + JSON.stringify(c) + " screen " + (await state())?.screen);
+      if (!String((await state())?.blockers).includes("choice")) break;
+    }
     check(a && c && dist(a, c) > 0.3 && Math.abs(angle(c.yaw - a.yaw)) > 8, `two fingers at once: walks ${a && c ? dist(a, c).toFixed(2) : "?"} m and turns ${a && c ? angle(c.yaw - a.yaw).toFixed(1) : "?"}°`);
 
     // Crouch and brisk walk are switches.
