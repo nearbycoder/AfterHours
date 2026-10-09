@@ -22,7 +22,7 @@ FPS = 30
 # (file name, clip, seconds into the clip)
 SHOTS = [
     ("01-title", "title_menu", 3.3),
-    ("02-wipe", "n1_wipe", 3.2),
+    ("02-wipe", "n1_wipe", 2.5),
     ("03-whiteboard", "n3_whiteboard", 9.33),
     ("04-throw", "n1_throw", 2.0),
     ("05-vacuum", "n1_vacuum", 4.6),
@@ -77,7 +77,7 @@ def poster(trailer):
     dst = os.path.join(MEDIA, "trailer-poster.jpg")
     secs = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", trailer],
                                 stdout=subprocess.PIPE, text=True, check=True).stdout)
-    cards.play_overlay(tmp, dst, f"Watch the trailer  ·  {int(secs // 60)}:{int(round(secs % 60)):02d}", cy_frac=0.745, size=0.075, veil_alpha=0)
+    cards.play_overlay(tmp, dst, f"Watch the trailer  ·  {int(round(secs)) // 60}:{int(round(secs)) % 60:02d}", cy_frac=0.745, size=0.075, veil_alpha=0)
     print(f"  {dst}  {os.path.getsize(dst) / 1e6:.2f} MB")
 
 
