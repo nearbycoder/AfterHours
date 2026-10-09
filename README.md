@@ -32,7 +32,8 @@
 > changes since then (Graphics fidelity up to Ultra, the case file, key and button remapping, text
 > size, captions and more; see [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md)). None of them is in a
 > release yet: to play them, [build from source](#build-from-source), or
-> [play in your browser](#play-in-your-browser) (a web build of `main`, about 44 MB to download).
+> [play in your browser](#play-in-your-browser) (a web build of `main`, about 44 MB to download,
+> with on-screen controls on phones and tablets).
 
 ## Trailer
 
@@ -100,7 +101,8 @@ on one press and flies on the next). Prompts and hints show your keys by their n
 layout, so on AZERTY they read Z Q S D rather than W A S D, and your pad buttons as bound.
 
 **Input:** keyboard and mouse, or a gamepad (Xbox-style pads, and DualShock or DualSense with
-PlayStation symbols); you can switch between them at any time. There's no touch input. The game
+PlayStation symbols); you can switch between them at any time. In the browser, phones and tablets
+get [on-screen touch controls](#on-phones-and-tablets); the desktop game has no touch input. The game
 pauses itself if its window loses focus or the controller you're using disconnects mid-night, and
 the pause menu has a card listing your controls, drawn as keycaps and pad buttons for whichever you
 used last.
@@ -330,7 +332,8 @@ development machine, so none has been made.
 ### Play in your browser
 
 **[nearbycoder.github.io/AfterHours](https://nearbycoder.github.io/AfterHours/)** runs the game
-from `main` in a desktop browser with WebGL 2: no install, and the same seven nights, endings,
+from `main` in a browser with WebGL 2, on a desktop or [a phone or tablet](#on-phones-and-tablets):
+no install, and the same seven nights, endings,
 settings and saves. The first visit downloads about 44 MB (Brotli-compressed; the browser caches
 it for later visits).
 
@@ -351,9 +354,56 @@ it for later visits).
   Graphics fidelity starts on **Medium** rather than High, and every step from Low to Ultra is
   there. The page renders at most 2560×1440 pixels; Render scale goes lower. Gamepads work as the
   browser reports them, with Xbox-style button names (no PlayStation symbols), and rumble depends
-  on the browser. There are no touch controls: phones and tablets get a notice. Mouse
+  on the browser. Mouse
   sensitivity may feel different from desktop: browsers scale mouse movement in their own way
   (adjustable in Settings).
+
+#### On phones and tablets
+
+The page shows **on-screen controls** on a touch-first device (a touch screen and no mouse), or
+as soon as the screen is touched; a key, the mouse or a gamepad hides them again, and a touch
+brings them back. The game is laid out for **landscape**: held upright, the page asks you to turn
+the device, and a night being played pauses.
+
+| On screen | Does |
+|---|---|
+| Left thumb, anywhere on the left | a stick that appears under it: walk |
+| Drag on the right | look around (Mouse sensitivity in Settings scales it) |
+| **Clean** (big, bottom right; **Throw** while holding something) | hold to clean or wipe; hold and let go to throw |
+| **Use** | open, switch, pick up, read, place (what the prompt says) |
+| **Spray** | hold to spray (glass, the cloth's stubborn stains) |
+| **Drop**, **UV** | shown while holding something, and once you have the UV torch |
+| **Tool** | pin the next tool (automatic, cloth, vacuum, squeegee, mop) |
+| **Crouch**, **Brisk** | switches; brisk walk ends when you let go of the stick |
+| **❚❚**, **Sheet**, **⛶** | pause, the shift sheet, fullscreen (where the browser allows; not on iPhone) |
+
+Buttons light up amber when the game's prompt is about them, and prompts name the buttons
+("Use · Open"). Menus, choices, Settings sliders and "press to continue" screens are tapped
+directly; the shift sheet and the document reader, which are read with keys, get a row of soft
+keys (◀ Page ▶, ▲ ▼, Read, Keep, Throw away, Close). Holding Clean or Spray, the same thumb can
+still turn the view. Sound starts on the first tap.
+
+Phones and tablets are short on memory (iOS closes a tab well before a desktop would), so there
+the game starts on Graphics fidelity **Low**, draws about a million pixels (1280×800's worth)
+whatever the screen's density, and makes its grime textures at half resolution; Settings can
+still raise any of it. If the tab stopped unexpectedly last time, the page says so and draws
+fewer pixels; if the browser takes the game's graphics away or it runs out of memory, the page
+says that, instead of freezing.
+
+- **Tested** by touch in headless WebKit 26.6 with iPhone 15 and iPad Pro 11 profiles and in
+  Chromium with a Pixel 7 profile, with real multi-touch (`node Tools/web/mobile-test.mjs`): the
+  title, the first tap's sound, Brightness, Settings, a choice and Continue by tap; in Night 1 the
+  stick, looking, both at once, every button, the shift sheet's soft keys, pause and resume, the
+  rotate prompt, and the controls hiding for a key or the mouse. They never show on a desktop
+  (`play-test.mjs` and `check-pages.mjs` check). Not yet tried on a real phone or tablet: its
+  memory limit, frame rate, notch and home indicator, and how the controls feel under a thumb.
+- **Memory**, standing in Night 1 (`node Tools/web/mobile-measure.mjs`; before → after): on the
+  iPhone profile the canvas went from 2202×1029 to 1480×692 pixels, the wasm heap from 531 to
+  443 MB, and textures, buffers and render targets from about 315 to 90 MB (450 to 173 MB on a
+  GPU without desktop texture formats, as most phones are). The page's whole WebKit process
+  (which here also draws WebGL) peaked at 1.9 GB before and 1.5 GB after; on the iPad profile
+  2.2 and 1.7 GB. Headless browsers don't enforce iOS's limit, so whether that fits a given phone
+  is for a real one to show.
 
 To make the site yourself: `Tools/build-pages.sh` builds it into `Builds/Pages` (with `index.html`
 and `.nojekyll` at its root; every path is relative, so it works under `/AfterHours/`), and
@@ -376,6 +426,8 @@ Tools/unity.sh build-mac        # -> Builds/macOS/After Hours.app (universal, un
 Tools/unity.sh build-windows    # -> Builds/Windows/AfterHours.exe (needs the Windows module)
 Tools/build-pages.sh            # browser build -> Builds/Pages (needs the WebGL module)
 node Tools/web/play-test.mjs    # play it in headless Chromium and Firefox under /AfterHours/
+node Tools/web/mobile-test.mjs  # play it by touch in WebKit (iPhone, iPad) and Chromium (Android)
+node Tools/web/mobile-measure.mjs  # what it costs in memory on those profiles
 python3 Tools/package.py        # release zips of whatever is built -> Builds/release/
 python3 Tools/playtest_report.py <logs>   # per-night tables from playtest logs (docs/PLAYTEST.md)
 Tools/unity.sh test             # EditMode tests -> Logs/test-results.xml
