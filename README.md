@@ -16,7 +16,7 @@
   <img alt="macOS: builds, untested" src="https://img.shields.io/badge/macOS-builds%2C%20untested-999999?logo=apple&logoColor=white">
   <img alt="Models: Blender 4.5" src="https://img.shields.io/badge/models-Blender%204.5-E87D0D?logo=blender&logoColor=white">
   <img alt="Input: keyboard, mouse, gamepad" src="https://img.shields.io/badge/input-keyboard%20%2B%20mouse%20%7C%20gamepad-5FE3FF">
-  <img alt="Status: v0.1.0" src="https://img.shields.io/badge/status-v0.1.0-D9483B">
+  <img alt="Release: v0.1.0 (main is ahead)" src="https://img.shields.io/badge/release-v0.1.0%20(main%20is%20ahead)-D9483B">
 </p>
 
 <p align="center">
@@ -26,6 +26,12 @@
   <a href="#build-from-source"><b>Build from source</b></a>
 </p>
 
+> **The download is older than this page.** The published build is v0.1.0 from 4 October 2026.
+> This README, the trailer and the screenshots show the game on `main`, which has twelve rounds of
+> changes since then (Graphics fidelity up to Ultra, the case file, key and button remapping, text
+> size, captions and more; see [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md)). None of them is in a
+> release yet: to play them, [build from source](#build-from-source).
+
 ## Trailer
 
 <p align="center">
@@ -34,8 +40,9 @@
   </a>
 </p>
 
-<p align="center"><sub>1 min 54 s · 1920×1080 at 30 fps · H.264 and AAC with the game's own music and sound · 36 MB.<br>
-Every shot was filmed by the game itself from scripted input; the cut is made by <a href="Tools/trailer"><code>Tools/trailer</code></a>.</sub></p>
+<p align="center"><sub>2 min · 1920×1080 at 30 fps · H.264 and AAC with the game's own music and sound · 38 MB.<br>
+Filmed on <code>main</code> at Graphics fidelity Ultra. Every shot was filmed by the game itself from scripted input
+(the Low and Ultra halves of the split shot too); the cut is made by <a href="Tools/trailer"><code>Tools/trailer</code></a>.</sub></p>
 
 ## About
 
@@ -90,22 +97,11 @@ can be set to **toggle** instead of hold: one press starts, the next stops (and 
 on one press and flies on the next). Prompts and hints show your keys by their names on your keyboard
 layout, so on AZERTY they read Z Q S D rather than W A S D, and your pad buttons as bound.
 
-The game pauses itself if its window loses focus or the controller you're using disconnects
-mid-night. The pause menu lists the controls with the keys or pad buttons you have now. The
-first time it starts, it offers a **brightness** page over the dark office (also in Settings →
-Display).
-
-**Handwriting** (Settings → Accessibility: As written or Plain) sets the handwritten notes,
-letters, sticky notes, the shift sheet, the case file and the report's task list in the plain
-UI font instead, for anyone who finds handwriting hard to read. **Text size** (Normal, Large or
-Largest) scales the HUD and everything you read: documents (the paper grows with the text), the clipboard, choices, the shift report and
-the morning chat. At Large and Largest the clipboard becomes one wide sheet with three pages
-(shift sheet, notes, case file); <kbd>W</kbd>/<kbd>S</kbd> or the wheel show the rest of a long
-page. The morning chat scrolls back with <kbd>W</kbd>/<kbd>S</kbd>, the arrows, the wheel or the
-d-pad at any size. The menus follow it too: the title, the pause menu (and its controls card),
-Night Select, the brightness page and the ending grow, and at Large and Largest Settings and the
-controls pages become one list that scrolls, keeping the row you're on in view (the wheel
-scrolls it too). Changing Text size lays Settings out again straight away.
+**Input:** keyboard and mouse, or a gamepad (Xbox-style pads, and DualShock or DualSense with
+PlayStation symbols); you can switch between them at any time. There's no touch input. The game
+pauses itself if its window loses focus or the controller you're using disconnects mid-night, and
+the pause menu has a card listing your controls, drawn as keycaps and pad buttons for whichever you
+used last.
 
 **A night, start to finish:** clock in at the cleaning closet and check the shift sheet on your
 clipboard. Switch the lights on, clean room by room, sort the rubbish, put things back, decide what
@@ -185,6 +181,59 @@ made it one; the secrets you found; and before-and-after polaroids of every room
 where the people whose desks you cleaned react to what you left for them, or to what went
 missing.
 
+### Settings and accessibility
+
+<img src="docs/media/screenshots/11-settings.jpg" width="100%" alt="Settings: controls, sound, display with the Graphics fidelity slider, and accessibility">
+
+Settings (from the title or the pause menu) has:
+
+- **Controls:** mouse and stick sensitivity, invert Y, controller vibration, field of view, and
+  Camera motion (head bob, and the kick of a throw or a reveal; off keeps the camera still).
+  Keyboard, mouse and controller pages rebind keys, mouse buttons and pad buttons (see
+  [How to play](#how-to-play)), with hold or toggle for crouch, brisk walk, and clean and spray.
+- **Sound:** master, music, effects and ambience volume, and **Mono audio**.
+- **Display:** brightness (the game also offers it on first launch, over the dark office),
+  [**Graphics fidelity**](#graphics-fidelity), render scale, fullscreen, VSync and a frame-rate limit.
+- **Accessibility:** captions (for story sounds, the thunder, and where the leftovers chime),
+  **Reduce flashing and flicker** (Night 7's storm then dims the lights to half and back instead of
+  dropping them out), the highlight on whatever you're aiming at, **Text size** and **Handwriting**.
+- **Feedback:** an opt-in local playtest log (see [`docs/PLAYTEST.md`](docs/PLAYTEST.md)).
+
+**Handwriting** (Settings → Accessibility: As written or Plain) sets the handwritten notes,
+letters, sticky notes, the shift sheet, the case file and the report's task list in the plain
+UI font instead, for anyone who finds handwriting hard to read. **Text size** (Normal, Large or
+Largest) scales the HUD and everything you read: documents (the paper grows with the text), the clipboard, choices, the shift report and
+the morning chat. At Large and Largest the clipboard becomes one wide sheet with three pages
+(shift sheet, notes, case file); <kbd>W</kbd>/<kbd>S</kbd> or the wheel show the rest of a long
+page. The morning chat scrolls back with <kbd>W</kbd>/<kbd>S</kbd>, the arrows, the wheel or the
+d-pad at any size. The menus follow it too: the title, the pause menu (and its controls card),
+Night Select, the brightness page and the ending grow, and at Large and Largest Settings and the
+controls pages become one list that scrolls, keeping the row you're on in view (the wheel
+scrolls it too). Changing Text size lays Settings out again straight away.
+
+If a night runs slowly (under about 28 frames a second), the game offers the next lower Graphics
+fidelity step once (Ultra, High, Medium, Low, then render scale); Keep means it won't ask again.
+Menus fade in and out, the selection is lit whether the pad, the arrow keys or the mouse is moving
+it, and buttons dip when pressed.
+
+### Graphics fidelity
+
+Settings → Display has a **Graphics fidelity** slider with four steps. High is the default and the
+game as it was built; Ultra goes past it. Mouse, arrow keys and d-pad all move it, and a line under
+it says what the step does.
+
+| Step | What it renders |
+|---|---|
+| **Low** | For weak GPUs: shadows from the moon only (hard, 1024 px), no ambient occlusion, FXAA instead of MSAA, no film grain, bloom at quarter resolution, half-size textures (the clue lettering stays full size), half the particles |
+| **Medium** | Hard shadows from every room light, ambient occlusion, 2× MSAA with SMAA, three quarters of the particles |
+| **High** (default) | Soft shadows, ambient occlusion, 4× MSAA with high-quality SMAA, full particles: unchanged from before round 12 |
+| **Ultra** | Everything on High, plus a reflection probe in every room (metal, glass and glossy surfaces reflect the lit room; rendered again when its lights change), soft shadows from the desk lamps, 2048 px room-light shadows in an 8192 atlas, a 4096 px moon shadow in four cascades to 40 m, ambient occlusion at its most samples, 16× anisotropic filtering, half as many particles again |
+
+<img src="docs/media/improvements/round12/r12-1-fidelity-steps.jpg" width="100%" alt="The same four views at Low, Medium, High and Ultra">
+
+How much each step costs was measured on the development machine; see
+[Round 12 results](docs/IMPROVEMENTS.md#round-12-results-8-october-2026).
+
 ## Content overview
 
 One floor of one office (reception, bullpen, break room, conference room, the corner office and
@@ -208,40 +257,12 @@ Night Select). Your records are kept apart from the story save: the
 best grade and most secrets for each night, and the endings you've found (shown on the title
 screen and in Night Select, unnamed until you reach them), survive replays and New Game.
 
-Menus: title (Continue, New Game, Night Select, Case file once you've read something, Settings,
-Quit), pause (Resume, Shift sheet,
-Settings, Restart this night, Quit to title; both of the last two ask first, and so does closing
-the game in the middle of a night; and a card listing the controls as you have them bound) and settings in two
-columns (one scrolling list at the larger text sizes): mouse and stick sensitivity, invert Y, controller vibration, field of view, camera motion (head bob, and the kick of a throw or a reveal),
-four volume sliders, mono audio, an opt-in playtest log, brightness, **Graphics fidelity** (below),
-render scale, fullscreen, VSync, a frame-rate limit, captions, reduce flashing (which also
-softens Night 7's storm, whose lights otherwise drop out with each thunderclap), a highlight on
-whatever you're aiming at, text size (Normal, Large, Largest), handwriting (as written or plain), and pages for keyboard and
-mouse and for controller bindings, with hold or toggle for crouch, brisk walk, and clean and
-spray. If a night runs slowly (under about 28 frames a second), the game offers the next lower
-Graphics fidelity step once (Ultra, High, Medium, Low, then render scale); Keep means it won't ask again. Menus fade in
-and out, the selection is lit whether the pad, the arrow keys or the mouse is moving it, and buttons
-dip when pressed. Progress
-and settings save automatically. Saves are written to a temporary file and swapped in, keeping the
-previous one as a backup, so a crash or power cut mid-save can't lose a game.
-
-### Graphics fidelity
-
-Settings → Display has a **Graphics fidelity** slider with four steps. High is the default and the
-game as it was built; Ultra goes past it. Mouse, arrow keys and d-pad all move it, and a line under
-it says what the step does.
-
-| Step | What it renders |
-|---|---|
-| **Low** | For weak GPUs: shadows from the moon only (hard, 1024 px), no ambient occlusion, FXAA instead of MSAA, no film grain, bloom at quarter resolution, half-size textures (the clue lettering stays full size), half the particles |
-| **Medium** | Hard shadows from every room light, ambient occlusion, 2× MSAA with SMAA, three quarters of the particles |
-| **High** (default) | Soft shadows, ambient occlusion, 4× MSAA with high-quality SMAA, full particles: unchanged from before round 12 |
-| **Ultra** | Everything on High, plus a reflection probe in every room (metal, glass and glossy surfaces reflect the lit room; rendered again when its lights change), soft shadows from the desk lamps, 2048 px room-light shadows in an 8192 atlas, a 4096 px moon shadow in four cascades to 40 m, ambient occlusion at its most samples, 16× anisotropic filtering, half as many particles again |
-
-<img src="docs/media/improvements/round12/r12-1-fidelity-steps.jpg" width="100%" alt="The same four views at Low, Medium, High and Ultra">
-
-How much each step costs was measured on the development machine; see
-[Round 12 results](docs/IMPROVEMENTS.md#round-12-results-8-october-2026).
+Menus: the title (Continue, New Game, Night Select, Case file once you've read something, Settings,
+Quit) and the pause menu (Resume, Shift sheet, Settings, Restart this night, Quit to title, and the
+controls card). Restart, Quit to title and closing the game in the middle of a night all ask first,
+because a night is only saved when it ends. Progress and settings save automatically. Saves are
+written to a temporary file and swapped in, keeping the previous one as a backup, so a crash or
+power cut mid-save can't lose a game.
 
 ## Screenshots
 
@@ -266,6 +287,10 @@ How much each step costs was measured on the development machine; see
     <td><img src="docs/media/screenshots/08-evidence.jpg" alt="Reading a crumpled note in the inspect view"></td>
     <td><img src="docs/media/screenshots/09-report.jpg" alt="The shift report with an S grade and before-and-after polaroids"></td>
   </tr>
+  <tr>
+    <td><img src="docs/media/screenshots/11-settings.jpg" alt="Settings, with Graphics fidelity and the accessibility options"></td>
+    <td><img src="docs/media/screenshots/12-pause-controls.jpg" alt="The pause menu and its controls card, with keycaps for the keys as bound"></td>
+  </tr>
 </table>
 
 ## Play it
@@ -274,13 +299,24 @@ How much each step costs was measured on the development machine; see
    [latest release](https://github.com/nearbycoder/AfterHours/releases/latest).
 2. Unzip it and run `./AfterHours.x86_64`.
 
-You need 64-bit Linux and a GPU with OpenGL 3.2 or later (the player uses OpenGL Core). It starts
-fullscreen; switch to windowed in Settings (the window opens at four fifths of the screen, and
-can be resized). Saves and settings live in
-`~/.config/unity3d/After Hours Team/After Hours/`. If the window never appears under XWayland, start it
-with `./AfterHours.x86_64 -force-wayland` to use Unity's native Wayland backend. Zips made by
-`Tools/package.py` (below) include an `AfterHours.sh` launcher that does this for you in a
-Wayland session (`AH_X11=1` forces X11).
+That release is the 4 October 2026 build: it doesn't have the changes made since (see the note at
+the top). To play the game as this page describes it, [build it from source](#build-from-source).
+
+**System requirements**
+
+- 64-bit Linux (x86-64). It's developed on CachyOS under KDE Plasma (Wayland).
+- A GPU with OpenGL 3.2 or later (the player uses OpenGL Core). Only one GPU has been tried, the AMD
+  Radeon 8060S integrated GPU of the development machine, where every Graphics fidelity step runs
+  at about 4–10 ms a frame at 1600×900 on a busy shared machine (see [Status](#status-and-known-issues)).
+- Keyboard and mouse, or a gamepad.
+- About 200 MB of disk space for the game.
+
+It starts fullscreen; switch to windowed in Settings (the window opens at four fifths of the
+screen, and can be resized). Saves and settings live in
+`~/.config/unity3d/After Hours Team/After Hours/`. If the window never appears under XWayland,
+start it with `./AfterHours.x86_64 -force-wayland` to use Unity's native Wayland backend. Zips
+made by `Tools/package.py` (below) since v0.1.0 include an `AfterHours.sh` launcher that does this
+for you in a Wayland session (`AH_X11=1` forces X11); the v0.1.0 zip doesn't have it.
 
 Only a Linux build is published (v0.1.0). Since then the project also **builds for macOS** as a
 universal app (Intel and Apple Silicon, macOS 12 or later), but that build is unsigned and
@@ -338,80 +374,32 @@ Tools/.venv/bin/python Tools/audio/build_music.py
 
 - `Tools/autopilot.sh [outdir] [nightN|all] [route]` runs the built game with no human, in a
   private KWin on a virtual screen (below), so no window appears on the desktop and its saves
-  stay in the run's folder (`AH_DESKTOP=1` runs it on the desktop instead): it starts at
-  the title and plays all seven nights through the real components (brush maths on every dirty
-  surface, physics into the bins, real mouse-and-key input for a wipe, a pick-up (holding the cup, the label under the reticle
-  must name its bin, say so when aimed at a recycling bin, and show ✓ on the black one; still
-  holding it, E on a virtual keyboard must use a light switch, a door and a chair), a charged throw
-  (aimed once for where the hands hold the cup, which must settle there before it's released)
-  and the vacuum, a virtual gamepad for the menus), then checks the chosen route reaches its
-  ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`. It also checks every
-  night for props overlapping, sunk into furniture or floating. On Night 1 it loses a can out of
-  the world, on a high ledge and in a sealed crate (each must come back), leaves one on the open
-  floor and one under a desk (both must stay put), then idles for a minute and checks that exactly
-  the unfinished things glint and that a caption names the rooms of the ones that chime and
-  which way each is from where the player faces (turned towards the nearest it must say
-  "ahead", turned away "behind you"), once (not on the repeat), and that with Captions off the
-  glint shows none. It plays a sound to the player's right and measures the mix on the audio
-  thread: with Mono audio on, left and right must come out identical. On Night 7 it forces a
-  thunderclap with Reduce flashing off and on and measures the lit room's lights frame by frame
-  (off: out and back; on: never below half, never faster than 2.5 a second; the room stays
-  switched on), and checks the thunder's caption and that Captions off hides it. On every night it checks the line under the watch names the room the
-  player is standing in, and on Night 1 it measures the label under the reticle against the
-  lit white wall by the reception switch from a screen capture (it must read at 4.5:1 or
-  better). At the title it walks the menu with the arrow keys of a virtual keyboard and checks
-  Enter on Settings, Night Select and New Game opens each without starting the night. It also checks the aim highlight goes on and off with the reticle
-  and the setting, and rebinds Interact to F through the real controls page by pressing F on a
-  virtual keyboard, then checks F uses a light switch and E no longer does, and does the same for
-  the pad (Interact on X, then □ on a DualShock). It checks that with Camera motion off a throw's
-  kick and a reveal's punch leave the camera still, that no row or button in Settings or the
-  controls page overlaps another at Normal text size, and that a caption doesn't stay under the
-  pause menu. With a virtual pad it steps through the tools on
-  the d-pad, and with a virtual DualShock 4 it checks the prompts switch to ✕. It taps crouch and
-  brisk walk in toggle and hold mode, and with clean on toggle it taps a virtual mouse and the
-  pad's trigger on a dirty desk and checks it keeps getting cleaner with the button up, stops on
-  the next tap and on opening the clipboard, and that a throw charges on one tap and flies on the
-  next. From the pause menu it opens the brightness page and moves it with the pad and the arrow
-  keys, backs out of Quit to title and then confirms it (Continue starts the night again), asks the
-  game to quit with the clipboard open (it must close, pause the night and ask; Esc keeps playing;
-  on the title the request goes through), and
-  checks the HUD at each text size stays on screen. It opens every document at Normal and Largest
-  and checks the text stays on the paper and the paper on screen, then again with Handwriting set
-  Plain (the handwritten ones must be in Fira Sans, the rest unchanged), and checks choices at
-  Largest. Night 2's report and Night Select are checked with Plain as well.
-  The pause menu's controls card is checked against the bindings, after a rebind and with a
-  virtual pad and DualShock 4. At each text size it measures the pause menu, its controls card
-  and the title menu (on screen, apart, the size they should be) and the brightness page; at
-  Largest it walks every row of Settings and both controls pages with the d-pad (each must
-  come into view), scrolls with the wheel and the arrow keys, and switches Text size from its
-  own row to check the page is laid out again around it. Nights 1 and 2 end at Largest: the report's text must stay on the
-  paper and the morning chat is scrolled back to its first message with real key presses (and
-  must hold new messages while scrolled back). Every shift report is checked against the
-  numbers its grade came from. On Night 2 it opens the case file, reads documents again
-  with the pad and the keyboard and checks nothing in the story changed, reads Tuesday
-  morning's chat again (the same messages as that morning, from the first; scrolled at Largest), turns the clipboard's
-  three pages at Large and Largest and scrolls the long shift sheet, and checks the pause on
-  focus loss (through the game's focus handler) and on unplugging the pad in use, then holds the
-  frame rate to 20 and checks the game offers a lower setting, lowers it, offers the next step and
-  stops asking after Keep (and offers nothing at full speed). On Night 3 it
-  goes to the title and opens the Case file (the save's list, the clipboard's less that night's
-  reads), reads a document and a morning again over it with the pad and the keyboard, checks the
-  save file's bytes didn't change, walks it at Largest, and checks Night Select asks before an earlier night (backing out keeps the
-  save; pad A on Never mind doesn't also pick the card behind), that a confirmed replay moves
-  Continue, and that Night 3 in Night Select puts the story back. The ending is read at Largest
-  (its epilogue must fit); the title's Case file must then start with the ending, which is read
-  again (the same headline, epilogue and stats as it showed) and closed with the pad and Esc,
-  followed by Night 7's documents; and
-  Night Select's cards are checked at each size. Round 12 added checks for Graphics fidelity
-  (the slider with the pad, a virtual mouse's click and drag and the arrow keys; on Night 2,
-  every step read back from the engine against the table, the rooms' reflection probes rendering
-  and rendering again when a room's lights change, and the slow-frames offer stepping down from
-  Ultra), for menus fading in and closing at once on a real Esc (the title's four and the pause
-  menu), for the keyboard's selection being lit on the title, in Settings and in the pause menu
-  (and handed to the mouse pointer when it moves; a row lit under the pointer; a button dipping
-  when pressed), and for the controls card's keycaps matching the bindings with the keyboard, a
-  pad and a DualShock 4. Automated runs
-  keep reading devices while their window isn't focused.
+  stay in the run's folder (`AH_DESKTOP=1` runs it on the desktop instead). It starts at the
+  title, plays all seven nights through the real components and checks the chosen route reaches
+  its ending. Routes: `audit`, `loose`, `cleanbooks`, `spotless` and `marian`, with 578–607 checks
+  each. Among them:
+  - **Playing:** brush maths on every dirty surface, physics into the bins, a charged throw, real
+    mouse-and-key input for a wipe and a pick-up, the label saying which bin, doors, switches and
+    chairs with your hands full, props that overlap, sink or float, cans lost out of reach coming
+    back, and the leftovers' glint and the caption saying which rooms and which way they chime.
+  - **Input:** a virtual keyboard, mouse, Xbox-style pad and DualShock 4 walk the menus, rebind
+    Interact on the keyboard and the pad, try hold and toggle, cycle tools, and check the prompts,
+    the controls card's keycaps, the keyboard's lit selection and the mouse's hover.
+  - **Reading and layout:** every document at Normal and Largest (and with Plain handwriting) stays
+    on the paper and on screen; so do the HUD, the menus, Settings and the controls pages, Night
+    Select, the report, the morning chat and the ending at each text size; nothing in Settings
+    overlaps at Normal.
+  - **Settings:** every Graphics fidelity step read back from the engine against the table (and
+    on Ultra the rooms' reflection probes), the slow-frames offer stepping down, Camera motion off,
+    Mono audio measured on the audio thread, Reduce flashing measured frame by frame in Night 7's
+    storm, captions on and off, the brightness page and the menus' fades.
+  - **Story and saves:** the case file and the morning chats read again without changing the story,
+    Night Select's question before an earlier night, Quit to title and the question on closing,
+    the pause on focus loss and on unplugging the pad, every shift report against the numbers its
+    grade came from, and the ending in the title's case file.
+
+  Each round's checks are described in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md). Automated
+  runs keep reading devices while their window isn't focused.
 - `Tools/unity.sh test` runs the EditMode tests, including an exhaustive search over the story's
   choices that proves all four endings are reachable, and tests that saves survive interrupted
   writes, that records only ever improve, that key and pad bindings swap, refuse reserved keys and
@@ -449,10 +437,17 @@ Tools/.venv/bin/python Tools/audio/build_music.py
 **Trailer and README media.** The trailer is filmed by the game itself and cut by a script:
 
 ```bash
-Tools/trailer/record.sh                                   # film every clip at 1920x1080 -> Recordings/trailer/
-Tools/.venv/bin/python Tools/trailer/make_trailer.py      # -> docs/media/AfterHours-trailer.mp4
-Tools/.venv/bin/python Tools/trailer/make_media.py        # screenshots, poster and teaser -> docs/media/
+Tools/trailer/record.sh [dir]                                       # film every clip at 1920x1080 -> Recordings/trailer/
+Tools/.venv/bin/python Tools/trailer/make_trailer.py --clips [dir]  # -> docs/media/AfterHours-trailer.mp4
+Tools/.venv/bin/python Tools/trailer/check_trailer.py               # streams, loudness, black or frozen frames, a frame per beat
+Tools/.venv/bin/python Tools/trailer/make_media.py --clips [dir]    # screenshots, poster and teaser -> docs/media/
 ```
+
+`record.sh` first plays the `audit` route with the AutoPilot so every night has a real save to
+start from, then films each night's clips from it. Like the AutoPilot it runs in a private KWin,
+with its saves and settings in `[dir]/xdg`. The game runs on a fixed 30 fps clock, so it films at
+Ultra (`AH_QUALITY=0`–`3` picks another step) without dropping frames, and records the mixed game
+audio through Unity's `AudioRenderer`.
 
 ## Project structure
 
@@ -522,30 +517,11 @@ The design plan is in [`docs/PLAN.md`](docs/PLAN.md) and the original brief in
 
 ## Status and known issues
 
-**v0.1.0: complete and playable.** All seven nights, four endings, menus, saves, keyboard and
-mouse, and gamepad. Changes made since that release (round 1: the leftover helper, Settings v2,
-records, the macOS build and longer night music; round 2: the aim highlight, key remapping, pad
-tool cycling and PlayStation glyphs, and a playtest kit; round 3: the case file, controller
-remapping, hold or toggle for crouch and brisk walk, and pausing on focus or pad loss; round 4:
-brightness, hold or toggle for clean and spray, the grade breakdown on the shift report, HUD
-text size, and a question before Quit to title; round 5: text size for documents, the
-clipboard, choices, the report and the morning chat, scrolling back through the chat, and the
-controls in the pause menu; round 6: text size for the menus, with Settings as a scrolling list
-at the larger sizes, the morning chats in the case file, and a question before Night Select
-takes a story in progress back to an earlier night; round 7: the case file from the title, and a
-question before the game closes in the middle of a night; round 8: closing the window tested
-against a real window manager, a windowed mode that fits on the screen, a label saying which
-bin rubbish goes in, and the ending in the title's case file; round 9: doors, switches and chairs
-with your hands full, an offer of lower graphics when a night runs slowly, a still camera with
-Camera motion off, and checks on Steam Deck and ultrawide screens; round 10: the room's name
-under the watch, a caption saying where the leftovers chime, plain lettering for handwriting,
-and a backing for the label under the reticle; round 11: Reduce flashing for Night 7's storm, a
-caption for the thunder, mono audio, which way the glint's chimes are, and Settings fitting at
-Normal text size again; round 12: Graphics fidelity with an Ultra step, menus that fade in and
-out, a visible keyboard selection, hover and press feedback, and keycaps on the pause menu's
-controls card) are listed in
-[`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't been released yet. Some things are
-still rough or untested:
+**v0.1.0 is released, complete and playable:** all seven nights, four endings, menus, saves,
+keyboard and mouse, and gamepad. Since then twelve rounds of changes have gone into `main`
+(everything this page describes, from the case file and remapping to text size, captions and
+Graphics fidelity); they're listed in [`docs/IMPROVEMENTS.md`](docs/IMPROVEMENTS.md) and haven't
+been released yet. Some things are still rough or untested:
 
 - **No one outside development has played it yet.** Pacing, difficulty, and whether the clues
   are too obvious or too hidden are untested with real players. There's now a kit for the first
@@ -556,8 +532,8 @@ still rough or untested:
 - **The audio was tuned by numbers, not by ear.** Levels, loops and rhythm were checked
   numerically. That includes the longer night music: its length, loudness (within 0.2 LU of the
   loops it replaced), loop seam and how much neighbouring four-bar blocks repeat
-  (`build_music.py --check`). Nobody has listened to it critically. The trailer still uses the
-  original loops; it hasn't been re-cut. Mono audio (round 11) was checked by measuring the
+  (`build_music.py --check`). Nobody has listened to it critically. The trailer (re-cut on
+  8 October 2026) uses the longer tracks; its loudness was measured, not judged by ear. Mono audio (round 11) was checked by measuring the
   mix on the audio thread (left and right identical with it on), not by listening on
   headphones or with one ear.
 - **No physical gamepad was tested.** Pad support was exercised with a virtual Input System
