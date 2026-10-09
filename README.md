@@ -335,7 +335,7 @@ settings and saves. The first visit downloads about 44 MB (Brotli-compressed; th
 it for later visits).
 
 - **Tested** in headless Chromium 151 and Firefox 157 on Linux, served the way GitHub Pages serves
-  it (`node Tools/web/play-test.mjs`): the title loads in 4–7 s from a local server, with no
+  it (`node Tools/web/play-test.mjs`): the title loads in 3–8 s from a local server, with no
   console errors. Audio waits for the first click or key, then plays. A Graphics fidelity change
   survives a reload. Night 1 starts, the player walks, and Esc and Tab work. Safari, Edge, Windows,
   macOS and a real mouse, monitor and gamepad haven't been tried; nor has a download over a real
