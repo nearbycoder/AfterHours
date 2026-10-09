@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // Does the browser build reach the title? Opens the page in headless Chromium and/or Firefox with a
 // fresh profile and passes only when the game reports its title screen (window.afterHours.screen,
-// set by WebPlatform.Report) with no console errors, page errors or failed requests.
+// set by WebPlatform.Report) with no console errors, page errors or failed requests, and with no
+// on-screen touch controls showing (they're for phones and tablets).
 //   npm install --prefix Tools/web          (once: puppeteer-core)
 //   node Tools/check-pages.mjs https://nearbycoder.github.io/AfterHours/ [--browser chromium|firefox|all]
 //        [--timeout 240] [--log Logs/check-pages.log] [--shot Logs/check-pages] [--gpu]
@@ -50,10 +51,16 @@ for (const name of browsers) {
     const secs = ((Date.now() - t0) / 1000).toFixed(1);
     await new Promise((r) => setTimeout(r, 2000)); // errors raised just after the title appears count too
     const mb = ((await downloaded(page)) / 1048576).toFixed(1);
+    // A desktop with a mouse never shows the on-screen controls or the rotate prompt (touch.js).
+    const touch = await page.evaluate(() => ({
+      on: !!document.querySelector("#tc.on"), rotate: !!document.querySelector("#rotate.on"),
+      buttons: [...document.querySelectorAll(".tc-btn, #tc-keys button")].filter((e) => e.getClientRects().length > 0).length,
+    })).catch(() => ({ on: null }));
+    if (touch.on !== false || touch.rotate || touch.buttons) errors.push(`touch controls showing on a desktop: ${JSON.stringify(touch)}`);
     if (shot) await page.screenshot({ path: `${shot}-${name}.png` }).catch(() => { });
     const pass = !!st && errors.length === 0;
     const line = `${pass ? "PASS" : "FAIL"} ${name}: ${st ? `title in ${secs} s` : `no title after ${secs} s`}, ${mb} MB downloaded, ` +
-      `${st ? `graphics ${st.qualityName}, ` : ""}${errors.length} error(s)${errors.length ? ": " + errors.slice(0, 5).join(" | ") : ""}`;
+      `${st ? `graphics ${st.qualityName}, ` : ""}touch controls ${touch.on === false && !touch.buttons ? "hidden" : "SHOWING"}, ${errors.length} error(s)${errors.length ? ": " + errors.slice(0, 5).join(" | ") : ""}`;
     log(line);
     console.log(line);
     ok &&= pass;

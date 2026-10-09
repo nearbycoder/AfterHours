@@ -6,7 +6,8 @@
 // Each browser: the title loads with no console errors (time and download noted); audio is held
 // until the first click and runs after it; Graphics fidelity changed in Settings survives a
 // reload (saved in IndexedDB); a short night: Enter starts Night 1, S walks, Esc pauses and
-// resumes, Tab opens the shift sheet. Screenshots and a log per browser go to --out.
+// resumes, Tab opens the shift sheet; the on-screen touch controls never show. Screenshots and a
+// log per browser go to --out.
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -137,6 +138,10 @@ for (name of browsers) {
     st = await waitState(page, "s.screen === 'night'", 10000, errors);
     check(!!st, "Tab again puts it away");
 
+    // Played with a keyboard and mouse, the on-screen touch controls never show.
+    const touch = await page.evaluate(() => ({ on: !!document.querySelector("#tc.on"), rotate: !!document.querySelector("#rotate.on"),
+      buttons: [...document.querySelectorAll(".tc-btn, #tc-keys button")].filter((e) => e.getClientRects().length > 0).length }));
+    check(!touch.on && !touch.rotate && touch.buttons === 0, `no on-screen touch controls on a desktop (${JSON.stringify(touch)})`);
     check(errors.length === 0, `no console errors (${errors.length}${errors.length ? ": " + errors.slice(0, 4).join(" | ") : ""})`);
   } catch (e) {
     check(false, "test crashed: " + e.message);
